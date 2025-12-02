@@ -6,7 +6,7 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "eslint-plugin-local"
+    "presets/standalone/eslint-plugin-local"
   ],
   "scripts": {
     "dev": "npm run generate:colors && vite",
@@ -15,7 +15,7 @@
     "lint": "npm run build --workspace=eslint-plugin-local && eslint . --max-warnings 0",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "clean:artifacts": "rm -rf packages/*/dist eslint-plugin-local/dist dist .nyc_output coverage .eslintcache",
+    "clean:artifacts": "rm -rf packages/*/dist presets/standalone/eslint-plugin-local/dist dist .nyc_output coverage .eslintcache",
     "clean:modules": "rm -rf node_modules",
     "clean:deps": "npm run clean:modules && npm ci",
     "clean": "npm run clean:artifacts && npm run clean:modules",

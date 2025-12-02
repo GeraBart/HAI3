@@ -1,5 +1,4 @@
-<!-- @standalone -->
-# hai3:update-guidelines - Update AI Guidelines
+# hai3dev:update-guidelines - Update AI Guidelines (Monorepo Only)
 
 ## AI WORKFLOW (REQUIRED)
 1) Route using .ai/GUIDELINES.md to identify correct target file.

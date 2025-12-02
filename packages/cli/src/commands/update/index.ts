@@ -1,9 +1,9 @@
 import { execSync } from 'child_process';
 import fs from 'fs-extra';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import type { CommandDefinition } from '../../core/command.js';
 import { validationOk, validationError } from '../../core/types.js';
+import { syncTemplates } from '../../core/templates.js';
 
 /**
  * Arguments for update command
@@ -45,103 +45,6 @@ function detectCurrentChannel(): 'alpha' | 'stable' {
     // If detection fails, default to stable (safer)
     return 'stable';
   }
-}
-
-/**
- * Get the path to the CLI's bundled templates directory
- */
-function getTemplatesDir(): string {
-  // tsup bundles to flat structure: dist/index.cjs
-  // Templates are at templates/ (sibling to dist/)
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  // Navigate from dist/ to templates/
-  return path.resolve(__dirname, '..', 'templates');
-}
-
-/**
- * Template directories/files to sync from CLI templates to project
- * Format: { src: path in templates, dest: path in project }
- *
- * openspec/ is NOT synced here - it's managed by `openspec update` command
- */
-/**
- * Template sync configuration
- * - src: path in CLI templates directory
- * - dest: path in target project
- * - expand: if true, copy children of src to dest (not the directory itself)
- */
-interface SyncTemplate {
-  src: string;
-  dest: string;
-  expand?: boolean;
-}
-
-const SYNC_TEMPLATES: SyncTemplate[] = [
-  // AI configuration (direct copies)
-  { src: '.ai', dest: '.ai' },
-  { src: '.claude', dest: '.claude' },
-  { src: '.cursor', dest: '.cursor' },
-  { src: '.windsurf', dest: '.windsurf' },
-  { src: '.cline', dest: '.cline' },
-  { src: '.aider', dest: '.aider' },
-  // ESLint plugin with HAI3 rules
-  { src: 'eslint-plugin-local', dest: 'eslint-plugin-local' },
-  // Demo screenset
-  { src: 'src/screensets/demo', dest: 'src/screensets/demo' },
-  // Config files - expand children to project root
-  { src: 'presets/standalone/configs', dest: '.', expand: true },
-  // Scripts - expand children to scripts/ directory
-  { src: 'presets/standalone/scripts', dest: 'scripts', expand: true },
-];
-
-/**
- * Sync template files from bundled CLI templates to project
- * @param projectRoot - The root directory of the HAI3 project
- * @param logger - Logger instance for output
- * @returns Array of synced paths
- */
-async function syncTemplates(
-  projectRoot: string,
-  logger: { info: (msg: string) => void }
-): Promise<string[]> {
-  const templatesDir = getTemplatesDir();
-  const synced: string[] = [];
-
-  for (const { src, dest, expand } of SYNC_TEMPLATES) {
-    const srcPath = path.join(templatesDir, src);
-
-    // Only sync if source exists in templates
-    if (!(await fs.pathExists(srcPath))) {
-      continue;
-    }
-
-    try {
-      if (expand) {
-        // Expand mode: copy children of src directory to dest
-        const children = await fs.readdir(srcPath);
-        for (const child of children) {
-          const childSrcPath = path.join(srcPath, child);
-          const childDestPath = path.join(projectRoot, dest, child);
-          await fs.ensureDir(path.dirname(childDestPath));
-          await fs.remove(childDestPath);
-          await fs.copy(childSrcPath, childDestPath);
-          synced.push(path.join(dest, child));
-        }
-      } else {
-        // Direct copy mode
-        const destPath = path.join(projectRoot, dest);
-        await fs.ensureDir(path.dirname(destPath));
-        await fs.remove(destPath);
-        await fs.copy(srcPath, destPath);
-        synced.push(dest);
-      }
-    } catch (err) {
-      logger.info(`  Warning: Could not sync ${src}: ${err}`);
-    }
-  }
-
-  return synced;
 }
 
 /**

@@ -75,8 +75,13 @@ export async function generateProject(
 
   const manifest = await fs.readJson(manifestPath);
 
+  // Extract paths from new 3-stage manifest structure
+  const rootFiles = manifest.stage1b?.rootFiles || manifest.rootFiles || [];
+  const directories = manifest.stage1b?.directories || manifest.directories || [];
+  const screensets = manifest.stage1b?.screensets || manifest.screensets || [];
+
   // 2. Copy root template files (with minimal transformations where needed)
-  for (const file of manifest.rootFiles) {
+  for (const file of rootFiles) {
     const filePath = path.join(templatesDir, file);
     if (await fs.pathExists(filePath)) {
       let content = await fs.readFile(filePath, 'utf-8');
@@ -106,15 +111,54 @@ export async function generateProject(
     });
   }
 
-  // 3. Copy template directories (.ai, .cursor, .windsurf, src/themes, etc.)
-  for (const dir of manifest.directories) {
+  // 3. Copy template directories (src/themes, src/uikit, src/icons)
+  for (const dir of directories) {
     const dirPath = path.join(templatesDir, dir);
     const dirFiles = await readDirRecursive(dirPath, dir);
     files.push(...dirFiles);
   }
 
+  // 3.1 Copy AI configuration directories (.ai, .claude, .cursor, .windsurf)
+  const aiDirs = ['.ai', '.claude', '.cursor', '.windsurf'];
+  for (const dir of aiDirs) {
+    const dirPath = path.join(templatesDir, dir);
+    if (await fs.pathExists(dirPath)) {
+      const dirFiles = await readDirRecursive(dirPath, dir);
+      files.push(...dirFiles);
+    }
+  }
+
+  // 3.2 Copy eslint-plugin-local
+  const eslintPluginDir = path.join(templatesDir, 'eslint-plugin-local');
+  if (await fs.pathExists(eslintPluginDir)) {
+    const pluginFiles = await readDirRecursive(eslintPluginDir, 'eslint-plugin-local');
+    files.push(...pluginFiles);
+  }
+
+  // 3.3 Copy scripts directory
+  const scriptsDir = path.join(templatesDir, 'scripts');
+  if (await fs.pathExists(scriptsDir)) {
+    const scriptFiles = await readDirRecursive(scriptsDir, 'scripts');
+    files.push(...scriptFiles);
+  }
+
+  // 3.4 Copy CLAUDE.md and root config files
+  const rootConfigFiles = [
+    'CLAUDE.md',
+    'eslint.config.js',
+    'tsconfig.json',
+    '.dependency-cruiser.cjs',
+  ];
+  for (const file of rootConfigFiles) {
+    const filePath = path.join(templatesDir, file);
+    if (await fs.pathExists(filePath)) {
+      const content = await fs.readFile(filePath, 'utf-8');
+      files.push({ path: file, content });
+    }
+  }
+
   // 4. Copy screensets from templates
-  for (const screenset of manifest.screensets) {
+  for (const screenset of screensets) {
     const screensetPath = path.join(templatesDir, 'src/screensets', screenset);
     const screensetFiles = await readDirRecursive(
       screensetPath,
@@ -192,8 +236,8 @@ export async function generateProject(
       preview: 'vite preview',
       lint: 'npm run build --workspace=eslint-plugin-local && eslint . --max-warnings 0',
       'type-check': 'tsc --noEmit',
-      'generate:colors': 'npx tsx presets/standalone/scripts/generate-colors.ts',
-      'arch:check': 'npx tsx presets/standalone/scripts/test-architecture.ts',
+      'generate:colors': 'npx tsx scripts/generate-colors.ts',
+      'arch:check': 'npx tsx scripts/test-architecture.ts',
       'arch:deps':
         'npx dependency-cruiser src/ --config .dependency-cruiser.cjs --output-type err-long',
     },
@@ -206,62 +250,8 @@ export async function generateProject(
     content: JSON.stringify(packageJson, null, 2) + '\n',
   });
 
-  // 5.3 Root wrapper files that re-export from presets/standalone/
-  // These follow the same pattern as the monorepo but point to standalone presets
-
-  // eslint.config.js - re-exports standalone ESLint config (ESLint 9 flat config)
-  files.push({
-    path: 'eslint.config.js',
-    content: `/**
- * HAI3 ESLint Configuration (Root)
- *
- * This file re-exports the standalone preset.
- * DO NOT add rules here - add them to presets/standalone/configs/eslint.config.js
- */
-
-import standaloneConfig from './presets/standalone/configs/eslint.config.js';
-
-export default standaloneConfig;
-`,
-  });
-
-  // .dependency-cruiser.cjs - re-exports standalone dependency cruiser config
-  files.push({
-    path: '.dependency-cruiser.cjs',
-    content: `/**
- * HAI3 Dependency Cruiser Configuration (Root)
- *
- * This file re-exports the standalone preset.
- * DO NOT add rules here - add them to presets/standalone/configs/.dependency-cruiser.cjs
- */
-
-module.exports = require('./presets/standalone/configs/.dependency-cruiser.cjs');
-`,
-  });
-
-  // tsconfig.json - extends standalone TypeScript config
-  files.push({
-    path: 'tsconfig.json',
-    content: JSON.stringify(
-      {
-        $schema: 'https://json.schemastore.org/tsconfig',
-        _comment: [
-          'HAI3 TypeScript Configuration (Root)',
-          '',
-          'This file extends the standalone preset.',
-          'DO NOT add compilerOptions here - add them to presets/standalone/configs/tsconfig.json',
-        ],
-        extends: './presets/standalone/configs/tsconfig.json',
-        compilerOptions: {
-          baseUrl: '.',
-        },
-        include: ['src'],
-        references: [{ path: './tsconfig.node.json' }],
-      },
-      null,
-      2
-    ) + '\n',
-  });
+  // Config files (eslint.config.js, tsconfig.json, .dependency-cruiser.cjs)
+  // are copied from templates by the manifest - no need to generate here
 
   return files;
 }

@@ -15,7 +15,8 @@ import globals from 'globals';
 import { createRequire } from 'module';
 
 // Local plugin uses CommonJS, need to require it
-const localPlugin = createRequire(import.meta.url)('eslint-plugin-local');
+// eslint-plugin-local is in presets/standalone/ (sibling to configs/)
+const localPlugin = createRequire(import.meta.url)('../eslint-plugin-local');
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -26,11 +27,11 @@ export default [
       'node_modules/**',
       'scripts/**',
       'presets/standalone/scripts/**',
+      'eslint-plugin-local/**', // ESLint plugin is CommonJS, has its own linting
       'vite.config.ts',
       '*.config.*',
       // CommonJS config files (dependency-cruiser uses CommonJS)
       '**/*.cjs',
-      'eslint-plugin-local/**',
     ],
   },
 

@@ -19,6 +19,7 @@ export default [
       'packages/**/dist/**',
       'packages/**/templates/**', // CLI templates are build artifacts
       'presets/**/scripts/**',
+      'presets/**/eslint-plugin-local/**', // ESLint plugin is CommonJS, linted separately
       // Legacy config files (still used by dependency-cruiser)
       '.dependency-cruiser.cjs',
       'presets/**/.dependency-cruiser.cjs',

@@ -193,10 +193,17 @@ export default colors;
 
 // Write to src/themes/tailwindColors.ts (relative to project root)
 // In monorepo: presets/standalone/scripts -> ../../../src/themes
-// In standalone: scripts -> ../src/themes (handled by copy-templates)
+// In standalone: scripts -> ../src/themes
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const outputPath = path.join(__dirname, '../../../src/themes/tailwindColors.ts');
+
+// Detect context: monorepo (presets/standalone/scripts) vs standalone (scripts)
+// Check if we're in a directory containing 'presets'
+const isMonorepo = __dirname.includes('presets/standalone/scripts') || __dirname.includes('presets\\standalone\\scripts');
+const outputPath = isMonorepo
+  ? path.join(__dirname, '../../../src/themes/tailwindColors.ts')
+  : path.join(__dirname, '../src/themes/tailwindColors.ts');
+
 fs.writeFileSync(outputPath, output, 'utf8');
 
 console.log('✓ Generated src/themes/tailwindColors.ts');

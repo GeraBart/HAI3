@@ -1,16 +1,19 @@
 /**
  * Copy template files from main project to CLI package
  *
- * This script runs during CLI build to copy real project files
- * that will be used as templates for new projects.
+ * 3-Stage Pipeline:
+ * - Stage 1a: Copy static presets from presets/standalone/
+ * - Stage 1b: Copy root project files (source code that IS the monorepo app)
+ * - Stage 1c: Assemble .ai/ from markers (uses ai-overrides/ for @standalone:override files)
+ * - Stage 2: Generate IDE rules and command adapters
  *
  * AI CONFIGURATION STRATEGY:
  * - Root .ai/ is canonical source of truth for all rules and commands
  * - Files marked with <!-- @standalone --> are copied verbatim
- * - Files marked with <!-- @standalone:override --> use versions from presets/standalone/ai/
+ * - Files marked with <!-- @standalone:override --> use versions from presets/standalone/ai-overrides/
  * - Files without markers are monorepo-only (not copied)
- * - IDE global configs (.cursor/, .windsurf/, etc.) come from presets/standalone/ai/
- * - Command adapters (.claude/commands/hai3-*.md, .cursor/commands/hai3-*.md, .windsurf/workflows/hai3-*.md) are GENERATED
+ * - hai3dev-* commands are monorepo-only (not copied to standalone projects)
+ * - Command adapters are GENERATED for all IDEs
  * - OpenSpec commands are copied from root .claude/commands/openspec/ to all IDE directories
  */
 import fs from 'fs-extra';
@@ -24,10 +27,10 @@ const PROJECT_ROOT = path.resolve(CLI_ROOT, '../..');
 const TEMPLATES_DIR = path.join(CLI_ROOT, 'templates');
 
 /**
- * Template configuration
+ * Template configuration - simplified 3-stage pipeline
  */
 const config = {
-  // Root-level files to copy (relative to project root)
+  // Stage 1b: Root-level files to copy (relative to project root)
   rootFiles: [
     'index.html',
     'postcss.config.ts',
@@ -41,27 +44,15 @@ const config = {
     'src/screensets/screensetRegistry.tsx',
   ],
 
-  // Directories to copy entirely (relative to project root)
-  directories: [
+  // Stage 1b: Directories to copy entirely (relative to project root)
+  rootDirectories: [
     'src/themes',
     'src/uikit',
     'src/icons',
-    'eslint-plugin-local',
-    'presets/standalone', // Copy standalone presets (configs/, scripts/)
   ],
 
-  // IDE configurations from standalone preset (rules only - commands are generated)
-  ideConfigs: [
-    // .claude is fully generated (commands + openspec), no preset needed
-    { src: 'presets/standalone/ai/.cursor', dest: '.cursor' },
-    { src: 'presets/standalone/ai/.windsurf', dest: '.windsurf' },
-    { src: 'presets/standalone/ai/.cline', dest: '.cline' },
-    { src: 'presets/standalone/ai/.aider', dest: '.aider' },
-    { src: 'presets/standalone/ai/openspec', dest: 'openspec' },
-  ],
-
-  // Override files location (for @standalone:override markers)
-  standaloneOverridesDir: 'presets/standalone/ai',
+  // Stage 1c: Override files location (for @standalone:override markers)
+  standaloneOverridesDir: 'presets/standalone/ai-overrides',
 
   // Screensets to include in new projects
   screensets: ['demo'],
@@ -93,6 +84,7 @@ async function extractCommandDescription(filePath: string): Promise<string> {
 /**
  * Generate IDE command adapters from @standalone marked commands
  * Generates adapters for Claude (commands), Cursor (commands), and Windsurf (workflows)
+ * Excludes hai3dev-* commands (monorepo-only)
  */
 async function generateCommandAdapters(
   standaloneCommands: string[],
@@ -115,6 +107,10 @@ async function generateCommandAdapters(
     if (!relativePath.startsWith('commands/')) continue;
 
     const cmdFileName = path.basename(relativePath); // e.g., "hai3-validate.md"
+
+    // Skip hai3dev-* commands (monorepo-only)
+    if (cmdFileName.startsWith('hai3dev-')) continue;
+
     const srcPath = path.join(PROJECT_ROOT, '.ai', relativePath);
     const description = await extractCommandDescription(srcPath);
 
@@ -150,6 +146,45 @@ Use \`.ai/${relativePath}\` as the single source of truth.
   }
 
   return { claude: claudeCount, cursor: cursorCount, windsurf: windsurfCount };
+}
+
+/**
+ * Generate IDE rules as pointers to .ai/GUIDELINES.md
+ * All IDEs use the same single source of truth
+ */
+async function generateIdeRules(templatesDir: string): Promise<void> {
+  // CLAUDE.md at project root
+  const claudeMdContent = `# CLAUDE.md
+
+Use \`.ai/GUIDELINES.md\` as the single source of truth for HAI3 development guidelines.
+
+For routing to specific topics, see the ROUTING section in GUIDELINES.md.
+`;
+  await fs.writeFile(path.join(templatesDir, 'CLAUDE.md'), claudeMdContent);
+
+  // Cursor rules
+  const cursorRulesDir = path.join(templatesDir, '.cursor', 'rules');
+  await fs.ensureDir(cursorRulesDir);
+  const cursorRuleContent = `---
+description: HAI3 development guidelines
+globs: ["**/*"]
+alwaysApply: true
+---
+
+Use \`.ai/GUIDELINES.md\` as the single source of truth for HAI3 development guidelines.
+`;
+  await fs.writeFile(path.join(cursorRulesDir, 'hai3.mdc'), cursorRuleContent);
+
+  // Windsurf rules
+  const windsurfRulesDir = path.join(templatesDir, '.windsurf', 'rules');
+  await fs.ensureDir(windsurfRulesDir);
+  const windsurfRuleContent = `---
+trigger: always_on
+---
+
+Use \`.ai/GUIDELINES.md\` as the single source of truth for HAI3 development guidelines.
+`;
+  await fs.writeFile(path.join(windsurfRulesDir, 'hai3.md'), windsurfRuleContent);
 }
 
 /**
@@ -210,6 +245,20 @@ async function scanForMarkedFiles(
   return results;
 }
 
+async function countFiles(dir: string): Promise<number> {
+  let count = 0;
+  if (!(await fs.pathExists(dir))) return 0;
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      count += await countFiles(path.join(dir, entry.name));
+    } else {
+      count++;
+    }
+  }
+  return count;
+}
+
 async function copyTemplates() {
   console.log('📦 Copying templates from main project...\n');
 
@@ -217,8 +266,65 @@ async function copyTemplates() {
   await fs.remove(TEMPLATES_DIR);
   await fs.ensureDir(TEMPLATES_DIR);
 
-  // 1. Copy root files
-  console.log('Root files:');
+  // ============================================
+  // STAGE 1a: Copy static presets
+  // ============================================
+  console.log('Stage 1a: Static Presets (presets/standalone/):');
+  const presetsDir = path.join(PROJECT_ROOT, 'presets/standalone');
+
+  // Copy eslint-plugin-local
+  const eslintPluginSrc = path.join(presetsDir, 'eslint-plugin-local');
+  const eslintPluginDest = path.join(TEMPLATES_DIR, 'eslint-plugin-local');
+  if (await fs.pathExists(eslintPluginSrc)) {
+    await fs.copy(eslintPluginSrc, eslintPluginDest, {
+      filter: (src: string) => !src.includes('/dist/') && !src.includes('/node_modules/'),
+    });
+    console.log(`  ✓ eslint-plugin-local/ (${await countFiles(eslintPluginDest)} files)`);
+  }
+
+  // Flatten configs/ to templates root
+  const configsSrc = path.join(presetsDir, 'configs');
+  if (await fs.pathExists(configsSrc)) {
+    const configFiles = await fs.readdir(configsSrc);
+    for (const file of configFiles) {
+      const srcPath = path.join(configsSrc, file);
+      const destPath = path.join(TEMPLATES_DIR, file);
+
+      // Transform eslint.config.js path for standalone projects
+      // In monorepo: ../eslint-plugin-local (configs/ -> eslint-plugin-local/)
+      // In standalone: ./eslint-plugin-local (root -> eslint-plugin-local/)
+      if (file === 'eslint.config.js') {
+        let content = await fs.readFile(srcPath, 'utf-8');
+        content = content.replace(
+          "../eslint-plugin-local",
+          './eslint-plugin-local'
+        );
+        await fs.writeFile(destPath, content);
+      } else {
+        await fs.copy(srcPath, destPath);
+      }
+    }
+    console.log(`  ✓ configs/ flattened to root (${configFiles.length} files)`);
+  }
+
+  // Flatten scripts/ to templates/scripts/
+  const scriptsSrc = path.join(presetsDir, 'scripts');
+  const scriptsDest = path.join(TEMPLATES_DIR, 'scripts');
+  if (await fs.pathExists(scriptsSrc)) {
+    await fs.ensureDir(scriptsDest);
+    const scriptFiles = await fs.readdir(scriptsSrc);
+    for (const file of scriptFiles) {
+      await fs.copy(path.join(scriptsSrc, file), path.join(scriptsDest, file));
+    }
+    console.log(`  ✓ scripts/ (${scriptFiles.length} files)`);
+  }
+
+  // ============================================
+  // STAGE 1b: Copy root project files
+  // ============================================
+  console.log('\nStage 1b: Root Project Files:');
+
+  // Copy root files
   for (const file of config.rootFiles) {
     const src = path.join(PROJECT_ROOT, file);
     const dest = path.join(TEMPLATES_DIR, file);
@@ -231,18 +337,16 @@ async function copyTemplates() {
     }
   }
 
-  // 2. Copy directories
-  console.log('\nDirectories:');
-  for (const dir of config.directories) {
+  // Copy root directories
+  for (const dir of config.rootDirectories) {
     const src = path.join(PROJECT_ROOT, dir);
     const dest = path.join(TEMPLATES_DIR, dir);
 
     if (await fs.pathExists(src)) {
       await fs.copy(src, dest, {
         filter: (srcPath: string) => {
-          // Exclude generated files and ai/ subfolder (handled separately)
+          // Exclude generated files
           if (srcPath.endsWith('tailwindColors.ts')) return false;
-          if (srcPath.includes('/ai/') || srcPath.endsWith('/ai')) return false;
           return true;
         },
       });
@@ -253,8 +357,33 @@ async function copyTemplates() {
     }
   }
 
-  // 3. Process AI configuration with markers
-  console.log('\nAI Configuration (marker-based):');
+  // Copy screensets
+  for (const screenset of config.screensets) {
+    const src = path.join(PROJECT_ROOT, 'src/screensets', screenset);
+    const dest = path.join(TEMPLATES_DIR, 'src/screensets', screenset);
+
+    if (await fs.pathExists(src)) {
+      await fs.copy(src, dest);
+      const fileCount = await countFiles(dest);
+      console.log(`  ✓ src/screensets/${screenset}/ (${fileCount} files)`);
+    } else {
+      console.log(`  ⚠ src/screensets/${screenset}/ (not found, skipping)`);
+    }
+  }
+
+  // Copy screenset template
+  const templateSrc = path.join(PROJECT_ROOT, 'src/screensets', config.screensetTemplate);
+  const templateDest = path.join(TEMPLATES_DIR, 'screenset-template');
+  if (await fs.pathExists(templateSrc)) {
+    await fs.copy(templateSrc, templateDest);
+    const fileCount = await countFiles(templateDest);
+    console.log(`  ✓ screenset-template/ (${fileCount} files)`);
+  }
+
+  // ============================================
+  // STAGE 1c: Assemble .ai/ from markers
+  // ============================================
+  console.log('\nStage 1c: AI Configuration (marker-based):');
   const aiSourceDir = path.join(PROJECT_ROOT, '.ai');
   const aiDestDir = path.join(TEMPLATES_DIR, '.ai');
   const overridesDir = path.join(PROJECT_ROOT, config.standaloneOverridesDir);
@@ -271,14 +400,17 @@ async function copyTemplates() {
     const destPath = path.join(aiDestDir, relativePath);
     await fs.ensureDir(path.dirname(destPath));
 
+    // Skip hai3dev-* commands (monorepo-only)
+    if (relativePath.includes('hai3dev-')) continue;
+
     if (marker === 'standalone') {
       // Copy verbatim from root .ai/
       const srcPath = path.join(aiSourceDir, relativePath);
       await fs.copy(srcPath, destPath);
       standaloneCount++;
     } else if (marker === 'override') {
-      // Copy from presets/standalone/ai/.ai/
-      const overridePath = path.join(overridesDir, '.ai', relativePath);
+      // Copy from presets/standalone/ai-overrides/
+      const overridePath = path.join(overridesDir, relativePath);
       if (await fs.pathExists(overridePath)) {
         await fs.copy(overridePath, destPath);
         overrideCount++;
@@ -288,40 +420,23 @@ async function copyTemplates() {
     }
   }
 
-  console.log(
-    `  ✓ .ai/ (${standaloneCount} standalone, ${overrideCount} overrides)`
-  );
+  console.log(`  ✓ .ai/ (${standaloneCount} standalone, ${overrideCount} overrides)`);
 
-  // 4. Copy IDE configurations
-  console.log('\nIDE Configurations:');
-  for (const ideConfig of config.ideConfigs) {
-    const src = path.join(PROJECT_ROOT, ideConfig.src);
-    const dest = path.join(TEMPLATES_DIR, ideConfig.dest);
+  // ============================================
+  // STAGE 2: Generate IDE rules and adapters
+  // ============================================
+  console.log('\nStage 2: Generated IDE Configuration:');
 
-    if (await fs.pathExists(src)) {
-      await fs.copy(src, dest);
-      const fileCount = await countFiles(dest);
-      console.log(`  ✓ ${ideConfig.dest}/ (${fileCount} files)`);
-    } else {
-      console.log(`  ⚠ ${ideConfig.src} (not found, skipping)`);
-    }
-  }
-
-  // 5. Generate command adapters for all IDEs
-  console.log('\nGenerated Command Adapters:');
+  // Generate command adapters for all IDEs
   const standaloneCommands = markedFiles
     .filter((f) => f.marker === 'standalone')
     .map((f) => f.relativePath);
-  const adapterCounts = await generateCommandAdapters(
-    standaloneCommands,
-    TEMPLATES_DIR
-  );
-  console.log(`  ✓ .claude/commands/ (${adapterCounts.claude} generated)`);
-  console.log(`  ✓ .cursor/commands/ (${adapterCounts.cursor} generated)`);
-  console.log(`  ✓ .windsurf/workflows/ (${adapterCounts.windsurf} generated)`);
+  const adapterCounts = await generateCommandAdapters(standaloneCommands, TEMPLATES_DIR);
+  console.log(`  ✓ .claude/commands/ (${adapterCounts.claude} adapters)`);
+  console.log(`  ✓ .cursor/commands/ (${adapterCounts.cursor} adapters)`);
+  console.log(`  ✓ .windsurf/workflows/ (${adapterCounts.windsurf} adapters)`);
 
-  // 5b. Copy openspec commands from root to all IDE directories
-  console.log('\nOpenSpec Commands (from root):');
+  // Copy openspec commands from root to all IDE directories
   const openspecSrc = path.join(PROJECT_ROOT, '.claude', 'commands', 'openspec');
   if (await fs.pathExists(openspecSrc)) {
     const openspecDests = [
@@ -333,66 +448,51 @@ async function copyTemplates() {
       await fs.copy(openspecSrc, dest);
     }
     const fileCount = await countFiles(openspecSrc);
-    console.log(`  ✓ openspec/ copied to all IDEs (${fileCount} files each)`);
+    console.log(`  ✓ openspec/ commands copied to all IDEs (${fileCount} files each)`);
   } else {
     console.log('  ⚠ .claude/commands/openspec/ not found, skipping');
   }
 
-  // 6. Copy screensets
-  console.log('\nScreensets:');
-  for (const screenset of config.screensets) {
-    const src = path.join(PROJECT_ROOT, 'src/screensets', screenset);
-    const dest = path.join(TEMPLATES_DIR, 'src/screensets', screenset);
+  // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/)
+  await generateIdeRules(TEMPLATES_DIR);
+  console.log('  ✓ CLAUDE.md (pointer to .ai/GUIDELINES.md)');
+  console.log('  ✓ .cursor/rules/hai3.mdc (pointer)');
+  console.log('  ✓ .windsurf/rules/hai3.md (pointer)');
 
-    if (await fs.pathExists(src)) {
-      await fs.copy(src, dest);
-      const fileCount = await countFiles(dest);
-      console.log(`  ✓ ${screenset}/ (${fileCount} files)`);
-    } else {
-      console.log(`  ⚠ ${screenset}/ (not found, skipping)`);
-    }
-  }
-
-  // 7. Copy screenset template
-  console.log('\nScreenset Template:');
-  const templateSrc = path.join(
-    PROJECT_ROOT,
-    'src/screensets',
-    config.screensetTemplate
-  );
-  const templateDest = path.join(TEMPLATES_DIR, 'screenset-template');
-
-  if (await fs.pathExists(templateSrc)) {
-    await fs.copy(templateSrc, templateDest);
-    const fileCount = await countFiles(templateDest);
-    console.log(
-      `  ✓ ${config.screensetTemplate}/ -> screenset-template/ (${fileCount} files)`
-    );
-  } else {
-    console.log(`  ⚠ ${config.screensetTemplate}/ (not found, skipping)`);
-  }
-
-  // 8. Write manifest
-  const standaloneCommandFiles = standaloneCommands.filter((f) =>
-    f.startsWith('commands/')
-  );
+  // ============================================
+  // Write manifest
+  // ============================================
+  const standaloneCommandFiles = standaloneCommands
+    .filter((f) => f.startsWith('commands/') && !f.includes('hai3dev-'));
   const manifest = {
-    rootFiles: config.rootFiles,
-    directories: config.directories,
-    aiConfig: {
-      markerBased: true,
+    pipeline: '3-stage',
+    stage1a: {
+      source: 'presets/standalone/',
+      items: ['eslint-plugin-local/', 'configs/ (flattened)', 'scripts/'],
+    },
+    stage1b: {
+      source: 'project root',
+      rootFiles: config.rootFiles,
+      directories: config.rootDirectories,
+      screensets: config.screensets,
+    },
+    stage1c: {
+      source: 'root .ai/ (marker-based)',
       standaloneFiles: markedFiles
-        .filter((f) => f.marker === 'standalone')
+        .filter((f) => f.marker === 'standalone' && !f.relativePath.includes('hai3dev-'))
         .map((f) => f.relativePath),
       overrideFiles: markedFiles
         .filter((f) => f.marker === 'override')
         .map((f) => f.relativePath),
-      generatedAdapters: standaloneCommandFiles.map((f) =>
-        `.claude/commands/${path.basename(f)}`
-      ),
     },
-    ideConfigs: config.ideConfigs.map((c) => c.dest),
-    screensets: config.screensets,
+    stage2: {
+      generated: [
+        'CLAUDE.md',
+        '.cursor/rules/hai3.mdc',
+        '.windsurf/rules/hai3.md',
+        ...standaloneCommandFiles.map((f) => `.claude/commands/${path.basename(f)}`),
+      ],
+    },
     screensetTemplate: 'screenset-template',
     generatedAt: new Date().toISOString(),
   };
@@ -402,19 +502,6 @@ async function copyTemplates() {
 
   console.log('\n✅ Templates copied successfully!');
   console.log(`   Location: ${TEMPLATES_DIR}`);
-}
-
-async function countFiles(dir: string): Promise<number> {
-  let count = 0;
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      count += await countFiles(path.join(dir, entry.name));
-    } else {
-      count++;
-    }
-  }
-  return count;
 }
 
 copyTemplates().catch((err) => {
