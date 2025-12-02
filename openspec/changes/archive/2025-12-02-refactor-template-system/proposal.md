@@ -35,15 +35,22 @@ The current template system has several issues:
 ### Directory Structure Changes
 
 ```
+.ai/
+├── commands/                # Canonical AI commands (hai3-*, hai3dev-*)
+├── targets/                 # Rule files
+├── standalone-overrides/    # @standalone:override files (different content for standalone)
+│   ├── GUIDELINES.md
+│   └── targets/*.md
+└── GUIDELINES.md            # Monorepo guidelines (marked @standalone:override)
+
 presets/
-├── standalone/              # Base files for standalone projects
-│   ├── ai-overrides/        # ONLY @standalone:override files (different content for standalone)
+├── standalone/              # Base files for standalone projects (auto-copied to templates)
 │   ├── eslint-plugin-local/ # ESLint rules (monorepo references from here)
 │   ├── configs/             # tsconfig, eslint.config, .dependency-cruiser
-│   └── scripts/             # generate-colors, test-architecture
+│   ├── scripts/             # generate-colors, test-architecture
+│   └── README.md            # Root files are auto-copied (extensible: add files, no script changes)
 │
 └── monorepo/                # Monorepo EXTENDS standalone with these
-    ├── configs/             # Additional monorepo configs (if any)
     └── scripts/             # Additional monorepo scripts (if any)
 
 # NOT in presets (copied from root at build time):
@@ -52,7 +59,7 @@ presets/
 # - index.html, vite.config.ts, etc.      # Root configs
 
 # GENERATED at build time:
-# - .ai/                      # Assembled from markers + ai-overrides/
+# - templates/.ai/            # Assembled from markers + .ai/standalone-overrides/
 # - CLAUDE.md                 # Pointer to .ai/GUIDELINES.md
 # - .claude/, .cursor/, .windsurf/  # IDE rules, command adapters, openspec commands
 

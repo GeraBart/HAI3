@@ -142,9 +142,10 @@ export async function generateProject(
     files.push(...scriptFiles);
   }
 
-  // 3.4 Copy CLAUDE.md and root config files
+  // 3.4 Copy root files from templates (CLAUDE.md, README.md, configs)
   const rootConfigFiles = [
     'CLAUDE.md',
+    'README.md',
     'eslint.config.js',
     'tsconfig.json',
     '.dependency-cruiser.cjs',
@@ -199,6 +200,7 @@ export async function generateProject(
   }
 
   const devDependencies: Record<string, string> = {
+    '@hai3/cli': 'alpha',
     '@types/lodash': '^4.17.20',
     '@types/react': '^18.3.3',
     '@types/react-dom': '^18.3.0',

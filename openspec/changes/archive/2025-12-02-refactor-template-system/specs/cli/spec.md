@@ -12,12 +12,15 @@ The CLI SHALL use a 3-stage template pipeline: copy from presets → generate po
 **When** building CLI templates
 **Then** the system SHALL use:
 ```
+.ai/
+├── standalone-overrides/          # @standalone:override files (used during .ai/ assembly)
+
 presets/
 ├── standalone/                    # Base files for standalone projects
-│   ├── ai-overrides/              # ONLY @standalone:override files
 │   ├── eslint-plugin-local/       # ESLint rules (monorepo references from here)
 │   ├── configs/                   # Build configs
-│   └── scripts/                   # Utility scripts
+│   ├── scripts/                   # Utility scripts
+│   └── README.md                  # Root files auto-copied (extensible)
 │
 └── monorepo/                      # Monorepo EXTENDS standalone
     ├── configs/                   # Additional monorepo configs (if any)
@@ -43,7 +46,7 @@ presets/
 **Then** the system SHALL:
 1. Copy `presets/standalone/` to `templates/` (excluding ai-overrides/, flattening configs/ and scripts/)
 2. Copy root project files to `templates/`
-3. Assemble `.ai/` from marker-based scanning of root `.ai/` (using ai-overrides/ for @standalone:override files)
+3. Assemble `.ai/` from marker-based scanning of root `.ai/` (using .ai/standalone-overrides/ for @standalone:override files)
 4. Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/) as pointers to .ai/GUIDELINES.md
 5. Generate command adapters from @standalone marked commands
 6. Copy openspec commands from root to all IDE directories
@@ -71,14 +74,6 @@ The CLI SHALL provide a `hai3 update` command that syncs ALL templates to existi
 - Skip CLI update
 - Skip NPM package updates
 - Copy entire templates/ directory to project
-
-## REMOVED Requirements
-
-### Requirement: Selective Template Sync (REMOVED)
-
-~~The update command SHALL selectively sync specific template directories~~
-
-**Rationale**: Full template sync is simpler and more reliable. Users expect all templates to update together.
 
 ## ADDED Requirements
 

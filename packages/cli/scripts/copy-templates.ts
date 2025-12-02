@@ -2,15 +2,15 @@
  * Copy template files from main project to CLI package
  *
  * 3-Stage Pipeline:
- * - Stage 1a: Copy static presets from presets/standalone/
+ * - Stage 1a: Copy static presets from presets/standalone/ (extensible: add files/dirs, they're auto-copied)
  * - Stage 1b: Copy root project files (source code that IS the monorepo app)
- * - Stage 1c: Assemble .ai/ from markers (uses ai-overrides/ for @standalone:override files)
+ * - Stage 1c: Assemble .ai/ from markers (uses .ai/standalone-overrides/ for @standalone:override files)
  * - Stage 2: Generate IDE rules and command adapters
  *
  * AI CONFIGURATION STRATEGY:
  * - Root .ai/ is canonical source of truth for all rules and commands
  * - Files marked with <!-- @standalone --> are copied verbatim
- * - Files marked with <!-- @standalone:override --> use versions from presets/standalone/ai-overrides/
+ * - Files marked with <!-- @standalone:override --> use versions from .ai/standalone-overrides/
  * - Files without markers are monorepo-only (not copied)
  * - hai3dev-* commands are monorepo-only (not copied to standalone projects)
  * - Command adapters are GENERATED for all IDEs
@@ -52,7 +52,7 @@ const config = {
   ],
 
   // Stage 1c: Override files location (for @standalone:override markers)
-  standaloneOverridesDir: 'presets/standalone/ai-overrides',
+  standaloneOverridesDir: '.ai/standalone-overrides',
 
   // Screensets to include in new projects
   screensets: ['demo'],
@@ -319,6 +319,14 @@ async function copyTemplates() {
     console.log(`  ✓ scripts/ (${scriptFiles.length} files)`);
   }
 
+  // Copy root-level files from presets/standalone/ (extensible: add files here, they're auto-copied)
+  const presetsEntries = await fs.readdir(presetsDir, { withFileTypes: true });
+  const rootFiles = presetsEntries.filter(e => e.isFile());
+  for (const file of rootFiles) {
+    await fs.copy(path.join(presetsDir, file.name), path.join(TEMPLATES_DIR, file.name));
+    console.log(`  ✓ ${file.name}`);
+  }
+
   // ============================================
   // STAGE 1b: Copy root project files
   // ============================================
@@ -409,7 +417,7 @@ async function copyTemplates() {
       await fs.copy(srcPath, destPath);
       standaloneCount++;
     } else if (marker === 'override') {
-      // Copy from presets/standalone/ai-overrides/
+      // Copy from presets/standalone-overrides/
       const overridePath = path.join(overridesDir, relativePath);
       if (await fs.pathExists(overridePath)) {
         await fs.copy(overridePath, destPath);

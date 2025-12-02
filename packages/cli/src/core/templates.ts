@@ -3,6 +3,14 @@
  *
  * Used by both `hai3 create` and `hai3 update` commands to ensure
  * consistent template handling across project creation and updates.
+ *
+ * EXTENSIBILITY:
+ * - presets/standalone/ content is auto-discovered (add files there, no code changes)
+ * - Non-presets content (src/*, root configs) uses explicit whitelist below
+ *
+ * PRESERVATION:
+ * - User-created screensets in src/screensets/ are preserved
+ * - Only template screensets (demo) are synced
  */
 
 import path from 'path';
@@ -10,72 +18,19 @@ import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
 
 /**
- * Template sync configuration
- * - src: path in CLI templates directory
- * - dest: path in target project
- * - expand: if true, copy children of src to dest (not the directory itself)
+ * Items to EXCLUDE from template sync (internal CLI files only)
  */
-export interface SyncTemplate {
-  src: string;
-  dest: string;
-  expand?: boolean;
-}
-
-/**
- * Templates to sync from bundled CLI templates to project
- *
- * These templates are copied during both `hai3 create` and `hai3 update`.
- * The structure matches the 3-stage pipeline output from copy-templates.ts:
- *
- * Stage 1a: Static presets (eslint-plugin-local, configs, scripts)
- * Stage 1b: Root project files (handled separately in project generator)
- * Stage 1c: .ai/ assembled from markers
- * Stage 2: Generated IDE rules and command adapters
- *
- * Note: openspec/ is NOT synced - it's managed by `openspec init/update` commands
- */
-export const SYNC_TEMPLATES: SyncTemplate[] = [
-  // AI configuration (Stage 1c + Stage 2)
-  { src: 'CLAUDE.md', dest: 'CLAUDE.md' },
-  { src: '.ai', dest: '.ai' },
-  { src: '.claude', dest: '.claude' },
-  { src: '.cursor', dest: '.cursor' },
-  { src: '.windsurf', dest: '.windsurf' },
-
-  // ESLint plugin with HAI3 rules (Stage 1a)
-  { src: 'eslint-plugin-local', dest: 'eslint-plugin-local' },
-
-  // Config files - already flattened to templates root by copy-templates.ts (Stage 1a)
-  { src: 'eslint.config.js', dest: 'eslint.config.js' },
-  { src: '.dependency-cruiser.cjs', dest: '.dependency-cruiser.cjs' },
-  { src: 'tsconfig.json', dest: 'tsconfig.json' },
-
-  // Scripts (Stage 1a)
-  { src: 'scripts', dest: 'scripts' },
-
-  // Demo screenset (Stage 1b) - only on create, not update
-  // { src: 'src/screensets/demo', dest: 'src/screensets/demo' },
-];
-
-/**
- * Templates synced only during project creation (not update)
- */
-export const CREATE_ONLY_TEMPLATES: SyncTemplate[] = [
-  // Demo screenset - only included in new projects
-  { src: 'src/screensets/demo', dest: 'src/screensets/demo' },
+const SYNC_EXCLUDE = [
+  'manifest.json',
+  'screenset-template',
 ];
 
 /**
  * Get the path to the CLI's bundled templates directory
- *
- * In bundled CLI: dist/index.cjs -> templates/ is sibling to dist/
  */
 export function getTemplatesDir(): string {
-  // tsup bundles to flat structure: dist/index.cjs
-  // Templates are at templates/ (sibling to dist/)
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  // Navigate from dist/ to templates/
   return path.resolve(__dirname, '..', 'templates');
 }
 
@@ -87,59 +42,103 @@ export interface TemplateLogger {
 }
 
 /**
+ * Sync a directory, preserving user content in specific subdirectories
+ *
+ * For src/screensets/, only syncs template screensets (preserves user screensets)
+ * For other directories, does full replacement
+ */
+async function syncDirectory(
+  srcDir: string,
+  destDir: string,
+  relativePath: string
+): Promise<void> {
+  // Special handling for src/screensets/ - preserve user screensets
+  if (relativePath === 'src/screensets' || relativePath === 'src\\screensets') {
+    await fs.ensureDir(destDir);
+    const templateScreensets = await fs.readdir(srcDir, { withFileTypes: true });
+
+    for (const entry of templateScreensets) {
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(destDir, entry.name);
+      // Replace only template screensets (like demo), preserve user screensets
+      await fs.remove(destPath);
+      await fs.copy(srcPath, destPath);
+    }
+    return;
+  }
+
+  // Special handling for src/ - recursively handle subdirectories
+  if (relativePath === 'src') {
+    await fs.ensureDir(destDir);
+    const entries = await fs.readdir(srcDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(destDir, entry.name);
+      const subRelativePath = path.join(relativePath, entry.name);
+
+      if (entry.isDirectory()) {
+        await syncDirectory(srcPath, destPath, subRelativePath);
+      } else {
+        // Files in src/ root (like main.tsx, App.tsx) are replaced
+        await fs.copy(srcPath, destPath, { overwrite: true });
+      }
+    }
+    return;
+  }
+
+  // Default: full replacement for other directories
+  await fs.remove(destDir);
+  await fs.copy(srcDir, destDir);
+}
+
+/**
  * Sync template files from bundled CLI templates to project
+ *
+ * Syncs everything in templates/ except SYNC_EXCLUDE items.
+ * This includes:
+ * - presets/standalone/ content (auto-discovered, extensible)
+ * - Root project files (index.html, vite.config.ts, etc.)
+ * - Source directories (src/themes, src/uikit, src/icons, src/screensets/demo)
+ * - AI configuration (.ai/, .claude/, .cursor/, .windsurf/, CLAUDE.md)
+ *
+ * User-created screensets in src/screensets/ are preserved.
  *
  * @param projectRoot - The root directory of the HAI3 project
  * @param logger - Logger instance for output
- * @param options - Sync options
  * @returns Array of synced paths
  */
 export async function syncTemplates(
   projectRoot: string,
-  logger: TemplateLogger,
-  options: {
-    /** Include templates only for project creation (e.g., demo screenset) */
-    includeCreateOnly?: boolean;
-  } = {}
+  logger: TemplateLogger
 ): Promise<string[]> {
   const templatesDir = getTemplatesDir();
   const synced: string[] = [];
 
-  // Determine which templates to sync
-  const templates = options.includeCreateOnly
-    ? [...SYNC_TEMPLATES, ...CREATE_ONLY_TEMPLATES]
-    : SYNC_TEMPLATES;
+  // Read all entries in templates directory
+  const entries = await fs.readdir(templatesDir, { withFileTypes: true });
 
-  for (const { src, dest, expand } of templates) {
-    const srcPath = path.join(templatesDir, src);
+  for (const entry of entries) {
+    const name = entry.name;
 
-    // Only sync if source exists in templates
-    if (!(await fs.pathExists(srcPath))) {
+    // Skip excluded items
+    if (SYNC_EXCLUDE.includes(name)) {
       continue;
     }
 
+    const srcPath = path.join(templatesDir, name);
+    const destPath = path.join(projectRoot, name);
+
     try {
-      if (expand) {
-        // Expand mode: copy children of src directory to dest
-        const children = await fs.readdir(srcPath);
-        for (const child of children) {
-          const childSrcPath = path.join(srcPath, child);
-          const childDestPath = path.join(projectRoot, dest, child);
-          await fs.ensureDir(path.dirname(childDestPath));
-          await fs.remove(childDestPath);
-          await fs.copy(childSrcPath, childDestPath);
-          synced.push(path.join(dest, child));
-        }
+      if (entry.isDirectory()) {
+        await syncDirectory(srcPath, destPath, name);
       } else {
-        // Direct copy mode
-        const destPath = path.join(projectRoot, dest);
         await fs.ensureDir(path.dirname(destPath));
-        await fs.remove(destPath);
-        await fs.copy(srcPath, destPath);
-        synced.push(dest);
+        await fs.copy(srcPath, destPath, { overwrite: true });
       }
+      synced.push(name);
     } catch (err) {
-      logger.info(`  Warning: Could not sync ${src}: ${err}`);
+      logger.info(`  Warning: Could not sync ${name}: ${err}`);
     }
   }
 

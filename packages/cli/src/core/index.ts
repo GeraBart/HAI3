@@ -20,10 +20,5 @@ export type { PromptFn, PromptQuestion } from './prompt.js';
 export { createInteractivePrompt, createProgrammaticPrompt } from './prompt.js';
 export { CommandRegistry, registry } from './registry.js';
 export { executeCommand, buildCommandContext } from './executor.js';
-export type { SyncTemplate, TemplateLogger } from './templates.js';
-export {
-  SYNC_TEMPLATES,
-  CREATE_ONLY_TEMPLATES,
-  getTemplatesDir,
-  syncTemplates,
-} from './templates.js';
+export type { TemplateLogger } from './templates.js';
+export { getTemplatesDir, syncTemplates } from './templates.js';

@@ -65,64 +65,52 @@ packages/cli/
 
 ### Requirement: Template-Based Code Generation
 
-The CLI SHALL use a template-based approach where real project files are copied at build time and transformed at runtime, ensuring templates never drift from framework patterns.
+The CLI SHALL use a 3-stage template pipeline: copy from presets → generate pointers/adapters → use templates.
 
-#### Scenario: Template configuration with standalone AI preset
+#### Scenario: Template source structure
 
-```typescript
-const config = {
-  // Root-level files to copy
-  rootFiles: [
-    'index.html',
-    'postcss.config.ts',
-    'tailwind.config.ts',
-    'tsconfig.node.json',
-    'vite.config.ts',
-    '.gitignore',
-    'src/vite-env.d.ts',
-    'src/main.tsx',
-    'src/App.tsx',
-    'src/screensets/screensetRegistry.tsx',
-  ],
+**Given** the presets directory structure
+**When** building CLI templates
+**Then** the system SHALL use:
+```
+.ai/
+├── standalone-overrides/          # @standalone:override files (used during .ai/ assembly)
 
-  // Directories to copy (REMOVED: .ai, .cursor, .windsurf - now in standaloneAiConfig)
-  directories: [
-    'src/themes',
-    'src/uikit',
-    'src/icons',
-    'eslint-plugin-local',
-    'presets/standalone',  // Includes configs/, scripts/
-  ],
-
-  // NEW: AI configuration from standalone preset
-  standaloneAiConfig: [
-    { src: 'presets/standalone/ai/.ai', dest: '.ai' },
-    { src: 'presets/standalone/ai/.claude', dest: '.claude' },
-    { src: 'presets/standalone/ai/.cursor', dest: '.cursor' },
-    { src: 'presets/standalone/ai/.windsurf', dest: '.windsurf' },
-    { src: 'presets/standalone/ai/.cline', dest: '.cline' },
-    { src: 'presets/standalone/ai/.aider', dest: '.aider' },
-    { src: 'presets/standalone/ai/openspec', dest: 'openspec' },
-  ],
-
-  screensets: ['demo'],
-  screensetTemplate: '_blank',
-};
+presets/
+├── standalone/                    # Base files for standalone projects
+│   ├── eslint-plugin-local/       # ESLint rules (monorepo references from here)
+│   ├── configs/                   # Build configs
+│   ├── scripts/                   # Utility scripts
+│   └── README.md                  # Root files auto-copied (extensible)
+│
+└── monorepo/                      # Monorepo EXTENDS standalone
+    ├── configs/                   # Additional monorepo configs (if any)
+    └── scripts/                   # Additional monorepo scripts (if any)
 ```
 
-**Given** the template configuration above
-**When** copy-templates.ts runs during CLI build
-**Then** all specified files including standalone AI configs SHALL be copied to packages/cli/templates/
-**And** NO inline modifications SHALL be made to AI config content (pure file copy)
+**AND** root project files copied at build time:
+- `index.html`, `postcss.config.ts`, `tailwind.config.ts`, `tsconfig.node.json`, `vite.config.ts`, `.gitignore`
+- `src/vite-env.d.ts`, `src/main.tsx`, `src/App.tsx`, `src/screensets/screensetRegistry.tsx`
+- `src/themes/`, `src/uikit/`, `src/icons/`, `src/screensets/demo/`
 
-#### Scenario: AI configs copied from standalone preset
+**AND** generated at build time:
+- `.ai/` (assembled from markers + ai-overrides/)
+- `CLAUDE.md`, `.claude/`, `.cursor/`, `.windsurf/` (IDE rules, command adapters, openspec commands)
 
-**Given** the standaloneAiConfig array
-**When** copy-templates.ts processes the configuration
+**AND** NOT included in templates:
+- `openspec/` (users initialize separately via `openspec init`)
+
+#### Scenario: Build pipeline stages
+
+**Given** running `npm run build:packages`
+**When** copy-templates.ts executes
 **Then** the system SHALL:
-- Copy each source directory to its destination in templates/
-- Preserve directory structure within each AI config folder
-- NOT copy monorepo-only AI configurations
+1. Copy `presets/standalone/` to `templates/` (excluding ai-overrides/, flattening configs/ and scripts/)
+2. Copy root project files to `templates/`
+3. Assemble `.ai/` from marker-based scanning of root `.ai/` (using .ai/standalone-overrides/ for @standalone:override files)
+4. Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/) as pointers to .ai/GUIDELINES.md
+5. Generate command adapters from @standalone marked commands
+6. Copy openspec commands from root to all IDE directories
 
 ### Requirement: Blank Screenset Template
 
@@ -260,23 +248,18 @@ The CLI SHALL provide a `hai3 create <project-name>` command that scaffolds a ne
 
 ### Requirement: Update Command
 
-The CLI SHALL provide a `hai3 update` command that updates the CLI globally, and when inside a HAI3 project, also updates project dependencies and AI configuration files.
+The CLI SHALL provide a `hai3 update` command that syncs ALL templates to existing projects.
 
-The command SHALL support channel selection:
-- `--alpha` (`-a`): Force update to alpha/prerelease versions
-- `--stable` (`-s`): Force update to stable versions
-- `--templates-only`: Only sync templates (skip CLI and package updates)
-- Default: Auto-detect channel based on currently installed version
-
-#### Scenario: AI configuration sync
+#### Scenario: Full template sync
 
 **Given** running `hai3 update` inside a HAI3 project
-**When** the project has existing AI configuration folders
+**When** the command executes
 **Then** the system SHALL:
-- Copy latest AI rules from CLI bundled templates to project `.ai/`
-- Copy IDE adapter files to `.claude/`, `.cursor/`, `.windsurf/`, `.cline/`, `.aider/`
-- Preserve `openspec/` directory (managed by `openspec update` separately)
-- Report which AI config files were updated
+- Copy entire templates/ directory to project root
+- Overwrite existing template files
+- Preserve user files not in templates
+- Skip internal files (manifest.json)
+- Report sync completion
 
 #### Scenario: Templates-only update
 
@@ -285,7 +268,7 @@ The command SHALL support channel selection:
 **Then** the system SHALL:
 - Skip CLI update
 - Skip NPM package updates
-- Only sync templates from bundled templates
+- Copy entire templates/ directory to project
 
 ### Requirement: Screenset Create Command
 
@@ -717,4 +700,53 @@ The CLI SHALL include OpenSpec configuration for standalone projects to enable s
 - `/openspec:proposal` - Create an OpenSpec proposal
 - `/openspec:apply` - Apply an OpenSpec change
 - `/openspec:archive` - Archive an OpenSpec change
+
+### Requirement: ESLint Plugin Location
+
+The ESLint plugin SHALL live in `presets/standalone/` and be referenced by the monorepo.
+
+#### Scenario: Standalone ESLint rules
+
+**Given** a standalone HAI3 project
+**When** linting with ESLint
+**Then** the system SHALL use rules from `eslint-plugin-local/` containing:
+- domain-event-format
+- no-barrel-exports-events-effects
+- no-coordinator-effects
+- no-missing-domain-id
+
+#### Scenario: Monorepo ESLint reference
+
+**Given** the HAI3 monorepo
+**When** linting with ESLint
+**Then** the system SHALL reference `./presets/standalone/eslint-plugin-local` in eslint.config.js
+
+### Requirement: Generated IDE Rules
+
+All IDE rules SHALL be generated as pointers to `.ai/GUIDELINES.md`.
+
+#### Scenario: CLAUDE.md generation
+
+**Given** building CLI templates
+**When** generating IDE rules
+**Then** the system SHALL create `CLAUDE.md` containing:
+```markdown
+# CLAUDE.md
+
+Use `.ai/GUIDELINES.md` as the single source of truth for HAI3 development guidelines.
+
+For routing to specific topics, see the ROUTING section in GUIDELINES.md.
+```
+
+#### Scenario: Cursor rules generation
+
+**Given** building CLI templates
+**When** generating IDE rules
+**Then** the system SHALL create `.cursor/rules/hai3.mdc` containing a pointer to `.ai/GUIDELINES.md`
+
+#### Scenario: Windsurf rules generation
+
+**Given** building CLI templates
+**When** generating IDE rules
+**Then** the system SHALL create `.windsurf/rules/hai3.md` containing a pointer to `.ai/GUIDELINES.md`
 
