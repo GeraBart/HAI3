@@ -6,7 +6,7 @@
 2. Run: `npm install`
 3. Run: `npm run dev`
 4. Open http://localhost:5173 in your browser
-5. Run: `npm install -g openspec` (enables AI to manage proposals)
+5. Run: `npm install -g @fission-ai/openspec@latest` (enables AI to manage proposals)
 6. Ask the AI: "Set up Chrome DevTools MCP server so you can see my browser"
 
 ## Creating Your First Screenset
