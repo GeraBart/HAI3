@@ -102,6 +102,7 @@ async function generateCommandAdapters(
   let cursorCount = 0;
   let windsurfCount = 0;
 
+  // Generate hai3-* command adapters
   for (const relativePath of standaloneCommands) {
     // Only process commands/ directory files
     if (!relativePath.startsWith('commands/')) continue;
@@ -143,6 +144,38 @@ Use \`.ai/${relativePath}\` as the single source of truth.
 `;
     await fs.writeFile(path.join(windsurfWorkflowsDir, cmdFileName), windsurfContent);
     windsurfCount++;
+  }
+
+  // Copy openspec commands (actual content, not adapters)
+  // Source: .claude/commands/openspec/ (canonical location)
+  // Claude/Cursor: copy to openspec/ subfolder
+  // Windsurf: copy with flattened names (no subfolder support)
+  const openspecSrc = path.join(PROJECT_ROOT, '.claude', 'commands', 'openspec');
+  if (await fs.pathExists(openspecSrc)) {
+    const claudeOpenspecDir = path.join(claudeCommandsDir, 'openspec');
+    const cursorOpenspecDir = path.join(cursorCommandsDir, 'openspec');
+    await fs.ensureDir(claudeOpenspecDir);
+    await fs.ensureDir(cursorOpenspecDir);
+
+    const openspecFiles = await fs.readdir(openspecSrc);
+    for (const file of openspecFiles) {
+      if (!file.endsWith('.md')) continue;
+
+      const srcFilePath = path.join(openspecSrc, file);
+      const name = file.replace('.md', ''); // e.g., "apply"
+
+      // Claude: copy to openspec/apply.md
+      await fs.copy(srcFilePath, path.join(claudeOpenspecDir, file));
+      claudeCount++;
+
+      // Cursor: copy to openspec/apply.md
+      await fs.copy(srcFilePath, path.join(cursorOpenspecDir, file));
+      cursorCount++;
+
+      // Windsurf: copy to openspec-apply.md (flattened)
+      await fs.copy(srcFilePath, path.join(windsurfWorkflowsDir, `openspec-${name}.md`));
+      windsurfCount++;
+    }
   }
 
   return { claude: claudeCount, cursor: cursorCount, windsurf: windsurfCount };
@@ -443,23 +476,6 @@ async function copyTemplates() {
   console.log(`  ✓ .claude/commands/ (${adapterCounts.claude} adapters)`);
   console.log(`  ✓ .cursor/commands/ (${adapterCounts.cursor} adapters)`);
   console.log(`  ✓ .windsurf/workflows/ (${adapterCounts.windsurf} adapters)`);
-
-  // Copy openspec commands from root to all IDE directories
-  const openspecSrc = path.join(PROJECT_ROOT, '.claude', 'commands', 'openspec');
-  if (await fs.pathExists(openspecSrc)) {
-    const openspecDests = [
-      path.join(TEMPLATES_DIR, '.claude', 'commands', 'openspec'),
-      path.join(TEMPLATES_DIR, '.cursor', 'commands', 'openspec'),
-      path.join(TEMPLATES_DIR, '.windsurf', 'workflows', 'openspec'),
-    ];
-    for (const dest of openspecDests) {
-      await fs.copy(openspecSrc, dest);
-    }
-    const fileCount = await countFiles(openspecSrc);
-    console.log(`  ✓ openspec/ commands copied to all IDEs (${fileCount} files each)`);
-  } else {
-    console.log('  ⚠ .claude/commands/openspec/ not found, skipping');
-  }
 
   // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/)
   await generateIdeRules(TEMPLATES_DIR);

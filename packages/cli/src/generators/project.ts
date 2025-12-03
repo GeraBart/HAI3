@@ -237,7 +237,7 @@ export async function generateProject(
       build: 'npm run generate:colors && vite build',
       preview: 'vite preview',
       lint: 'npm run build --workspace=eslint-plugin-local && eslint . --max-warnings 0',
-      'type-check': 'tsc --noEmit',
+      'type-check': 'npm run generate:colors && tsc --noEmit',
       'generate:colors': 'npx tsx scripts/generate-colors.ts',
       'arch:check': 'npx tsx scripts/test-architecture.ts',
       'arch:deps':
