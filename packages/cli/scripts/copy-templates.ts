@@ -386,7 +386,7 @@ async function copyTemplates() {
     if (await fs.pathExists(src)) {
       await fs.copy(src, dest, {
         filter: (srcPath: string) => {
-          // Exclude generated files
+          // Exclude generated files (they exist in standalone projects, not in templates)
           if (srcPath.endsWith('tailwindColors.ts')) return false;
           return true;
         },

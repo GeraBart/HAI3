@@ -67,6 +67,22 @@ async function syncDirectory(
     return;
   }
 
+  // Special handling for src/themes/ - preserve user themes and generated files
+  if (relativePath === 'src/themes' || relativePath === 'src\\themes') {
+    await fs.ensureDir(destDir);
+    const templateEntries = await fs.readdir(srcDir, { withFileTypes: true });
+
+    // Only sync items that exist in templates, preserve user-created themes
+    for (const entry of templateEntries) {
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(destDir, entry.name);
+      // Replace only template items, preserve user items
+      await fs.remove(destPath);
+      await fs.copy(srcPath, destPath);
+    }
+    return;
+  }
+
   // Special handling for src/ - recursively handle subdirectories
   if (relativePath === 'src') {
     await fs.ensureDir(destDir);
