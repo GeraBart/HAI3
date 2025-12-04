@@ -33,8 +33,5 @@ Use keywords: MUST, REQUIRED, FORBIDDEN, STOP, DETECT
 - Do not introduce new sections unless explicitly requested.
 
 ## STEP 4: Validation
-Before finishing:
-- Change directly related to request? Y
-- No duplicate content from other targets? Y
-- File still under 100 lines, ASCII only? Y
-- Cross-references correct? Y
+- Validate against .ai/targets/AI.md VALIDATION RULES section.
+- Change directly related to request?

@@ -43,6 +43,12 @@
 - REQUIRED: Copy directories (.ai, .cursor, .windsurf, src/themes, src/uikit, src/icons, eslint-plugin-local).
 - REQUIRED: Copy demo screenset and _blank as screenset-template.
 - REQUIRED: Write manifest.json for runtime discovery.
+- REQUIRED: Exclude generated files from templates.
+
+## UPDATE COMMAND (templates.ts syncTemplates)
+- REQUIRED: Preserve user-created content in src/screensets/ and src/themes/.
+- REQUIRED: Only replace items that exist in templates (selective sync).
+- FORBIDDEN: Exclusion lists to preserve files; use selective sync instead.
 
 ## SCREENSET COMMANDS
 - REQUIRED: hai3 screenset create uses screenset-template (from _blank).
