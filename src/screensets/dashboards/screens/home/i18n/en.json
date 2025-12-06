@@ -1,0 +1,23 @@
+{
+  "title": "Dashboard",
+  "description": "Your analytics overview at a glance",
+  "drag_hint": "Drag charts by the grip icon to rearrange",
+  "stats": {
+    "total_revenue": "Total Revenue",
+    "subscriptions": "Subscriptions",
+    "sales": "Sales",
+    "active_users": "Active Users"
+  },
+  "from_last_month": "from last month",
+  "charts": {
+    "revenue_overview": "Revenue Overview",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "traffic_sources": "Traffic Sources",
+    "device_breakdown": "Device Breakdown"
+  },
+  "recent_activity": "Recent Activity",
+  "activity": {
+    "user_action": "User {{num}} completed a purchase"
+  }
+}
