@@ -71,27 +71,29 @@
 - Screenset icons do not go into UiKitIcon enum.
 
 ## SCREENSET UI KIT RULES
-- Local components under src/screensets/*/uikit/ must follow UIKIT.md.
+- REQUIRED: Screenset uikit/ folder for icons and presentational components only.
+- FORBIDDEN: @hai3/uicore imports in screensets/*/uikit/ (except types).
+- REQUIRED: Presentational pattern (value/onChange, no hooks, no side effects).
+- REQUIRED: Theme tokens only (no inline styles, no hex colors).
 
-## UI KIT DECISION TREE
-1) Use existing @hai3/uikit component.
-2) If missing, generate via "npx shadcn add".
-3) Composite belongs in @hai3/uikit/composite.
-4) Screenset-specific components stay local.
-5) Manual styling is never allowed.
+## COMPONENT PLACEMENT RULES
+- REQUIRED: Decompose screens into components BEFORE writing screen file.
+- REQUIRED: Screen files orchestrate components only.
+- FORBIDDEN: Inline component definitions in *Screen.tsx files.
+- FORBIDDEN: Inline data arrays; use API services per EVENTS.md.
+- REQUIRED: Presentational components (value/onChange only) in screensets/{name}/uikit/.
+- REQUIRED: Shared screenset components in screensets/{name}/components/.
+- REQUIRED: Screen-local components in screens/{screen}/components/.
+- DETECT: eslint local/screen-inline-components
 
 ## PRE-DIFF CHECKLIST
-- [ ] No manual styling.
-- [ ] No custom store patterns.
-- [ ] Slices registered with registerSlice.
-- [ ] RootState augmented in screenset store.
-- [ ] No direct slice imports.
-- [ ] Icons exported and registered.
-- [ ] Screenset-local API service present, registered, and isolated.
-- [ ] All text uses t().
-- [ ] Screenset and screen loaders use I18nRegistry.createLoader.
-- [ ] useScreenTranslations used for screen-level translations.
+- [ ] No manual styling, inline styles, or hex colors.
+- [ ] No custom store patterns; slices use registerSlice with RootState augmentation.
+- [ ] No direct slice imports; no barrel exports in events/ or effects/.
+- [ ] Icons exported and registered; API service isolated.
+- [ ] All text uses t(); loaders use I18nRegistry.createLoader.
+- [ ] useScreenTranslations for screen-level translations.
 - [ ] Namespaces follow screenset.id and screen.screenset.screen.
-- [ ] No barrel exports in events/ or effects/.
 - [ ] Events and effects split by domain.
-- [ ] Data flow rules from EVENTS.md are followed.
+- [ ] No inline component definitions in *Screen.tsx.
+- [ ] No inline data arrays; data from API services per EVENTS.md.

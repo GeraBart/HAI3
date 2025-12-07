@@ -7,6 +7,7 @@
  *   hai3 update                             Update CLI and project packages
  *   hai3 screenset create <name>            Create a new screenset
  *   hai3 screenset copy <source> <target>   Copy an existing screenset
+ *   hai3 validate components [path]         Validate component structure
  */
 
 import { Command } from 'commander';
@@ -16,6 +17,7 @@ import {
   updateCommand,
   screensetCreateCommand,
   screensetCopyCommand,
+  validateComponentsCommand,
 } from './commands/index.js';
 
 // CLI version
@@ -26,6 +28,7 @@ registry.register(createCommand);
 registry.register(updateCommand);
 registry.register(screensetCreateCommand);
 registry.register(screensetCopyCommand);
+registry.register(validateComponentsCommand);
 
 // Create Commander program
 const program = new Command();
@@ -150,6 +153,27 @@ screensetCmd
       }
     }
   );
+
+// hai3 validate subcommand
+const validateCmd = program
+  .command('validate')
+  .description('Validation commands');
+
+// hai3 validate components [path]
+validateCmd
+  .command('components [path]')
+  .description('Validate component structure and placement')
+  .action(async (targetPath: string | undefined) => {
+    const result = await executeCommand(
+      validateComponentsCommand,
+      { path: targetPath },
+      { interactive: true }
+    );
+
+    if (!result.success || !result.data?.passed) {
+      process.exit(1);
+    }
+  });
 
 // Parse and execute
 program.parse();

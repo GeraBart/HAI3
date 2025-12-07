@@ -34,5 +34,5 @@ node -e "const pkg = require('@hai3/uicore'); console.log(Object.keys(pkg))"
 ## RULES
 - REQUIRED: Build packages before testing.
 - REQUIRED: arch:check must pass.
-- REQUIRED: Test in browser via Chrome MCP.
+- REQUIRED: Test in browser via Chrome DevTools MCP.
 - FORBIDDEN: Committing without passing all checks.

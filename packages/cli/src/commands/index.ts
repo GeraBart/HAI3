@@ -19,3 +19,10 @@ export type {
   ScreensetCopyArgs,
   ScreensetCopyResult,
 } from './screenset/copy.js';
+
+export { validateComponentsCommand } from './validate/index.js';
+export type {
+  ValidateComponentsArgs,
+  ValidateComponentsResult,
+  ComponentViolation,
+} from './validate/index.js';
