@@ -1,8 +1,8 @@
-import React from 'react';
-import { 
-  Avatar, 
-  AvatarImage, 
-  AvatarFallback, 
+import React, { useMemo } from 'react';
+import {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
   Badge,
   ChartContainer,
   LineChart,
@@ -29,15 +29,33 @@ import { DEMO_SCREENSET_ID } from "../ids";
 import { UI_KIT_ELEMENTS_SCREEN_ID } from "../ids";
 
 /**
+ * Get chart colors from CSS variables (theme-aware)
+ * Returns resolved RGB values for Recharts compatibility
+ */
+const getChartColors = (): string[] => {
+  const styles = getComputedStyle(document.documentElement);
+  return [
+    styles.getPropertyValue('--chart-1').trim(),
+    styles.getPropertyValue('--chart-2').trim(),
+    styles.getPropertyValue('--chart-3').trim(),
+    styles.getPropertyValue('--chart-4').trim(),
+    styles.getPropertyValue('--chart-5').trim(),
+  ];
+};
+
+/**
  * Data Display Elements Component
  * Contains Avatar, Badge, and Chart demonstrations
  * Uses parent screen (UIKitElementsScreen) translations
  */
 export const DataDisplayElements: React.FC = () => {
   const { t } = useTranslation();
-  
+
   // Helper function to access parent screen's translations
   const tk = (key: string) => t(`screen.${DEMO_SCREENSET_ID}.${UI_KIT_ELEMENTS_SCREEN_ID}:${key}`);
+
+  // Get theme-aware chart colors
+  const chartColors = useMemo(() => getChartColors(), []);
 
   // Sample data for charts
   const lineChartData = [
@@ -67,9 +85,9 @@ export const DataDisplayElements: React.FC = () => {
   ];
 
   const pieChartData = [
-    { name: 'Desktop', value: 45, color: '#0088FE' },
-    { name: 'Mobile', value: 30, color: '#00C49F' },
-    { name: 'Tablet', value: 25, color: '#FFBB28' },
+    { name: 'Desktop', value: 45 },
+    { name: 'Mobile', value: 30 },
+    { name: 'Tablet', value: 25 },
   ];
 
   return (
@@ -208,8 +226,8 @@ export const DataDisplayElements: React.FC = () => {
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <Line type="monotone" dataKey="users" stroke="#8884d8" strokeWidth={2} />
-                  <Line type="monotone" dataKey="revenue" stroke="#82ca9d" strokeWidth={2} />
+                  <Line type="monotone" dataKey="users" stroke={chartColors[0]} strokeWidth={2} />
+                  <Line type="monotone" dataKey="revenue" stroke={chartColors[1]} strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -229,7 +247,7 @@ export const DataDisplayElements: React.FC = () => {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill="#8884d8" />
+                  <Bar dataKey="value" fill={chartColors[0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -249,7 +267,7 @@ export const DataDisplayElements: React.FC = () => {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area type="monotone" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                  <Area type="monotone" dataKey="value" stroke={chartColors[0]} fill={chartColors[0]} fillOpacity={0.6} />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -272,11 +290,11 @@ export const DataDisplayElements: React.FC = () => {
                     labelLine={false}
                     label={(entry) => entry.name}
                     outerRadius={80}
-                    fill="#8884d8"
+                    fill={chartColors[0]}
                     dataKey="value"
                   >
-                    {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {pieChartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
                   <ChartTooltip content={<ChartTooltipContent />} />
