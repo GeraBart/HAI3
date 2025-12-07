@@ -77,6 +77,14 @@ export interface Theme {
       selected: string;
       border: string;
     };
+    /** Chart colors for data visualization (OKLCH format recommended) */
+    chart: {
+      1: string;
+      2: string;
+      3: string;
+      4: string;
+      5: string;
+    };
   };
   spacing: {
     xs: string;

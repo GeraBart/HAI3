@@ -70,6 +70,14 @@ export default [
     },
   },
 
+  // Studio: Exclude from inline styles rule (dev-only package with intentional glassmorphic effects)
+  {
+    files: ['packages/studio/**/*.tsx'],
+    rules: {
+      'local/no-inline-styles': 'off',
+    },
+  },
+
   // Monorepo: uicore components must also follow flux rules (no direct slice dispatch)
   {
     files: [

@@ -326,4 +326,4 @@ export { CloseIcon, CLOSE_ICON_ID } from './icons/CloseIcon';
 
 // Theme system (utilities only - theme definitions in app)
 export { applyTheme } from './styles/applyTheme';
-export type { Theme } from './styles/themeTypes';
+export type { Theme } from '@hai3/uikit-contracts';

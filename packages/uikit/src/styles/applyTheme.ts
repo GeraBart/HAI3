@@ -5,7 +5,7 @@
  * Maps to shadcn CSS variable naming convention
  */
 
-import type { Theme } from './themeTypes';
+import type { Theme } from '@hai3/uikit-contracts';
 
 /**
  * Normalize color value for CSS variable
@@ -67,6 +67,13 @@ export const applyTheme = (theme: Theme, themeName?: string): void => {
   root.style.setProperty('--warning', hslToVar(theme.colors.warning));
   root.style.setProperty('--success', hslToVar(theme.colors.success));
   root.style.setProperty('--info', hslToVar(theme.colors.info));
+
+  // Apply chart colors (OKLCH format - pass as-is)
+  root.style.setProperty('--chart-1', theme.colors.chart[1]);
+  root.style.setProperty('--chart-2', theme.colors.chart[2]);
+  root.style.setProperty('--chart-3', theme.colors.chart[3]);
+  root.style.setProperty('--chart-4', theme.colors.chart[4]);
+  root.style.setProperty('--chart-5', theme.colors.chart[5]);
 
   // Apply left menu colors
   root.style.setProperty('--left-menu', hslToVar(theme.colors.mainMenu.DEFAULT));
