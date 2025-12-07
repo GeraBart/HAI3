@@ -1,6 +1,6 @@
 {
   "name": "@hai3/uikit-contracts",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "UI Kit contract definitions for HAI3 framework",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -16,7 +16,12 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean"
   },
-  "keywords": ["hai3", "ui", "contracts", "typescript"],
+  "keywords": [
+    "hai3",
+    "ui",
+    "contracts",
+    "typescript"
+  ],
   "author": "HAI3org",
   "license": "Apache-2.0",
   "repository": {
@@ -35,7 +40,10 @@
   "publishConfig": {
     "access": "public"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "devDependencies": {
     "tsup": "^8.3.5",
     "typescript": "^5.7.2"
