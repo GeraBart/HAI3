@@ -805,3 +805,263 @@ import { createSlice } from '@hai3/uicore'; // ✅ Correct - workspace name
 **And** the build SHALL fail if any error-level violations are found
 **And** warnings SHALL be reported but not block the build
 
+### Requirement: Component placement decision tree
+
+Screensets SHALL organize components using a semantic decision tree based on component characteristics, not arbitrary numerical limits.
+
+#### Scenario: Presentational component placement
+
+```typescript
+// src/screensets/dashboards/uikit/StatCard.tsx
+// ✅ Correct: Presentational component in uikit/
+
+interface StatCardProps {
+  label: string;
+  value: string;
+  change: string;
+}
+
+export const StatCard: React.FC<StatCardProps> = ({ label, value, change }) => {
+  // No Redux, no API calls, no side effects
+  // Uses only props - pure presentational
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">{label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <Badge variant="secondary">{change}</Badge>
+      </CardContent>
+    </Card>
+  );
+};
+```
+
+**Given** a component that:
+- Accepts value/onChange pattern for state
+- Has no hooks accessing external state (useAppSelector, useQuery)
+- Has no side effects (API calls, event emissions)
+- Uses only props and local useState/useEffect
+
+**When** determining component placement
+**Then** the component SHALL be placed in `screensets/{name}/uikit/`
+**And** the component SHALL NOT import from @hai3/uicore (except types)
+**And** the component SHALL use theme tokens only (no inline styles)
+
+#### Scenario: Business logic component used by multiple screens
+
+```typescript
+// src/screensets/chat/components/ThreadList.tsx
+// ✅ Correct: Business logic component in components/
+
+import { useAppSelector } from '@hai3/uicore';
+import { selectThreads } from '../slices/threadsSlice';
+import { selectThread } from '../actions/threadActions';
+
+export const ThreadList: React.FC = () => {
+  const threads = useAppSelector(selectThreads);
+
+  return (
+    <div>
+      {threads.map(thread => (
+        <div key={thread.id} onClick={() => selectThread(thread.id)}>
+          {thread.title}
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+**Given** a component that:
+- Contains business logic (Redux selectors, actions, API calls)
+- Is used by multiple screens in the same screenset
+
+**When** determining component placement
+**Then** the component SHALL be placed in `screensets/{name}/components/`
+**And** the component MAY import from @hai3/uicore
+**And** the component SHOULD be screen-agnostic
+
+#### Scenario: Screen-specific component with business logic
+
+```typescript
+// src/screensets/dashboards/screens/home/components/RevenueChart.tsx
+// ✅ Correct: Screen-specific component in screens/home/components/
+
+import { useAppSelector } from '@hai3/uicore';
+import { selectRevenueData } from '../../../slices/dashboardsSlice';
+
+export const RevenueChart: React.FC = () => {
+  const data = useAppSelector(selectRevenueData);
+
+  return (
+    <Card>
+      <LineChart data={data}>
+        {/* ... */}
+      </LineChart>
+    </Card>
+  );
+};
+```
+
+**Given** a component that:
+- Contains business logic
+- Is used by only one screen
+
+**When** determining component placement
+**Then** the component SHALL be placed in `screens/{screen}/components/`
+**And** the component MAY be tightly coupled to screen state
+
+### Requirement: UIKit component purity
+
+Components in `screensets/*/uikit/` SHALL be purely presentational with no business logic.
+
+#### Scenario: UIKit component imports uicore (violation)
+
+```typescript
+// src/screensets/dashboards/uikit/BadCard.tsx
+// ❌ VIOLATION: uikit component with business logic
+
+import { useAppSelector } from '@hai3/uicore';  // FORBIDDEN
+import { selectStats } from '../slices/dashboardsSlice';
+
+export const BadCard: React.FC = () => {
+  const stats = useAppSelector(selectStats);  // Business logic!
+  return <Card>{stats.value}</Card>;
+};
+```
+
+**Given** a component in `screensets/*/uikit/` folder
+**When** the component imports runtime values from @hai3/uicore
+**Then** ESLint SHALL report error: `uikit-no-business-logic`
+**And** the message SHALL suggest moving to `components/` folder
+
+#### Scenario: UIKit component with type-only imports (allowed)
+
+```typescript
+// src/screensets/dashboards/uikit/ChartCard.tsx
+// ✅ Correct: Type-only imports are allowed
+
+import type { RootState } from '@hai3/uicore';  // Type-only - OK
+
+interface ChartCardProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+export const ChartCard: React.FC<ChartCardProps> = ({ title, children }) => {
+  return (
+    <Card>
+      <CardTitle>{title}</CardTitle>
+      {children}
+    </Card>
+  );
+};
+```
+
+**Given** a component in `screensets/*/uikit/` folder
+**When** the component only imports types from @hai3/uicore
+**Then** ESLint SHALL NOT report an error
+
+### Requirement: No inline styles outside base uikit
+
+Components outside `packages/uikit/src/base/` SHALL NOT use inline styles or hex colors.
+
+#### Scenario: Inline style prop (violation)
+
+```typescript
+// src/screensets/dashboards/screens/home/HomeScreen.tsx
+// ❌ VIOLATION: Inline style
+
+<div style={{ opacity: 0.5, marginTop: 10 }}>  // FORBIDDEN
+  Content
+</div>
+```
+
+**Given** a component outside `packages/uikit/src/base/`
+**When** the component uses `style={{}}` JSX attribute
+**Then** ESLint SHALL report error: `no-inline-styles`
+**And** the message SHALL suggest using Tailwind classes
+
+#### Scenario: Hex color literal (violation)
+
+```typescript
+// src/screensets/dashboards/components/Header.tsx
+// ❌ VIOLATION: Hex color
+
+const color = '#ff6b6b';  // FORBIDDEN
+<div className="bg-[#0066cc]">  // FORBIDDEN - arbitrary value with hex
+```
+
+**Given** a component outside `packages/uikit/src/base/`
+**When** the component contains hex color literals
+**Then** ESLint SHALL report error: `no-inline-styles/noHexColor`
+**And** the message SHALL suggest using CSS variables like `hsl(var(--primary))`
+
+#### Scenario: Theme token usage (correct)
+
+```typescript
+// src/screensets/dashboards/screens/home/HomeScreen.tsx
+// ✅ Correct: Theme tokens via Tailwind
+
+<div className="opacity-50 mt-4 bg-primary text-primary-foreground">
+  Content
+</div>
+
+// Or CSS variable in styled context
+const chartColor = 'hsl(var(--chart-1))';
+```
+
+**Given** a component using Tailwind classes or CSS variables
+**When** ESLint analyzes the component
+**Then** no styling errors SHALL be reported
+
+### Requirement: Inline component detection in screens
+
+Screen files SHALL NOT contain inline component definitions that should be extracted.
+
+#### Scenario: Inline React.FC definition in screen file
+
+```typescript
+// src/screensets/dashboards/screens/home/HomeScreen.tsx
+// ⚠️ WARNING: Inline component should be extracted
+
+const StatsCards: React.FC<{ t: (key: string) => string }> = ({ t }) => (
+  <div className="grid gap-4">
+    {/* ... */}
+  </div>
+);
+
+const RevenueChart: React.FC<{ t: (key: string) => string }> = ({ t }) => (
+  <Card>
+    {/* ... */}
+  </Card>
+);
+
+export const HomeScreen: React.FC = () => {
+  return (
+    <div>
+      <StatsCards t={t} />
+      <RevenueChart t={t} />
+    </div>
+  );
+};
+```
+
+**Given** a screen file (`*Screen.tsx`) with inline `React.FC` definitions
+**When** ESLint or CLI validation analyzes the file
+**Then** the system SHALL report warning for each inline component
+**And** the message SHALL suggest extraction location based on decision tree:
+  - `screens/{screen}/components/` for screen-specific
+  - `screensets/{name}/components/` for multi-screen
+  - `screensets/{name}/uikit/` for presentational
+
+### Requirement: Component planning in AI commands
+
+AI commands for creating screensets and screens SHALL require component planning before code generation.
+
+#### Scenario: hai3-new-screenset gathers UI sections
+
+```markdown
+
