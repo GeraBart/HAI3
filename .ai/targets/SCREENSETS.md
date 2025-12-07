@@ -3,7 +3,8 @@
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-5 rules from this file before proposing changes.
-2) STOP if you add manual styling, custom state management, direct slice imports, or hardcode screenset names.
+2) REQUIRED: When user provides Figma link, run `npm run check:mcp` first to verify MCP availability.
+3) STOP if you add manual styling, custom state management, direct slice imports, or hardcode screenset names.
 
 ## SCOPE
 - Applies to all screensets under src/screensets/**.
@@ -49,8 +50,7 @@
 - REQUIRED: Screenset-level: localization: TranslationLoader in config.
 - REQUIRED: Screen-level: useScreenTranslations(screensetId, screenId, loader).
 - REQUIRED: Use I18nRegistry.createLoader with full language map.
-- REQUIRED: Screenset namespace: "screenset.id:key".
-- REQUIRED: Screen namespace: "screen.screenset.screen:key".
+- REQUIRED: Namespaces: "screenset.id:key" (screenset), "screen.screenset.screen:key" (screen).
 - REQUIRED: Place translations in local i18n folders for screenset and screen.
 - REQUIRED: Wrap translated text with <TextLoader>.
 - FORBIDDEN: Hardcoded strings or partial language sets.

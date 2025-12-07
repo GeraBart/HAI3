@@ -11,7 +11,6 @@
 ## CRITICAL RULE
 - FORBIDDEN: Making changes based on assumed rules without reading target file.
 - REQUIRED: When user says "follow X.md rules", read X.md before any change.
-- REQUIRED: When user provides Figma link, run `npm run check:mcp` first to verify MCP availability.
 
 ## ROUTING
 - Data flow / events -> .ai/targets/EVENTS.md
