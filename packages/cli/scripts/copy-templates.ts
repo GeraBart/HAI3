@@ -17,9 +17,11 @@
  * - OpenSpec commands are copied from root .claude/commands/openspec/ to all IDE directories
  */
 import fs from 'fs-extra';
-import { trim } from 'lodash';
+import lodash from 'lodash';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+const { trim } = lodash;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLI_ROOT = path.resolve(__dirname, '..');

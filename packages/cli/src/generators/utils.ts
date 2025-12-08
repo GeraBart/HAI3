@@ -2,7 +2,8 @@
  * String transformation utilities for code generation
  */
 
-import { upperFirst, lowerFirst, toUpper, toLower } from 'lodash';
+import lodash from 'lodash';
+const { upperFirst, lowerFirst, toUpper, toLower } = lodash;
 
 /**
  * Escape special regex characters in a string

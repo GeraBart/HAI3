@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import type { GeneratedFile, Hai3Config } from '../core/types.js';
+import { getTemplatesDir } from '../core/templates.js';
 
 /**
  * Input for project generation
@@ -12,16 +13,6 @@ export interface ProjectGeneratorInput {
   uikit: 'hai3' | 'custom';
   /** Include studio */
   studio: boolean;
-}
-
-/**
- * Get the templates directory path
- * In bundled CLI: dist/index.cjs -> need to go up to package root then templates
- */
-function getTemplatesDir(): string {
-  // __dirname in CJS bundle is the dist folder
-  // We need: packages/cli/dist -> packages/cli/templates
-  return path.resolve(__dirname, '../templates');
 }
 
 /**

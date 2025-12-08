@@ -7,9 +7,12 @@
 
 import path from 'path';
 import fs from 'fs-extra';
-import { upperFirst } from 'lodash';
+import lodash from 'lodash';
 import type { GeneratedFile, ScreensetCategory } from '../core/types.js';
+import { getTemplatesDir } from '../core/templates.js';
 import { toPascalCase, toScreamingSnake } from './utils.js';
+
+const { upperFirst } = lodash;
 
 /**
  * Input for screenset generation from template
@@ -21,13 +24,6 @@ export interface ScreensetFromTemplateInput {
   initialScreenId: string;
   /** Screenset category */
   category: ScreensetCategory;
-}
-
-/**
- * Get the templates directory path
- */
-function getTemplatesDir(): string {
-  return path.resolve(__dirname, '../templates');
 }
 
 /**

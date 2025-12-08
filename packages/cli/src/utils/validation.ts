@@ -2,7 +2,8 @@
  * Validation utilities for CLI commands
  */
 
-import { toLower } from 'lodash';
+import lodash from 'lodash';
+const { toLower } = lodash;
 
 /**
  * Validate npm package name
