@@ -1,20 +1,21 @@
 {
   "name": "@hai3/uicore",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "HAI3 UI Core - Layout system and Redux architecture for SaaS control panels",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": [
     "src/api/services/*Service.ts",
     "dist/api/services/*Service.js",
-    "dist/api/services/*Service.mjs"
+    "dist/api/services/*Service.cjs"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [

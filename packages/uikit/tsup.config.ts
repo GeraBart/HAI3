@@ -3,7 +3,12 @@ import path from 'path';
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['cjs', 'esm'],
+  format: ['esm', 'cjs'],
+  outExtension({ format }) {
+    return {
+      js: format === 'cjs' ? '.cjs' : '.js',
+    };
+  },
   dts: true,
   clean: true,
   sourcemap: true,
