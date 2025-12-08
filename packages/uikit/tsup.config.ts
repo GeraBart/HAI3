@@ -25,6 +25,7 @@ export default defineConfig({
     'class-variance-authority',
     'clsx',
     'lucide-react',
+    'recharts',
     'tailwind-merge',
   ],
   treeshake: true,
