@@ -8,7 +8,6 @@ import { useTranslation, TextLoader } from '@hai3/uicore';
 import { DEMO_SCREENSET_ID } from "../ids";
 import { UI_KIT_ELEMENTS_SCREEN_ID } from "../ids";
 import { FormInput } from '../uikit/icons/FormInput';
-import { FormLabel } from '../uikit/icons/FormLabel';
 
 /**
  * Form Elements Component
@@ -192,7 +191,7 @@ export const FormElements: React.FC = () => {
             </TextLoader>
             <div className="flex items-center gap-3">
               <Checkbox id="terms" />
-              <FormLabel htmlFor="terms">{tk('checkbox_terms')}</FormLabel>
+              <Label htmlFor="terms">{tk('checkbox_terms')}</Label>
             </div>
           </div>
 
@@ -206,7 +205,7 @@ export const FormElements: React.FC = () => {
             <div className="flex items-start gap-3">
               <Checkbox id="terms-2" defaultChecked />
               <div className="grid gap-2">
-                <FormLabel htmlFor="terms-2">{tk('checkbox_terms')}</FormLabel>
+                <Label htmlFor="terms-2">{tk('checkbox_terms')}</Label>
                 <p className="text-muted-foreground text-sm">
                   {tk('checkbox_terms_description')}
                 </p>
@@ -223,7 +222,7 @@ export const FormElements: React.FC = () => {
             </TextLoader>
             <div className="flex items-start gap-3">
               <Checkbox id="toggle" disabled />
-              <FormLabel htmlFor="toggle">{tk('checkbox_notifications')}</FormLabel>
+              <Label htmlFor="toggle">{tk('checkbox_notifications')}</Label>
             </div>
           </div>
 
@@ -270,15 +269,15 @@ export const FormElements: React.FC = () => {
             <RadioGroup defaultValue="comfortable">
               <div className="flex items-center gap-3">
                 <RadioGroupItem value="default" id="rg-default" />
-                <FormLabel htmlFor="rg-default">{tk('radio_group_option_default')}</FormLabel>
+                <Label htmlFor="rg-default">{tk('radio_group_option_default')}</Label>
               </div>
               <div className="flex items-center gap-3">
                 <RadioGroupItem value="comfortable" id="rg-comfortable" />
-                <FormLabel htmlFor="rg-comfortable">{tk('radio_group_option_comfortable')}</FormLabel>
+                <Label htmlFor="rg-comfortable">{tk('radio_group_option_comfortable')}</Label>
               </div>
               <div className="flex items-center gap-3">
                 <RadioGroupItem value="compact" id="rg-compact" />
-                <FormLabel htmlFor="rg-compact">{tk('radio_group_option_compact')}</FormLabel>
+                <Label htmlFor="rg-compact">{tk('radio_group_option_compact')}</Label>
               </div>
             </RadioGroup>
           </div>
@@ -293,11 +292,11 @@ export const FormElements: React.FC = () => {
             <RadioGroup defaultValue="default">
               <div className="flex items-center gap-3">
                 <RadioGroupItem value="default" id="rg-dis-default" />
-                <FormLabel htmlFor="rg-dis-default">{tk('radio_group_option_default')}</FormLabel>
+                <Label htmlFor="rg-dis-default">{tk('radio_group_option_default')}</Label>
               </div>
               <div className="flex items-center gap-3">
                 <RadioGroupItem value="comfortable" id="rg-dis-comfortable" disabled />
-                <FormLabel htmlFor="rg-dis-comfortable" className="text-muted-foreground">{tk('radio_group_option_comfortable')}</FormLabel>
+                <Label htmlFor="rg-dis-comfortable" className="text-muted-foreground">{tk('radio_group_option_comfortable')}</Label>
               </div>
             </RadioGroup>
           </div>
@@ -518,7 +517,7 @@ export const FormElements: React.FC = () => {
               </label>
             </TextLoader>
             <div className="grid w-full max-w-sm items-center gap-3">
-              <FormLabel htmlFor="password-with-label">{tk('input_new_password_label')}</FormLabel>
+              <Label htmlFor="password-with-label">{tk('input_new_password_label')}</Label>
               <FormInput type="password" id="password-with-label" placeholder={tk('input_password_placeholder')} />
             </div>
           </div>
