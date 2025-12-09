@@ -54,6 +54,27 @@ const INLINE_STYLE_PATTERN = /style\s*=\s*\{\{/g;
 const HEX_COLOR_PATTERN = /#[0-9a-fA-F]{3,8}(?=['"`])/g;
 
 /**
+ * Check if file is in a base uikit folder (allowed to use inline styles)
+ * Allowed locations:
+ * - packages/uikit/src/base/ (global base primitives)
+ * - screensets/{name}/uikit/base/ (screenset base primitives - rare, needs justification)
+ */
+function isInBaseUikitFolder(filePath: string): boolean {
+  // Global uikit base folder
+  if (filePath.includes('/uikit/src/base/') || filePath.includes('\\uikit\\src\\base\\')) {
+    return true;
+  }
+
+  // Screenset uikit base folder (pattern: screensets/*/uikit/base/)
+  const screensetBasePattern = /[/\\]screensets[/\\][^/\\]+[/\\]uikit[/\\]base[/\\]/;
+  if (screensetBasePattern.test(filePath)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Scan a file for component violations
  */
 async function scanFile(
@@ -155,8 +176,8 @@ async function scanFile(
     }
   }
 
-  // Check for inline styles (all files except base uikit)
-  if (!filePath.includes('/uikit/src/base/')) {
+  // Check for inline styles (all files except base uikit folders)
+  if (!isInBaseUikitFolder(filePath)) {
     let match: RegExpExecArray | null;
     const stylePattern = new RegExp(INLINE_STYLE_PATTERN.source, 'g');
 

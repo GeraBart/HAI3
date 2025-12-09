@@ -20,7 +20,6 @@
 - Adding Redux, effects, slice logic, or app-level state.
 - Implementing a component that does not match the contract type.
 - Writing manual skeletons instead of Skeleton.
-- Creating reusable visual components in screensets instead of UI Kit.
 
 ## FILE STRUCTURE RULES
 - Base components: packages/uikit/src/base/**.
