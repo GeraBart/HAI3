@@ -1,6 +1,6 @@
 # Screensets Spec Delta
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Screenset UIKit structure mirrors global UIKit
 
@@ -21,7 +21,27 @@ src/screensets/{name}/uikit/
 **And** base/ components SHALL be rare and require strong justification
 **And** composite/ components SHALL use value/onChange pattern
 
-### Requirement: No inline styles outside base uikit folders
+### Requirement: Prioritize global UIKit components
+
+AI agents and developers SHALL prioritize using global @hai3/uikit components before creating screenset-local components.
+
+#### Scenario: Component exists in global uikit
+
+**Given** a UI requirement that matches an existing @hai3/uikit component
+**When** AI agent determines component placement
+**Then** the agent SHALL use the global @hai3/uikit component
+**And** SHALL NOT create a duplicate in screenset uikit
+
+#### Scenario: Creating screenset uikit base component
+
+**Given** a UI requirement for a base primitive not in global @hai3/uikit
+**When** AI agent proposes creating screenset uikit/base/ component
+**Then** the proposal SHALL include justification explaining why global uikit is insufficient
+**And** the justification SHALL explain why this cannot be a composite instead
+
+## MODIFIED Requirements
+
+### Requirement: No inline styles outside base uikit
 
 Components outside `packages/uikit/src/base/` and `screensets/*/uikit/base/` SHALL NOT use inline styles or hex colors.
 
@@ -29,7 +49,7 @@ Components outside `packages/uikit/src/base/` and `screensets/*/uikit/base/` SHA
 
 ```typescript
 // src/screensets/dashboards/uikit/base/Gauge.tsx
-// ✅ ALLOWED: Screenset uikit base component may use inline styles
+// ALLOWED: Screenset uikit base component may use inline styles
 
 export const Gauge: React.FC<{ value: number }> = ({ value }) => {
   const rotation = value * 180 / 100;
@@ -48,48 +68,12 @@ export const Gauge: React.FC<{ value: number }> = ({ value }) => {
 
 #### Scenario: Screenset uikit composite with inline style (violation)
 
-```typescript
-// src/screensets/dashboards/uikit/composite/StatCard.tsx
-// ❌ VIOLATION: Composite must use theme tokens
-
-export const StatCard: React.FC<{ value: string }> = ({ value }) => {
-  return <div style={{ padding: 16 }}>{value}</div>;  // FORBIDDEN
-};
-```
-
 **Given** a component in `screensets/*/uikit/composite/` folder
 **When** the component uses `style={{}}` JSX attribute
 **Then** ESLint SHALL report error: `no-inline-styles`
 
 #### Scenario: Screenset uikit icon with inline style (violation)
 
-```typescript
-// src/screensets/dashboards/uikit/icons/BadIcon.tsx
-// ❌ VIOLATION: Icons must use theme tokens
-
-export const BadIcon: React.FC = () => {
-  return <svg style={{ fill: '#ff0000' }}>...</svg>;  // FORBIDDEN
-};
-```
-
 **Given** a component in `screensets/*/uikit/icons/` folder
 **When** the component uses `style={{}}` JSX attribute
 **Then** ESLint SHALL report error: `no-inline-styles`
-
-### Requirement: Prioritize global UIKit components
-
-AI agents and developers SHALL prioritize using global @hai3/uikit components before creating screenset-local components.
-
-#### Scenario: Component exists in global uikit
-
-**Given** a UI requirement that matches an existing @hai3/uikit component
-**When** AI agent determines component placement
-**Then** the agent SHALL use the global @hai3/uikit component
-**And** SHALL NOT create a duplicate in screenset uikit
-
-#### Scenario: Creating screenset uikit base component
-
-**Given** a UI requirement for a base primitive not in global @hai3/uikit
-**When** AI agent proposes creating screenset uikit/base/ component
-**Then** the proposal SHALL include justification explaining why global uikit is insufficient
-**And** the justification SHALL explain why this cannot be a composite instead
