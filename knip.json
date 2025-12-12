@@ -8,6 +8,9 @@
     },
     "packages/cli": {
       "ignore": ["templates/**"]
+    },
+    "packages/uikit": {
+      "ignoreDependencies": ["date-fns"]
     }
   },
   "ignore": [
@@ -23,7 +26,18 @@
     ".eslintrc.cjs"
   ],
   "ignoreDependencies": [
-    "@types/*"
+    "@types/*",
+    "@eslint/js",
+    "eslint-plugin-react-hooks",
+    "eslint-plugin-unused-imports",
+    "globals",
+    "typescript-eslint",
+    "lodash",
+    "lucide-react"
+  ],
+  "ignoreBinaries": [
+    "dependency-cruiser",
+    "dot"
   ],
   "ignoreExportsUsedInFile": true
 }

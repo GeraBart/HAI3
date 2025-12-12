@@ -1,12 +1,6 @@
 import React from 'react';
 
 /**
- * Studio Icon ID
- * Well-known constant defined where it belongs
- */
-export const STUDIO_ICON_ID = 'studio';
-
-/**
  * Studio Icon
  * Settings/controls icon for Studio toggle button
  */
