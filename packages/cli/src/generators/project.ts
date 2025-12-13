@@ -228,7 +228,7 @@ export async function generateProject(
     workspaces: ['eslint-plugin-local'],
     scripts: {
       dev: 'npm run generate:colors && vite',
-      'check:mcp': "npx tsx presets/standalone/scripts/check-mcp.ts",
+      'check:mcp': 'npx tsx scripts/check-mcp.ts',
       build: 'npm run generate:colors && vite build',
       preview: 'vite preview',
       lint: 'npm run build --workspace=eslint-plugin-local && eslint . --max-warnings 0',
