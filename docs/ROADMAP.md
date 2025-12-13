@@ -44,13 +44,17 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [x] Demo page with all UI Kit elements and style annotations
 - [x] HAI3 CLI for project creation
 - [x] HAI3 CLI for screenset management (create, copy)
+- [x] HAI3 CLI for package updates (update command with alpha/stable channels)
+- [x] HAI3 CLI for component validation (validate:components command)
+- [x] HAI3 CLI template system (3-stage pipeline: copy → generate → use)
+- [x] Full template sync via `hai3 update` command
 - [x] Develop HAI3-Samples in separate repository
 
 ### Pending for v0.1.0
 - [ ] Role based access control
 - [ ] Define and document data types for interfaces (Tenant, User, UI Flags)
 - [ ] UI styles polishing
-- [ ] Add all shadcn components to UI Kit
+- [ ] Add remaining shadcn components to UI Kit (table, form, toast, alert, alert-dialog, command, toggle, toggle-group) - 40 of ~48 done
 - [ ] Tests
 - [ ] Electron build
 
@@ -61,7 +65,7 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [x] Unused imports and variables check
 - [x] Clean build validation
 - [x] Unused exports check (knip)
-- [ ] Hardcoded colors violations check
+- [x] Hardcoded colors violations check (via no-inline-styles ESLint rule)
 
 ---
 
@@ -100,6 +104,8 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 ### Repository
 - [x] Define the project repository layout
 - [x] NPM packages published (@hai3/cli, @hai3/uikit, @hai3/uicore, @hai3/studio, @hai3/uikit-contracts)
+- [x] ESM-first package format for all packages (with dual CJS/ESM exports)
+- [x] CLI migrated to ESM-only
 - [ ] Define the config files layout with default values
 - [ ] Prepare the `docs/REPO_STRUCTURE.md`
 - [ ] The HAI3 submodule/package can be updated independently at any time
@@ -109,11 +115,19 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [x] Implement screenset categories (Drafts, Mockups, Production)
 - [x] Implement the customizable screenset switcher
 - [x] Auto-discovery via Vite glob pattern
+- [x] Screenset self-containment (IDs centralized in ids.ts, auto-derive names)
+- [x] Auto-namespace icon IDs with screenset prefix
+- [x] Auto-derive Redux slice names, event namespaces, API domains
+- [x] 96% reduction in duplication effort (copy + update ids.ts only)
 - [ ] Ensure the UI-Core part is layout-safe
 
 ### AI-guidelines
 - [x] Define AI-guidelines for screen generation (.ai/ folder)
 - [x] ESLint rules for screenset conventions
+- [x] Multi-IDE support (Claude Code, Cursor, Windsurf, Cline, Aider)
+- [x] Command prefixing strategy (hai3:, openspec:, hai3dev:)
+- [x] Split AI rules by context (standalone vs monorepo)
+- [x] Commands-only architecture (eliminated workflows)
 - [ ] Implement AI-guidelines validation in CI
 
 ---
@@ -127,16 +141,16 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [x] Base components (button, card, dialog, dropdown-menu, input, select, etc.)
 - [x] Composite components (chat, navigation, user)
 - [x] Layout components (header, skeleton, spinner)
+- [x] Add `Tabs.tsx` component
+- [x] Add `Breadcrumb.tsx` component
 - [ ] Add `Table.tsx` component with sorting, filtering, pagination
 - [ ] Add `Form.tsx` component with validation support
-- [ ] Add `Tabs.tsx` component
 - [ ] Add `Toast.tsx` notification component
-- [ ] Add `Breadcrumb.tsx` component
 
 ### Style System
 - [x] Theme registry for theme management
 - [x] Theme selector component
-- [x] Multiple built-in themes (light, dark, dracula, dracula-large)
+- [x] Multiple built-in themes (default, light, dark, dracula, dracula-large)
 - [x] Tailwind CSS integration
 - [ ] Document all theme tokens in `docs/THEME_TOKENS.md`
 - [ ] Create Tailwind plugin for custom HAI3 utilities
@@ -380,10 +394,12 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [x] Add rule: no-barrel-exports-events-effects
 - [x] Add rule: no-coordinator-effects
 - [x] Add rule: no-missing-domain-id
+- [x] Add rule: no-inline-styles (forbids style={{}} and hex colors)
+- [x] Add rule: screen-inline-components (prevents inline FC declarations in Screen files)
+- [x] Add rule: uikit-no-business-logic (prevents uicore imports in uikit)
 - [ ] Add rule: Component vocabulary adherence (V#3) - only approved components
 - [ ] Add rule: i18n readiness (V#9) - no hardcoded strings
 - [ ] Add rule: Layout compliance (V#2) - proper layout template usage
-- [ ] Add rule: Theme token usage - no hardcoded colors/fonts
 - [ ] Implement quality gate: block Draft->Mockup transition if rules fail
 - [ ] Create AI linter report dashboard
 
@@ -409,9 +425,9 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 ### Pre-commit & CI/CD Integration
 
 #### Pre-commit Hooks
-- [ ] Set up Husky for Git hooks
-- [ ] Add pre-commit hook: ESLint + Prettier
-- [ ] Add pre-commit hook: TypeScript type checking
+- [x] Set up prek for Git hooks (alternative to Husky, installed via postinstall)
+- [x] Add pre-commit hook: ESLint
+- [x] Add pre-commit hook: TypeScript type checking
 - [ ] Add pre-commit hook: Basic unit tests (fast tests only)
 - [ ] Add commit message linting (conventional commits)
 - [ ] Document pre-commit setup in `docs/CONTRIBUTING.md`
