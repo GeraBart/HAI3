@@ -3,7 +3,7 @@
 > **TARGET AUDIENCE:** Humans
 > **PURPOSE:** Development planning and task tracking
 
-This roadmap outlines practical, actionable tasks organized by HAI3's 10 core values (V#1-V#10). Each task is designed to be achievable within the current codebase architecture.
+This roadmap outlines practical, actionable tasks. V#1 defines the core dual-mode architecture (SDK + Full Platform), while V#2-V#10 represent feature areas that build on this foundation.
 
 ---
 
@@ -54,7 +54,6 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [ ] Role based access control
 - [ ] Define and document data types for interfaces (Tenant, User, UI Flags)
 - [ ] UI styles polishing
-- [ ] Add remaining shadcn components to UI Kit (table, form, toast, alert, alert-dialog, command, toggle, toggle-group) - 40 of ~48 done
 - [ ] Tests
 - [ ] Electron build
 
@@ -69,31 +68,73 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 
 ---
 
-## V#1 - Human-Configurable UI-Core
+## V#1 - Dual-Mode Architecture (SDK + Full Platform)
 
-**Goal**: Enable AI and human developers to build within a shared layout system without layout drift.
+**Goal**: HAI3 operates in two modes - a pure SDK for data flow and micro-frontend orchestration (`@hai3/uicore/sdk`), and a full out-of-the-box SaaS platform constructor (`@hai3/uicore`).
 
-### Layout Configuration
-- [x] Basic layout structure (header, footer, menu, sidebar, screen, popup, overlay)
-- [x] Layout domains with Redux slices
-- [ ] Create proper centralized layout configuration
-- [ ] Add configurable header height, footer height, sidebar widths to layout config
-- [ ] Implement layout presets (compact, standard, spacious)
-- [ ] Add layout configuration UI in Settings screen
+### Phase 1: Preparation (Decoupling)
+- [ ] Refactor store.ts to separate SDK-safe configuration from layout reducers
+- [ ] Create ModuleRegistry abstraction (layout-agnostic screensets)
+- [ ] Separate layout-agnostic events (User, API, I18n) from UI events (Navigation, Menu)
+- [ ] Extract API layer to SDK directory (no React/DOM dependencies)
+- [ ] Extract i18n registry to SDK (keep TextLoader in layout area)
+- [ ] Split appSlice concerns (user, language, loading vs UI-specific state)
 
-### Menu & Navigation
+### Phase 2: SDK Extraction
+- [ ] Create SDK entry point (`src/sdk/index.ts`)
+- [ ] Add subpath export in package.json (`@hai3/uicore/sdk`)
+- [ ] Create HAI3SDKProvider (minimal provider: Redux + Event Bus, no routing/layout)
+- [ ] Configure separate SDK build with tsup (smaller bundle target: <50% of full)
+- [ ] Create ModuleConfig interface (screensets without screens)
+- [ ] Update uikit-contracts (split core contracts vs UI contracts)
+- [ ] Add deprecation warnings for SDK imports from main entry
+
+### Phase 3: SDK Documentation & Tooling
+- [ ] Create `docs/SDK_MODE.md` with use cases and migration guide
+- [ ] Add `hai3 create --mode=sdk` CLI option
+- [ ] Add `hai3 module create` command for SDK-only modules
+- [ ] Add architecture validation rules (prevent SDK/layout coupling)
+- [ ] Update `.ai/targets/` with SDK mode guidance
+
+### Phase 4: Studio (Dev Tools for Both Modes)
+- [ ] Adapt Studio to work with SDK modules (not just screensets)
+- [ ] Add module inspector panel for SDK mode
+- [ ] Add event bus monitoring (both modes)
+- [ ] Add Redux state viewer (both modes)
+- [ ] Add API call logging and tracing panel
+- [ ] Add performance monitoring hooks
+- [ ] Create shared logger with configurable log levels
+
+### Phase 5: Backend Emulator (@hai3/emulator)
+Replaces current mock API mode with sophisticated backend simulation for development and AI-assisted testing.
+
+- [ ] Create separate @hai3/emulator package
+- [ ] Add as Studio dependency (replaces current mock plugin)
+- [ ] Implement API call interception layer
+- [ ] Add response scenarios (success, partial, empty)
+- [ ] Implement latency simulation (configurable delays, jitter)
+- [ ] Add error simulation (4xx, 5xx, timeouts, network failures)
+- [ ] Create scenario presets (happy path, degraded, offline)
+- [ ] Create UI panel for humans (configure scenarios, inspect requests)
+- [ ] Implement MCP interface for AI agents
+- [ ] Define acceptance criteria schema for AI-generated screensets/modules
+- [ ] Add validation that screens handle all error scenarios gracefully
+
+### Full Platform Mode (Layout System)
 - [x] Implement menu collapse/expand toggle
 - [x] Menu items from screenset configuration
+- [ ] Create proper centralized layout configuration
+- [ ] Add configurable header height, footer height, sidebar widths
+- [ ] Implement layout presets (compact, standard, spacious)
+- [ ] Add layout configuration UI in Settings screen
 - [ ] Implement menu item visibility rules based on configuration
 - [ ] Add support for nested menu items (sub-menus)
 - [ ] Create menu item ordering/reordering system
 - [ ] Add menu item badges/notifications support
-
-### Observability & Diagnostics
-- [ ] Create shared logger with configurable log levels
-- [ ] Add performance monitoring hooks
-- [ ] Implement screen render time tracking
-- [ ] Create diagnostics panel in Settings screen
+- [ ] Implement popup/overlay/sidebar registration in screensets (similar to screens)
+- [ ] Create PopupConfig, OverlayConfig, SidebarConfig interfaces
+- [ ] Add uicore orchestration for popups/overlays/sidebars lifecycle
+- [ ] Implement lazy loading for registered popups/overlays/sidebars
 
 ---
 
@@ -164,33 +205,27 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 **Goal**: Treat UI screens as composable building blocks - easy to swap, version, and evolve.
 
 ### Screen Module System
-- [x] Screenset IDs centralized in ids.ts
-- [x] Lazy loading for screens
 - [ ] Create screen metadata schema (version, author, dependencies, description)
 - [ ] Implement screen validation system (schema validation, dependency checks)
 - [ ] Add screen versioning and compatibility checks
 - [ ] Create screen documentation template
 
 ### Screen Packaging & Distribution
-- [x] CLI tool for screenset creation
-- [x] CLI tool for screenset copying with ID transformation
 - [ ] Create CLI tool for screen packaging (`npm run pack-screen`)
 - [ ] Implement screen import/export functionality
 - [ ] Add Git submodule support documentation
 - [ ] Create screen marketplace manifest format (JSON schema)
 
-### Screen-Set Management
-- [x] Runtime screen-set switching
-- [x] State preservation during switching
+### Screen-Set Management (Full Platform Mode)
 - [ ] Add screen-set configuration UI in Settings
 - [ ] Create screen-set comparison/diff tool for A/B testing
 - [ ] Add feature flag integration for screen-set toggling
 
 ---
 
-## V#5 - Pluggable UI Microfrontends Architecture
+## V#5 - Pluggable UI Microfrontends Architecture (Full Platform Mode)
 
-**Goal**: Enable secure, isolated plugin ecosystems where third-party developers can contribute screens and integrations.
+**Goal**: Enable secure, isolated plugin ecosystems where third-party developers can contribute screens and integrations. Applies to Full Platform Mode only.
 
 ### Placeholder System
 - [ ] Document all placeholders in `docs/PLACEHOLDERS.md`
@@ -217,12 +252,10 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [ ] Create explicit event bus API for inter-microfrontend communication
 - [ ] Document event bus API and communication patterns
 
-### Security & CSP
-- [ ] Implement Content Security Policy (CSP) headers
-- [ ] Add Trusted Types support to prevent XSS
+### Microfrontend Security
 - [ ] Create permission system for microfrontend capabilities
 - [ ] Add microfrontend security audit logging
-- [ ] Document security best practices
+- [ ] Document microfrontend security best practices
 
 ### Plugin Management UI
 - [ ] Create plugin marketplace UI in Settings
@@ -260,7 +293,6 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [x] Create event bus for inter-screen communication
 - [x] Document event naming conventions
 - [x] Event types with TypeScript (EventPayloadMap)
-- [ ] Add event debugging tools in diagnostics panel
 
 ---
 
@@ -286,9 +318,7 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [ ] Add API response mocking utilities
 
 ### Observability
-- [ ] Add API call logging and tracing
 - [ ] Implement API performance metrics
-- [ ] Create API debugging panel in Settings
 
 ---
 
@@ -304,15 +334,15 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [ ] Add "Remember Me" functionality
 
 ### Authorization & RBAC
-- [ ] Implement role-based UI guards (hide/show/disable)
 - [ ] Add permission checking utilities
-- [ ] Create permission configuration UI in Settings
 - [ ] Define permission model in the `docs/PERMISSIONS.md`
+- [ ] Implement role-based UI guards (hide/show/disable) (Full Platform Mode)
+- [ ] Create permission configuration UI in Settings (Full Platform Mode)
 
 ### Multitenancy
 - [ ] Implement tenant-specific configuration storage
 - [ ] Add tenant isolation in state management
-- [ ] Create tenant switcher/impersonation UI component
+- [ ] Create tenant switcher/impersonation UI component (Full Platform Mode)
 
 ### Security Features
 - [ ] Implement Content-Security-Policy headers
@@ -452,10 +482,10 @@ This roadmap outlines practical, actionable tasks organized by HAI3's 10 core va
 - [ ] Track visual regression detection rate
 - [ ] Measure AI-generated code quality scores
 
-#### Reporting & Dashboards
-- [ ] Create quality dashboard in Settings screen
+#### Reporting & Dashboards (in Studio)
+- [ ] Create quality dashboard panel
 - [ ] Add test result visualization
-- [ ] Generate quality reports per screen-set
+- [ ] Generate quality reports per screen-set/module
 - [ ] Create AI output quality scorecard
 - [ ] Add trend analysis and insights
 
