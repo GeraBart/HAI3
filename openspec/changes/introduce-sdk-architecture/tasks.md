@@ -26,181 +26,463 @@
 ### Verification Checkpoints
 
 At the end of each PHASE, all tasks in that phase MUST pass verification before proceeding:
-- Phase 1: `npm run arch:check` passes
+- **Phase 0: Baseline captured** - All protection counts documented in baseline-protections.md
+- Phase 1: `npm run arch:check` passes (existing + new rules)
 - Phase 3: Each SDK package installs and imports independently
 - Phase 4: Framework and React packages install correctly
 - Phase 6: All backward compatibility tests pass
-- Phase 10: Full integration test suite passes
+- **Phase 10: ALL protections verified** - Violation counts ≤ baseline (no regression)
+
+---
+
+## PHASE 0: Existing Protections Inventory (MUST NOT BE LOST)
+
+**CRITICAL: All existing protections MUST be preserved or enhanced. NONE can be removed or weakened.**
+
+### 0.1 Pre-Commit Hooks (prek)
+
+**Current protections in `.pre-commit-config.yaml`:**
+
+- [ ] 0.1.1 Verify `trailing-whitespace` hook preserved
+- [ ] 0.1.2 Verify `end-of-file-fixer` hook preserved
+- [ ] 0.1.3 Verify `check-yaml` hook preserved
+- [ ] 0.1.4 Verify `check-json` hook preserved (exclude tsconfig.json)
+- [ ] 0.1.5 Verify `check-toml` hook preserved
+- [ ] 0.1.6 Verify `check-added-large-files` hook preserved (500KB limit)
+- [ ] 0.1.7 Verify `npm run arch:check` hook preserved
+- [ ] 0.1.8 Run `npx prek run --all-files` to verify all hooks pass after migration
+
+### 0.2 Dependency Cruiser Rules (MUST PRESERVE)
+
+**Current protections in `presets/standalone/configs/.dependency-cruiser.cjs`:**
+
+- [ ] 0.2.1 Verify `no-cross-screenset-imports` rule preserved (screenset isolation)
+- [ ] 0.2.2 Verify `no-circular-screenset-deps` rule preserved
+- [ ] 0.2.3 Verify `flux-no-actions-in-effects-folder` rule preserved
+- [ ] 0.2.4 Verify `flux-no-effects-in-actions-folder` rule preserved
+- [ ] 0.2.5 Verify `no-circular` rule preserved (general circular deps)
+- [ ] 0.2.6 Run `npm run arch:deps` before and after migration - same violations (or fewer)
+
+### 0.3 ESLint Local Plugin Rules (MUST PRESERVE)
+
+**Current protections in `presets/standalone/eslint-plugin-local/`:**
+
+- [ ] 0.3.1 Verify `no-barrel-exports-events-effects` rule preserved
+- [ ] 0.3.2 Verify `no-coordinator-effects` rule preserved
+- [ ] 0.3.3 Verify `no-missing-domain-id` rule preserved
+- [ ] 0.3.4 Verify `domain-event-format` rule preserved
+- [ ] 0.3.5 Verify `no-inline-styles` rule preserved
+- [ ] 0.3.6 Verify `uikit-no-business-logic` rule preserved
+- [ ] 0.3.7 Verify `screen-inline-components` rule preserved
+
+### 0.4 ESLint Flux Architecture Rules (MUST PRESERVE)
+
+**Current protections in `presets/standalone/configs/eslint.config.js`:**
+
+#### 0.4.1 Actions Rules
+
+- [ ] 0.4.1.1 Verify actions cannot import slices (/slices/, *Slice.ts)
+- [ ] 0.4.1.2 Verify actions cannot import effects (/effects/)
+- [ ] 0.4.1.3 Verify actions cannot use async keyword
+- [ ] 0.4.1.4 Verify actions cannot return Promise<void>
+- [ ] 0.4.1.5 Verify actions cannot use getState()
+- [ ] 0.4.1.6 Verify actions are pure functions (fire-and-forget)
+
+#### 0.4.2 Effects Rules
+
+- [ ] 0.4.2.1 Verify effects cannot import actions (/actions/)
+- [ ] 0.4.2.2 Verify effects cannot emit events (eventBus.emit)
+
+#### 0.4.3 Components Rules
+
+- [ ] 0.4.3.1 Verify components cannot call store.dispatch directly
+- [ ] 0.4.3.2 Verify components cannot call slice reducers (setXxx)
+- [ ] 0.4.3.3 Verify components cannot import custom stores (*Store)
+- [ ] 0.4.3.4 Verify components cannot use custom store hooks (use*Store)
+
+### 0.5 ESLint General Rules (MUST PRESERVE)
+
+- [ ] 0.5.1 Verify `unused-imports/no-unused-imports` error preserved
+- [ ] 0.5.2 Verify `@typescript-eslint/no-explicit-any` error preserved
+- [ ] 0.5.3 Verify `react-hooks/exhaustive-deps` error preserved
+- [ ] 0.5.4 Verify lodash enforcement rules preserved (trim, charAt, substring, etc.)
+- [ ] 0.5.5 Verify i18n violation detection in types/api preserved (no t() calls)
+- [ ] 0.5.6 Verify mock data lodash enforcement preserved
+
+### 0.6 Protection Baseline Capture
+
+**Before ANY migration work, capture current state:**
+
+- [ ] 0.6.1 Run `npm run lint` and save violation count
+- [ ] 0.6.2 Run `npm run type-check` and save error count
+- [ ] 0.6.3 Run `npm run arch:check` and save test results
+- [ ] 0.6.4 Run `npm run arch:deps` and save violation count
+- [ ] 0.6.5 Run `npm run arch:unused` and save unused export count
+- [ ] 0.6.6 Create `openspec/changes/introduce-sdk-architecture/baseline-protections.md` with counts
+- [ ] 0.6.7 After migration: re-run all checks, violation counts MUST NOT increase
+
+### 0.7 Protection Enhancement (New Rules for SDK Architecture)
+
+**New rules ENHANCE existing protections, never replace:**
+
+- [ ] 0.7.1 Document that all Phase 1 rules are ADDITIONS to existing rules
+- [ ] 0.7.2 Verify new `sdk-no-cross-imports` rule coexists with existing rules
+- [ ] 0.7.3 Verify new dependency-cruiser rules extend, not replace, existing forbidden array
+- [ ] 0.7.4 Verify monorepo preset still extends standalone preset after changes
+- [ ] 0.7.5 Verify CLI templates still receive all protections via copy-templates.ts
 
 ---
 
 ## PHASE 1: Protections (MUST complete before any implementation)
 
-### 1.1 ESLint Rules for New Architecture
+### 1.1 Layered ESLint Config Package
 
-- [ ] 1.1.1 Create `eslint-plugin-hai3-sdk` with rules for flat SDK enforcement
-- [ ] 1.1.2 Add rule: `sdk-no-cross-imports` - SDK packages cannot import other @hai3 packages
-- [ ] 1.1.3 Add rule: `sdk-no-react` - SDK packages cannot import react/react-dom
-- [ ] 1.1.4 Add rule: `framework-layer-imports` - framework can only import SDK packages
-- [ ] 1.1.5 Add rule: `react-layer-imports` - react can only import framework (not SDK directly)
-- [ ] 1.1.6 Update `.eslintrc.cjs` to include new rules
-- [ ] 1.1.7 Verify rules fail on violations before any code exists
+**Create @hai3/eslint-config internal package with layer-specific configurations**
 
-### 1.2 Dependency Cruiser Rules
+#### 1.1.1 Package Setup
 
-- [ ] 1.2.1 Add rule: `sdk-packages-flat` - No @hai3 deps within SDK layer
-- [ ] 1.2.2 Add rule: `no-uikit-contracts-in-sdk` - SDK cannot import uikit-contracts
-- [ ] 1.2.3 Add rule: `no-uikit-contracts-in-framework` - Framework cannot import uikit-contracts
-- [ ] 1.2.4 Add rule: `no-uikit-contracts-in-react` - React cannot import uikit-contracts
-- [ ] 1.2.5 Add rule: `no-react-in-sdk` - SDK cannot import React
-- [ ] 1.2.6 Add rule: `no-react-in-framework` - Framework cannot import React
-- [ ] 1.2.7 Add rule: `layer-dependencies` - Enforce layer hierarchy (SDK ← Framework ← React)
-- [ ] 1.2.8 Update `.dependency-cruiser.cjs` with all new rules
-- [ ] 1.2.9 Run `npm run arch:deps` to verify rules are active
+- [ ] 1.1.1.1 Create `packages/eslint-config/` directory
+- [ ] 1.1.1.2 Create `packages/eslint-config/package.json` (name: @hai3/eslint-config, private: true)
+- [ ] 1.1.1.3 Add eslint, typescript-eslint, eslint-plugin-unused-imports as dependencies
+- [ ] 1.1.1.4 Add package to workspace in root package.json
 
-### 1.3 Architecture Tests
+#### 1.1.2 Base Layer (L0) - Universal Rules
 
-- [ ] 1.3.1 Add test: Each SDK package has zero @hai3 dependencies in package.json
-- [ ] 1.3.2 Add test: Framework package.json only lists SDK packages as @hai3 deps
-- [ ] 1.3.3 Add test: React package.json only lists framework as @hai3 dep
-- [ ] 1.3.4 Add test: No package depends on @hai3/uikit-contracts
-- [ ] 1.3.5 Add test: Build order is enforced (SDK → Framework → React)
-- [ ] 1.3.6 Update `npm run arch:check` to run all new tests
+- [ ] 1.1.2.1 Create `packages/eslint-config/base.js`
+- [ ] 1.1.2.2 Include: js.configs.recommended, tseslint.configs.recommended
+- [ ] 1.1.2.3 Include: @typescript-eslint/no-explicit-any: error
+- [ ] 1.1.2.4 Include: unused-imports/no-unused-imports: error
+- [ ] 1.1.2.5 Include: prefer-const: error
+- [ ] 1.1.2.6 Export baseConfig array
 
-### 1.4 Separate AI Infrastructure (hai3dev-* vs hai3-*)
+#### 1.1.3 SDK Layer (L1) - Zero Dependencies
+
+- [ ] 1.1.3.1 Create `packages/eslint-config/sdk.js`
+- [ ] 1.1.3.2 Extend baseConfig
+- [ ] 1.1.3.3 Add no-restricted-imports: @hai3/* (SDK cannot import other @hai3 packages)
+- [ ] 1.1.3.4 Add no-restricted-imports: react, react-dom (SDK cannot import React)
+- [ ] 1.1.3.5 Export sdkConfig array
+
+#### 1.1.4 Framework Layer (L2) - Only SDK Deps
+
+- [ ] 1.1.4.1 Create `packages/eslint-config/framework.js`
+- [ ] 1.1.4.2 Extend baseConfig
+- [ ] 1.1.4.3 Add no-restricted-imports: @hai3/react, @hai3/uikit, @hai3/uikit-contracts, @hai3/uicore
+- [ ] 1.1.4.4 Add no-restricted-imports: react, react-dom (Framework cannot import React)
+- [ ] 1.1.4.5 Export frameworkConfig array
+
+#### 1.1.5 React Layer (L3) - Only Framework Dep
+
+- [ ] 1.1.5.1 Create `packages/eslint-config/react.js`
+- [ ] 1.1.5.2 Extend baseConfig
+- [ ] 1.1.5.3 Add no-restricted-imports: @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n (no direct SDK)
+- [ ] 1.1.5.4 Add no-restricted-imports: @hai3/uikit-contracts (deprecated)
+- [ ] 1.1.5.5 Export reactConfig array
+
+#### 1.1.6 Screenset Layer (L4) - User Code
+
+- [ ] 1.1.6.1 Create `packages/eslint-config/screenset.js`
+- [ ] 1.1.6.2 Extend baseConfig
+- [ ] 1.1.6.3 Include ALL existing flux architecture rules from presets/standalone/
+- [ ] 1.1.6.4 Include ALL existing screenset isolation rules
+- [ ] 1.1.6.5 Include ALL existing domain-based architecture rules (local plugin)
+- [ ] 1.1.6.6 Include ALL existing action/effect/component restrictions
+- [ ] 1.1.6.7 Export screensetConfig array
+- [ ] 1.1.6.8 Verify: NO existing rule is removed (only enhanced)
+
+#### 1.1.7 Package Index
+
+- [ ] 1.1.7.1 Create `packages/eslint-config/index.js` exporting all configs
+- [ ] 1.1.7.2 Add exports field in package.json for each config file
+
+### 1.2 Per-Package ESLint Configs
+
+**Each package has its own eslint.config.js extending appropriate layer**
+
+#### 1.2.1 SDK Package Configs
+
+- [ ] 1.2.1.1 Create `packages/events/eslint.config.js` extending sdk.js
+- [ ] 1.2.1.2 Create `packages/store/eslint.config.js` extending sdk.js
+- [ ] 1.2.1.3 Create `packages/layout/eslint.config.js` extending sdk.js
+- [ ] 1.2.1.4 Create `packages/api/eslint.config.js` extending sdk.js
+- [ ] 1.2.1.5 Create `packages/i18n/eslint.config.js` extending sdk.js
+
+#### 1.2.2 Framework/React Package Configs
+
+- [ ] 1.2.2.1 Create `packages/framework/eslint.config.js` extending framework.js
+- [ ] 1.2.2.2 Create `packages/react/eslint.config.js` extending react.js
+
+#### 1.2.3 Preset Configs (User Projects)
+
+- [ ] 1.2.3.1 Update `presets/standalone/configs/eslint.config.js` to extend screenset.js
+- [ ] 1.2.3.2 Update `presets/monorepo/configs/eslint.config.js` to extend standalone
+- [ ] 1.2.3.3 Verify: ALL existing rules still apply to user projects
+
+### 1.3 Layered Dependency Cruiser Config Package
+
+**Create @hai3/depcruise-config internal package with layer-specific rules**
+
+#### 1.3.1 Package Setup
+
+- [ ] 1.3.1.1 Create `packages/depcruise-config/` directory
+- [ ] 1.3.1.2 Create `packages/depcruise-config/package.json` (name: @hai3/depcruise-config, private: true)
+- [ ] 1.3.1.3 Add package to workspace in root package.json
+
+#### 1.3.2 Base Layer (L0) - Universal Rules
+
+- [ ] 1.3.2.1 Create `packages/depcruise-config/base.cjs`
+- [ ] 1.3.2.2 Include: no-circular (severity: error)
+- [ ] 1.3.2.3 Include: no-orphans (severity: warn)
+- [ ] 1.3.2.4 Export forbidden array
+
+#### 1.3.3 SDK Layer (L1) - Zero Dependencies
+
+- [ ] 1.3.3.1 Create `packages/depcruise-config/sdk.cjs`
+- [ ] 1.3.3.2 Extend base.cjs forbidden array
+- [ ] 1.3.3.3 Add: sdk-no-hai3-imports (SDK packages cannot import @hai3/*)
+- [ ] 1.3.3.4 Add: sdk-no-react (SDK packages cannot import React)
+
+#### 1.3.4 Framework Layer (L2) - Only SDK Deps
+
+- [ ] 1.3.4.1 Create `packages/depcruise-config/framework.cjs`
+- [ ] 1.3.4.2 Extend base.cjs forbidden array
+- [ ] 1.3.4.3 Add: framework-only-sdk-deps (Framework can only import SDK packages)
+- [ ] 1.3.4.4 Add: framework-no-react (Framework cannot import React)
+
+#### 1.3.5 React Layer (L3) - Only Framework Dep
+
+- [ ] 1.3.5.1 Create `packages/depcruise-config/react.cjs`
+- [ ] 1.3.5.2 Extend base.cjs forbidden array
+- [ ] 1.3.5.3 Add: react-only-framework-dep (React imports SDK via framework only)
+- [ ] 1.3.5.4 Add: react-no-uikit-contracts (deprecated package)
+
+#### 1.3.6 Screenset Layer (L4) - User Code
+
+- [ ] 1.3.6.1 Create `packages/depcruise-config/screenset.cjs`
+- [ ] 1.3.6.2 Extend base.cjs forbidden array
+- [ ] 1.3.6.3 Include ALL existing rules from presets/standalone/configs/.dependency-cruiser.cjs:
+  - no-cross-screenset-imports
+  - no-circular-screenset-deps
+  - flux-no-actions-in-effects-folder
+  - flux-no-effects-in-actions-folder
+- [ ] 1.3.6.4 Verify: NO existing rule is removed (only enhanced)
+
+### 1.4 Per-Package Dependency Cruiser Configs
+
+#### 1.4.1 SDK Package Configs
+
+- [ ] 1.4.1.1 Create `packages/events/.dependency-cruiser.cjs` extending sdk.cjs
+- [ ] 1.4.1.2 Create `packages/store/.dependency-cruiser.cjs` extending sdk.cjs
+- [ ] 1.4.1.3 Create `packages/layout/.dependency-cruiser.cjs` extending sdk.cjs
+- [ ] 1.4.1.4 Create `packages/api/.dependency-cruiser.cjs` extending sdk.cjs
+- [ ] 1.4.1.5 Create `packages/i18n/.dependency-cruiser.cjs` extending sdk.cjs
+
+#### 1.4.2 Framework/React Package Configs
+
+- [ ] 1.4.2.1 Create `packages/framework/.dependency-cruiser.cjs` extending framework.cjs
+- [ ] 1.4.2.2 Create `packages/react/.dependency-cruiser.cjs` extending react.cjs
+
+#### 1.4.3 Preset Configs (User Projects)
+
+- [ ] 1.4.3.1 Update `presets/standalone/configs/.dependency-cruiser.cjs` to extend screenset.cjs
+- [ ] 1.4.3.2 Update `presets/monorepo/configs/.dependency-cruiser.cjs` to extend standalone
+- [ ] 1.4.3.3 Verify: ALL existing rules still apply to user projects
+
+### 1.5 Architecture Tests
+
+- [ ] 1.5.1 Add test: Each SDK package has zero @hai3 dependencies in package.json
+- [ ] 1.5.2 Add test: Framework package.json only lists SDK packages as @hai3 deps
+- [ ] 1.5.3 Add test: React package.json only lists framework as @hai3 dep
+- [ ] 1.5.4 Add test: No package depends on @hai3/uikit-contracts
+- [ ] 1.5.5 Add test: Build order is enforced (SDK → Framework → React)
+- [ ] 1.5.6 Update `npm run arch:check` to run all new tests
+- [ ] 1.5.7 Add test: Each layer config includes all parent layer rules
+
+### 1.6 Layered Config Verification
+
+**Verify the layered architecture works correctly at all levels**
+
+#### 1.6.1 Layer Isolation Tests
+
+- [ ] 1.6.1.1 Test: SDK package with @hai3/store import FAILS eslint
+- [ ] 1.6.1.2 Test: SDK package with React import FAILS eslint
+- [ ] 1.6.1.3 Test: Framework package with @hai3/react import FAILS eslint
+- [ ] 1.6.1.4 Test: Framework package with React import FAILS eslint
+- [ ] 1.6.1.5 Test: React package with @hai3/events direct import FAILS eslint
+- [ ] 1.6.1.6 Test: React package with @hai3/uikit-contracts import FAILS eslint
+
+#### 1.6.2 Inheritance Tests
+
+- [ ] 1.6.2.1 Test: SDK packages inherit base rules (no-any triggers)
+- [ ] 1.6.2.2 Test: Framework packages inherit base rules (no-any triggers)
+- [ ] 1.6.2.3 Test: React packages inherit base rules (no-any triggers)
+- [ ] 1.6.2.4 Test: Screenset config includes ALL flux rules from existing config
+
+#### 1.6.3 Per-Package Lint Tests
+
+- [ ] 1.6.3.1 Run `npm run lint --workspace=@hai3/events` - verify sdk.js rules apply
+- [ ] 1.6.3.2 Run `npm run lint --workspace=@hai3/framework` - verify framework.js rules apply
+- [ ] 1.6.3.3 Run `npm run lint --workspace=@hai3/react` - verify react.js rules apply
+
+#### 1.6.4 Per-Package Dependency Cruiser Tests
+
+- [ ] 1.6.4.1 Run `npm run arch:deps --workspace=@hai3/events` - verify sdk.cjs rules apply
+- [ ] 1.6.4.2 Run `npm run arch:deps --workspace=@hai3/framework` - verify framework.cjs rules apply
+- [ ] 1.6.4.3 Run `npm run arch:deps --workspace=@hai3/react` - verify react.cjs rules apply
+
+#### 1.6.5 User Project Tests
+
+- [ ] 1.6.5.1 Create temporary test project with `hai3 create test-layered-config`
+- [ ] 1.6.5.2 Verify: All existing protections apply (flux, isolation, domain rules)
+- [ ] 1.6.5.3 Verify: Cross-screenset import FAILS
+- [ ] 1.6.5.4 Verify: Action importing slice FAILS
+- [ ] 1.6.5.5 Verify: Effect emitting event FAILS
+- [ ] 1.6.5.6 Cleanup: Remove test project
+
+### 1.7 Workspace Scripts for Layer Verification
+
+- [ ] 1.7.1 Add `npm run lint:sdk` - lint all SDK packages
+- [ ] 1.7.2 Add `npm run lint:framework` - lint framework package
+- [ ] 1.7.3 Add `npm run lint:react` - lint react package
+- [ ] 1.7.4 Add `npm run arch:sdk` - arch:deps on SDK packages
+- [ ] 1.7.5 Add `npm run arch:framework` - arch:deps on framework
+- [ ] 1.7.6 Add `npm run arch:react` - arch:deps on react
+- [ ] 1.7.7 Add `npm run verify:layers` - runs all layer verification commands
+
+### 1.8 Separate AI Infrastructure (hai3dev-* vs hai3-*)
 
 **Establish two distinct command namespaces following Nx/Turborepo patterns**
 
-#### 1.4.1 HAI3 Monorepo Commands (Internal Development)
+#### 1.8.1 HAI3 Monorepo Commands (Internal Development)
 
-- [ ] 1.4.1.1 Create `.ai/commands/internal/` directory for monorepo-only commands
-- [ ] 1.4.1.2 Create `/hai3dev-publish` - Build and publish packages to npm
-- [ ] 1.4.1.3 Create `/hai3dev-release` - Create version, changelog, git tags
-- [ ] 1.4.1.4 Create `/hai3dev-update-guidelines` - Update AI source of truth
-- [ ] 1.4.1.5 Create `/hai3dev-test-packages` - Run package integration tests
-- [ ] 1.4.1.6 Ensure hai3dev-* commands are NEVER shipped to user projects
-- [ ] 1.4.1.7 Add `.ai/commands/internal/` to CLI template exclusion list
+- [ ] 1.8.1.1 Create `.ai/commands/internal/` directory for monorepo-only commands
+- [ ] 1.8.1.2 Create `/hai3dev-publish` - Build and publish packages to npm
+- [ ] 1.8.1.3 Create `/hai3dev-release` - Create version, changelog, git tags
+- [ ] 1.8.1.4 Create `/hai3dev-update-guidelines` - Update AI source of truth
+- [ ] 1.8.1.5 Create `/hai3dev-test-packages` - Run package integration tests
+- [ ] 1.8.1.6 Ensure hai3dev-* commands are NEVER shipped to user projects
+- [ ] 1.8.1.7 Add `.ai/commands/internal/` to CLI template exclusion list
 
-#### 1.4.2 User Project Commands (Technical + Business-Friendly Aliases)
+#### 1.8.2 User Project Commands (Technical + Business-Friendly Aliases)
 
 **Screenset is a fundamental HAI3 concept - keep technical commands, add business aliases**
 
-- [ ] 1.4.2.1 Create `.ai/commands/user/` directory for shipped commands
-- [ ] 1.4.2.2 Keep `/hai3-new-screenset` (fundamental HAI3 concept)
-- [ ] 1.4.2.3 Keep `/hai3-new-screen` (fundamental HAI3 concept)
-- [ ] 1.4.2.4 Keep `/hai3-new-api-service` (technical command)
-- [ ] 1.4.2.5 Keep `/hai3-new-action` (technical command)
-- [ ] 1.4.2.6 Keep `/hai3-validate` (technical command)
-- [ ] 1.4.2.7 Keep `/hai3-fix-violation` (technical command)
-- [ ] 1.4.2.8 Add `/hai3-add-feature` as alias for `/hai3-new-screenset` (business term)
-- [ ] 1.4.2.9 Add `/hai3-add-page` as alias for `/hai3-new-screen` (business term)
-- [ ] 1.4.2.10 Add `/hai3-check` as alias for `/hai3-validate` (business term)
-- [ ] 1.4.2.11 Add `/hai3-fix` as alias for `/hai3-fix-violation` (business term)
-- [ ] 1.4.2.12 Keep arch-explain, quick-ref, rules for developers who want them
+- [ ] 1.8.2.1 Create `.ai/commands/user/` directory for shipped commands
+- [ ] 1.8.2.2 Keep `/hai3-new-screenset` (fundamental HAI3 concept)
+- [ ] 1.8.2.3 Keep `/hai3-new-screen` (fundamental HAI3 concept)
+- [ ] 1.8.2.4 Keep `/hai3-new-api-service` (technical command)
+- [ ] 1.8.2.5 Keep `/hai3-new-action` (technical command)
+- [ ] 1.8.2.6 Keep `/hai3-validate` (technical command)
+- [ ] 1.8.2.7 Keep `/hai3-fix-violation` (technical command)
+- [ ] 1.8.2.8 Add `/hai3-add-feature` as alias for `/hai3-new-screenset` (business term)
+- [ ] 1.8.2.9 Add `/hai3-add-page` as alias for `/hai3-new-screen` (business term)
+- [ ] 1.8.2.10 Add `/hai3-check` as alias for `/hai3-validate` (business term)
+- [ ] 1.8.2.11 Add `/hai3-fix` as alias for `/hai3-fix-violation` (business term)
+- [ ] 1.8.2.12 Keep arch-explain, quick-ref, rules for developers who want them
 
-### 1.5 CLI-Backed Commands with Protections
+### 1.9 CLI-Backed Commands with Protections
 
 **All AI commands delegate to HAI3 CLI for consistency and validation**
 
-#### 1.5.1 CLI Command Aliases (Business-Friendly)
+#### 1.9.1 CLI Command Aliases (Business-Friendly)
 
-- [ ] 1.5.1.1 Add `hai3 add feature <name>` command (alias for screenset create)
-- [ ] 1.5.1.2 Add `hai3 add page <name>` command (alias for screen add)
-- [ ] 1.5.1.3 Add `hai3 add service <name>` command (alias for api-service create)
-- [ ] 1.5.1.4 Add `hai3 add action <name>` command (alias for action create)
-- [ ] 1.5.1.5 Add `hai3 add component <name>` command
-- [ ] 1.5.1.6 Add `hai3 check` command (alias for validate)
-- [ ] 1.5.1.7 Add `hai3 fix` command (alias for fix-violations)
+- [ ] 1.9.1.1 Add `hai3 add feature <name>` command (alias for screenset create)
+- [ ] 1.9.1.2 Add `hai3 add page <name>` command (alias for screen add)
+- [ ] 1.9.1.3 Add `hai3 add service <name>` command (alias for api-service create)
+- [ ] 1.9.1.4 Add `hai3 add action <name>` command (alias for action create)
+- [ ] 1.9.1.5 Add `hai3 add component <name>` command
+- [ ] 1.9.1.6 Add `hai3 check` command (alias for validate)
+- [ ] 1.9.1.7 Add `hai3 fix` command (alias for fix-violations)
 
-#### 1.5.2 Built-In Validation (Protections)
+#### 1.9.2 Built-In Validation (Protections)
 
-- [ ] 1.5.2.1 CLI runs ESLint after every scaffolding command
-- [ ] 1.5.2.2 CLI runs TypeScript check after every scaffolding command
-- [ ] 1.5.2.3 CLI runs `arch:check` after every scaffolding command
-- [ ] 1.5.2.4 If validation fails: show clear error + suggest `hai3 fix`
-- [ ] 1.5.2.5 If validation passes: show success + next steps
-- [ ] 1.5.2.6 Add `--skip-validation` flag for advanced users
+- [ ] 1.9.2.1 CLI runs ESLint after every scaffolding command
+- [ ] 1.9.2.2 CLI runs TypeScript check after every scaffolding command
+- [ ] 1.9.2.3 CLI runs `arch:check` after every scaffolding command
+- [ ] 1.9.2.4 If validation fails: show clear error + suggest `hai3 fix`
+- [ ] 1.9.2.5 If validation passes: show success + next steps
+- [ ] 1.9.2.6 Add `--skip-validation` flag for advanced users
 
-#### 1.5.3 Command Format (User-Friendly)
+#### 1.9.3 Command Format (User-Friendly)
 
-- [ ] 1.5.3.1 Define command template with "What This Does" section
-- [ ] 1.5.3.2 Use business language (feature, page, service) not technical (screenset, screen)
-- [ ] 1.5.3.3 Keep commands under 500 words (concise = user-friendly)
-- [ ] 1.5.3.4 Always include "If Something Goes Wrong" section
-- [ ] 1.5.3.5 Commands must call CLI, not implement logic directly
+- [ ] 1.9.3.1 Define command template with "What This Does" section
+- [ ] 1.9.3.2 Use business language (feature, page, service) not technical (screenset, screen)
+- [ ] 1.9.3.3 Keep commands under 500 words (concise = user-friendly)
+- [ ] 1.9.3.4 Always include "If Something Goes Wrong" section
+- [ ] 1.9.3.5 Commands must call CLI, not implement logic directly
 
-### 1.6 Configuration-Aware Command Generation
+### 1.10 Configuration-Aware Command Generation
 
 **Commands generated based on installed packages**
 
-- [ ] 1.6.1 Read `package.json` dependencies in `hai3 ai sync`
-- [ ] 1.6.2 Detect layer: SDK (api only), Framework (framework), React (react)
-- [ ] 1.6.3 SDK layer: generate only `/hai3-add-service`
-- [ ] 1.6.4 Framework layer: generate SDK + feature, action, check, fix commands
-- [ ] 1.6.5 React layer: generate all commands including page, component
-- [ ] 1.6.6 Store layer metadata in generated `.claude/commands/` files
-- [ ] 1.6.7 `hai3 update` regenerates commands when packages change
+- [ ] 1.10.1 Read `package.json` dependencies in `hai3 ai sync`
+- [ ] 1.10.2 Detect layer: SDK (api only), Framework (framework), React (react)
+- [ ] 1.10.3 SDK layer: generate only `/hai3-add-service`
+- [ ] 1.10.4 Framework layer: generate SDK + feature, action, check, fix commands
+- [ ] 1.10.5 React layer: generate all commands including page, component
+- [ ] 1.10.6 Store layer metadata in generated `.claude/commands/` files
+- [ ] 1.10.7 `hai3 update` regenerates commands when packages change
 
-### 1.7 Multi-Tool Support (Single Source of Truth)
+### 1.11 Multi-Tool Support (Single Source of Truth)
 
 **Generate files for Claude, GitHub Copilot, Cursor, Windsurf**
 
-- [ ] 1.7.1 Create `.ai/rules/` directory with package-specific rules
-- [ ] 1.7.2 Create `.ai/templates/CLAUDE.md.hbs` template
-- [ ] 1.7.3 Create `.ai/templates/copilot-instructions.md.hbs` template
-- [ ] 1.7.4 Create `.ai/templates/cursor-rules.md.hbs` template
-- [ ] 1.7.5 Create `.ai/templates/windsurf-rules.md.hbs` template
-- [ ] 1.7.6 `hai3 ai sync` generates all 4 files from templates
-- [ ] 1.7.7 Only Claude gets `.claude/commands/` (others don't support commands)
-- [ ] 1.7.8 Rules content is identical across all 4 tools
+- [ ] 1.11.1 Create `.ai/rules/` directory with package-specific rules
+- [ ] 1.11.2 Create `.ai/templates/CLAUDE.md.hbs` template
+- [ ] 1.11.3 Create `.ai/templates/copilot-instructions.md.hbs` template
+- [ ] 1.11.4 Create `.ai/templates/cursor-rules.md.hbs` template
+- [ ] 1.11.5 Create `.ai/templates/windsurf-rules.md.hbs` template
+- [ ] 1.11.6 `hai3 ai sync` generates all 4 files from templates
+- [ ] 1.11.7 Only Claude gets `.claude/commands/` (others don't support commands)
+- [ ] 1.11.8 Rules content is identical across all 4 tools
 
-### 1.8 AI.md Update (Prompt Engineering Standards)
+### 1.12 AI.md Update (Prompt Engineering Standards)
 
 **Update `.ai/targets/AI.md` with new architecture**
 
-- [ ] 1.8.1 Add section: TWO COMMAND NAMESPACES (hai3dev-* vs hai3-*)
-- [ ] 1.8.2 Add section: CLI-BACKED COMMANDS (delegation pattern)
-- [ ] 1.8.3 Add section: BUILT-IN PROTECTIONS (validation flow)
-- [ ] 1.8.4 Add section: BUSINESS-FRIENDLY LANGUAGE (command naming)
-- [ ] 1.8.5 Add section: CONFIGURATION-AWARE GENERATION (layer detection)
-- [ ] 1.8.6 Update KEYWORDS: add PROTECTION, DELEGATE, LAYER
-- [ ] 1.8.7 Update STOP CONDITIONS: never implement logic in commands
-- [ ] 1.8.8 Keep AI.md under 100 lines (reference design.md for details)
+- [ ] 1.12.1 Add section: TWO COMMAND NAMESPACES (hai3dev-* vs hai3-*)
+- [ ] 1.12.2 Add section: CLI-BACKED COMMANDS (delegation pattern)
+- [ ] 1.12.3 Add section: BUILT-IN PROTECTIONS (validation flow)
+- [ ] 1.12.4 Add section: BUSINESS-FRIENDLY LANGUAGE (command naming)
+- [ ] 1.12.5 Add section: CONFIGURATION-AWARE GENERATION (layer detection)
+- [ ] 1.12.6 Update KEYWORDS: add PROTECTION, DELEGATE, LAYER
+- [ ] 1.12.7 Update STOP CONDITIONS: never implement logic in commands
+- [ ] 1.12.8 Keep AI.md under 100 lines (reference design.md for details)
 
-### 1.9 Automated Prompt Validation (Promptfoo)
+### 1.13 Automated Prompt Validation (Promptfoo)
 
 **Validate commands call CLI correctly and use business language**
 
-- [ ] 1.9.1 Install `promptfoo` as dev dependency
-- [ ] 1.9.2 Create `.ai/tests/promptfoo.yaml` main configuration
-- [ ] 1.9.3 Create `.ai/tests/assertions/cli-patterns.yaml`
+- [ ] 1.13.1 Install `promptfoo` as dev dependency
+- [ ] 1.13.2 Create `.ai/tests/promptfoo.yaml` main configuration
+- [ ] 1.13.3 Create `.ai/tests/assertions/cli-patterns.yaml`
 
-#### 1.9.4 Test: Commands Delegate to CLI
+#### 1.13.4 Test: Commands Delegate to CLI
 
-- [ ] 1.9.4.1 Test `/hai3-new-screenset` calls `hai3 screenset create`
-- [ ] 1.9.4.2 Test `/hai3-new-screen` calls `hai3 screen add`
-- [ ] 1.9.4.3 Test `/hai3-validate` calls `hai3 validate`
-- [ ] 1.9.4.4 Test `/hai3-fix-violation` calls `hai3 fix`
-- [ ] 1.9.4.5 Test `/hai3-add-feature` (alias) calls `hai3 screenset create`
-- [ ] 1.9.4.6 Test `/hai3-add-page` (alias) calls `hai3 screen add`
+- [ ] 1.13.4.1 Test `/hai3-new-screenset` calls `hai3 screenset create`
+- [ ] 1.13.4.2 Test `/hai3-new-screen` calls `hai3 screen add`
+- [ ] 1.13.4.3 Test `/hai3-validate` calls `hai3 validate`
+- [ ] 1.13.4.4 Test `/hai3-fix-violation` calls `hai3 fix`
+- [ ] 1.13.4.5 Test `/hai3-add-feature` (alias) calls `hai3 screenset create`
+- [ ] 1.13.4.6 Test `/hai3-add-page` (alias) calls `hai3 screen add`
 
-#### 1.9.5 Test: Command Quality
+#### 1.13.5 Test: Command Quality
 
-- [ ] 1.9.5.1 Test commands explain screenset concept briefly
-- [ ] 1.9.5.2 Test business aliases use simpler language
-- [ ] 1.9.5.3 Test error messages are user-friendly
-- [ ] 1.9.5.4 Test commands are under 500 words
+- [ ] 1.13.5.1 Test commands explain screenset concept briefly
+- [ ] 1.13.5.2 Test business aliases use simpler language
+- [ ] 1.13.5.3 Test error messages are user-friendly
+- [ ] 1.13.5.4 Test commands are under 500 words
 
-#### 1.9.6 Test: Error Handling
+#### 1.13.6 Test: Error Handling
 
-- [ ] 1.9.6.1 Test commands suggest `/hai3-fix-violation` on errors
-- [ ] 1.9.6.2 Test commands include "If Something Goes Wrong" section
+- [ ] 1.13.6.1 Test commands suggest `/hai3-fix-violation` on errors
+- [ ] 1.13.6.2 Test commands include "If Something Goes Wrong" section
 
-#### 1.9.7 CI/CD Integration
+#### 1.13.7 CI/CD Integration
 
-- [ ] 1.9.7.1 Add `npm run test:prompts` script
-- [ ] 1.9.7.2 Create `.github/workflows/prompt-tests.yml`
-- [ ] 1.9.7.3 Block PRs that modify `.ai/` with failing tests
+- [ ] 1.13.7.1 Add `npm run test:prompts` script
+- [ ] 1.13.7.2 Create `.github/workflows/prompt-tests.yml`
+- [ ] 1.13.7.3 Block PRs that modify `.ai/` with failing tests
 
 ---
 
@@ -505,8 +787,13 @@ At the end of each PHASE, all tasks in that phase MUST pass verification before 
 - [ ] 4.1.6.2 Export: `createHAI3`, `createHAI3App`, `presets`
 - [ ] 4.1.6.3 Export: individual plugins (`screensets`, `themes`, `layout`, etc.)
 - [ ] 4.1.6.4 Export: all types from `@hai3/framework/types`
-- [ ] 4.1.6.5 Verify: `npm run build:packages:framework` succeeds
-- [ ] 4.1.6.6 Verify: Only SDK packages as @hai3 dependencies
+- [ ] 4.1.6.5 Re-export SDK primitives for @hai3/react to use:
+  - `RootState`, `AppDispatch` from @hai3/store (types)
+  - `eventBus`, `createAction` from @hai3/events
+  - `registerSlice` from @hai3/store
+  - All domain selectors from @hai3/layout
+- [ ] 4.1.6.6 Verify: `npm run build:packages:framework` succeeds
+- [ ] 4.1.6.7 Verify: Only SDK packages as @hai3 dependencies
 
 #### 4.1.7 Plugin System Testing
 
@@ -973,6 +1260,46 @@ Note: Screensets are auto-discovered via Vite glob pattern (`*Screenset.tsx`). N
 - [ ] 10.9.7 Verify all commands are under 500 words
 - [ ] 10.9.8 Verify GitHub Actions workflow syntax is valid
 - [ ] 10.9.9 Document any flaky tests for future investigation
+
+### 10.10 Protection Regression Verification (CRITICAL)
+
+**Compare post-migration state against Phase 0 baseline. NO REGRESSIONS ALLOWED.**
+
+#### 10.10.1 Compare Against Baseline
+
+- [ ] 10.10.1.1 Read `openspec/changes/introduce-sdk-architecture/baseline-protections.md`
+- [ ] 10.10.1.2 Run `npm run lint` - violation count ≤ baseline
+- [ ] 10.10.1.3 Run `npm run type-check` - error count ≤ baseline
+- [ ] 10.10.1.4 Run `npm run arch:check` - all tests pass (same or more tests)
+- [ ] 10.10.1.5 Run `npm run arch:deps` - violation count ≤ baseline
+- [ ] 10.10.1.6 Run `npm run arch:unused` - unused count ≤ baseline
+- [ ] 10.10.1.7 Run `npx prek run --all-files` - all hooks pass
+
+#### 10.10.2 Verify All Existing Rules Still Active
+
+- [ ] 10.10.2.1 Verify screenset isolation rules trigger on cross-import (manual test)
+- [ ] 10.10.2.2 Verify flux rules trigger on action importing slice (manual test)
+- [ ] 10.10.2.3 Verify flux rules trigger on effect emitting event (manual test)
+- [ ] 10.10.2.4 Verify component rules trigger on direct dispatch (manual test)
+- [ ] 10.10.2.5 Verify lodash rules trigger on native string methods (manual test)
+
+#### 10.10.3 Verify New SDK Rules Are Additive
+
+- [ ] 10.10.3.1 Verify standalone preset rules are NOT removed
+- [ ] 10.10.3.2 Verify monorepo preset still extends standalone preset
+- [ ] 10.10.3.3 Verify CLI templates include ALL protections (standalone preset)
+- [ ] 10.10.3.4 Create new project with `hai3 create test-protections`
+- [ ] 10.10.3.5 Verify new project has all ESLint rules
+- [ ] 10.10.3.6 Verify new project has all dependency-cruiser rules
+- [ ] 10.10.3.7 Verify new project has pre-commit hooks
+- [ ] 10.10.3.8 Cleanup: Remove test-protections directory
+
+#### 10.10.4 Document Final Protection State
+
+- [ ] 10.10.4.1 Update baseline-protections.md with post-migration counts
+- [ ] 10.10.4.2 Document any NEW protections added during migration
+- [ ] 10.10.4.3 Document protection rule counts: ESLint (N rules), dependency-cruiser (N rules)
+- [ ] 10.10.4.4 Sign-off: "All existing protections preserved and enhanced"
 
 ---
 

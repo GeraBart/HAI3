@@ -378,9 +378,10 @@ A potential user (external company) wants to integrate HAI3 screensets into thei
 │   ├── layout()              ← Layout domains (header, menu, footer, etc.)
 │   ├── routing()             ← Route registry + URL sync
 │   ├── effects()             ← Effect coordination system
-│   └── navigation()          ← Navigation actions
+│   ├── navigation()          ← Navigation actions
+│   └── i18n()                ← i18nRegistry + setLanguage
 ├── presets/
-│   ├── full()                ← All plugins (default for hai3 create)
+│   ├── full()                ← All 7 plugins (default for hai3 create)
 │   ├── minimal()             ← screensets + themes only
 │   └── headless()            ← screensets only (external integration)
 ```
@@ -1048,6 +1049,336 @@ Each package also generates `llms.txt` following the [llms.txt standard](https:/
 
 - [Migration Guide](https://hai3.dev/docs/events/migration)
 ```
+
+## Layered Protection Architecture
+
+Following industry best practices from [Turborepo](https://turborepo.com/docs/guides/tools/eslint), [Nx](https://nx.dev/docs/technologies/eslint), and [TanStack](https://tanstack.com/config/latest/docs/eslint), HAI3 uses a **hybrid configuration pattern**:
+
+- **Shared config package** with layered configs (base → sdk → framework → react → screenset)
+- **Per-package configs** that extend the appropriate layer
+- **AI CLAUDE.md per package** referencing package-specific constraints
+
+### ESLint Configuration Hierarchy
+
+```
+packages/
+├── eslint-config/                        # @hai3/eslint-config (internal package)
+│   ├── package.json
+│   ├── base.js                           # L0: All packages (no-any, unused-imports, prefer-const)
+│   ├── sdk.js                            # L1: SDK packages (extends base + no @hai3/*, no React)
+│   ├── framework.js                      # L2: Framework (extends base + only SDK deps, no React)
+│   ├── react.js                          # L3: React (extends base + only framework dep)
+│   └── screenset.js                      # L4: User code (extends base + flux rules, isolation)
+│
+├── events/
+│   └── eslint.config.js                  # extends sdk.js
+├── store/
+│   └── eslint.config.js                  # extends sdk.js
+├── layout/
+│   └── eslint.config.js                  # extends sdk.js
+├── api/
+│   └── eslint.config.js                  # extends sdk.js
+├── i18n/
+│   └── eslint.config.js                  # extends sdk.js
+├── framework/
+│   └── eslint.config.js                  # extends framework.js
+├── react/
+│   └── eslint.config.js                  # extends react.js
+│
+presets/
+├── standalone/
+│   └── configs/eslint.config.js          # extends screenset.js (user projects)
+└── monorepo/
+    └── configs/eslint.config.js          # extends standalone + monorepo extras
+```
+
+### ESLint Layer Definitions
+
+```javascript
+// packages/eslint-config/base.js - L0: Universal rules for ALL code
+export const baseConfig = [
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      'unused-imports/no-unused-imports': 'error',
+      'prefer-const': 'error',
+      // ... other universal rules
+    },
+  },
+];
+
+// packages/eslint-config/sdk.js - L1: SDK packages (zero @hai3 deps, no React)
+export const sdkConfig = [
+  ...baseConfig,
+  {
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['@hai3/*'], message: 'SDK packages cannot import other @hai3 packages' },
+          { group: ['react', 'react-dom', 'react/*'], message: 'SDK packages cannot import React' },
+        ],
+      }],
+    },
+  },
+];
+
+// packages/eslint-config/framework.js - L2: Framework (only SDK deps, no React)
+export const frameworkConfig = [
+  ...baseConfig,
+  {
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['@hai3/react', '@hai3/uikit', '@hai3/uikit-contracts', '@hai3/uicore'],
+            message: 'Framework can only import SDK packages' },
+          { group: ['react', 'react-dom', 'react/*'], message: 'Framework cannot import React' },
+        ],
+      }],
+    },
+  },
+];
+
+// packages/eslint-config/react.js - L3: React adapter (only framework dep)
+export const reactConfig = [
+  ...baseConfig,
+  {
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['@hai3/events', '@hai3/store', '@hai3/layout', '@hai3/api', '@hai3/i18n'],
+            message: 'React package imports SDK via framework re-exports' },
+          { group: ['@hai3/uikit-contracts'], message: 'uikit-contracts is deprecated' },
+        ],
+      }],
+    },
+  },
+];
+
+// packages/eslint-config/screenset.js - L4: User code (flux, isolation, all existing rules)
+export const screensetConfig = [
+  ...baseConfig,
+  // All existing flux architecture rules from presets/standalone/
+  // Screenset isolation rules
+  // Domain-based architecture rules (local plugin)
+  // Actions/Effects/Components restrictions
+];
+```
+
+### Dependency Cruiser Configuration Hierarchy
+
+```
+packages/
+├── depcruise-config/                     # @hai3/depcruise-config (internal package)
+│   ├── package.json
+│   ├── base.cjs                          # L0: Universal (no-circular, no-orphans)
+│   ├── sdk.cjs                           # L1: SDK (no @hai3 deps)
+│   ├── framework.cjs                     # L2: Framework (only SDK deps)
+│   ├── react.cjs                         # L3: React (only framework dep)
+│   └── screenset.cjs                     # L4: User code (screenset isolation, flux)
+│
+├── events/
+│   └── .dependency-cruiser.cjs           # extends sdk.cjs
+├── framework/
+│   └── .dependency-cruiser.cjs           # extends framework.cjs
+├── react/
+│   └── .dependency-cruiser.cjs           # extends react.cjs
+│
+presets/
+├── standalone/
+│   └── configs/.dependency-cruiser.cjs   # extends screenset.cjs (user projects)
+```
+
+### Dependency Cruiser Layer Definitions
+
+```javascript
+// packages/depcruise-config/base.cjs - L0: Universal rules
+module.exports = {
+  forbidden: [
+    { name: 'no-circular', severity: 'error', from: {}, to: { circular: true } },
+    { name: 'no-orphans', severity: 'warn', from: { orphan: true }, to: {} },
+  ],
+};
+
+// packages/depcruise-config/sdk.cjs - L1: SDK packages
+const base = require('./base.cjs');
+module.exports = {
+  forbidden: [
+    ...base.forbidden,
+    {
+      name: 'sdk-no-hai3-imports',
+      severity: 'error',
+      from: { path: '^packages/(events|store|layout|api|i18n)/src' },
+      to: { path: 'node_modules/@hai3/' },
+      comment: 'SDK packages must have ZERO @hai3 dependencies',
+    },
+    {
+      name: 'sdk-no-react',
+      severity: 'error',
+      from: { path: '^packages/(events|store|layout|api|i18n)/src' },
+      to: { path: 'node_modules/react' },
+      comment: 'SDK packages cannot import React',
+    },
+  ],
+};
+
+// packages/depcruise-config/framework.cjs - L2: Framework
+const base = require('./base.cjs');
+module.exports = {
+  forbidden: [
+    ...base.forbidden,
+    {
+      name: 'framework-only-sdk-deps',
+      severity: 'error',
+      from: { path: '^packages/framework/src' },
+      to: { path: 'node_modules/@hai3/(react|uikit|uikit-contracts|uicore)' },
+      comment: 'Framework can only import SDK packages',
+    },
+    {
+      name: 'framework-no-react',
+      severity: 'error',
+      from: { path: '^packages/framework/src' },
+      to: { path: 'node_modules/react' },
+      comment: 'Framework cannot import React',
+    },
+  ],
+};
+
+// packages/depcruise-config/react.cjs - L3: React adapter
+const base = require('./base.cjs');
+module.exports = {
+  forbidden: [
+    ...base.forbidden,
+    {
+      name: 'react-only-framework-dep',
+      severity: 'error',
+      from: { path: '^packages/react/src' },
+      to: { path: 'node_modules/@hai3/(events|store|layout|api|i18n)' },
+      comment: 'React package imports SDK via framework, not directly',
+    },
+    {
+      name: 'react-no-uikit-contracts',
+      severity: 'error',
+      from: { path: '^packages/react/src' },
+      to: { path: 'node_modules/@hai3/uikit-contracts' },
+      comment: 'uikit-contracts is deprecated',
+    },
+  ],
+};
+
+// packages/depcruise-config/screenset.cjs - L4: User code
+const base = require('./base.cjs');
+module.exports = {
+  forbidden: [
+    ...base.forbidden,
+    // All existing rules from presets/standalone/configs/.dependency-cruiser.cjs
+    // - no-cross-screenset-imports
+    // - no-circular-screenset-deps
+    // - flux-no-actions-in-effects-folder
+    // - flux-no-effects-in-actions-folder
+  ],
+};
+```
+
+### Per-Package CLAUDE.md Integration
+
+Each package's CLAUDE.md references its protection constraints:
+
+```markdown
+# @hai3/events
+
+## Protection Layer: SDK (L1)
+
+This package is at the SDK layer with strict constraints:
+
+**ESLint Rules** (from @hai3/eslint-config/sdk.js):
+- ❌ Cannot import any @hai3/* packages
+- ❌ Cannot import react or react-dom
+- ✅ Must follow base rules (no-any, unused-imports)
+
+**Dependency Cruiser Rules** (from @hai3/depcruise-config/sdk.cjs):
+- ❌ sdk-no-hai3-imports: Zero @hai3 dependencies
+- ❌ sdk-no-react: No React dependencies
+
+**Verify with:**
+\`\`\`bash
+npm run lint --workspace=@hai3/events
+npm run arch:deps --workspace=@hai3/events
+\`\`\`
+```
+
+### Verification Commands
+
+```bash
+# Verify single package
+npm run lint --workspace=@hai3/events
+npm run arch:deps --workspace=@hai3/events
+
+# Verify layer (all SDK packages)
+npm run lint:sdk      # Runs lint on events, store, layout, api, i18n
+npm run arch:sdk      # Runs arch:deps on SDK packages
+
+# Verify all packages
+npm run lint          # All packages
+npm run arch:deps     # All packages
+npm run arch:check    # Full architecture validation
+```
+
+### Layer Inheritance Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ L0: base.js / base.cjs                                              │
+│ • no-explicit-any, unused-imports, prefer-const                     │
+│ • no-circular, no-orphans                                           │
+└───────────────────────────────────┬─────────────────────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        │                           │                           │
+        ▼                           ▼                           ▼
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│ L1: sdk.js        │   │ L2: framework.js  │   │ L4: screenset.js  │
+│ • no @hai3/*      │   │ • only SDK deps   │   │ • flux rules      │
+│ • no React        │   │ • no React        │   │ • isolation       │
+│                   │   │                   │   │ • domain rules    │
+│ Used by:          │   │ Used by:          │   │                   │
+│ events, store,    │   │ framework         │   │ Used by:          │
+│ layout, api, i18n │   │                   │   │ user projects     │
+└───────────────────┘   └─────────┬─────────┘   └───────────────────┘
+                                  │
+                                  ▼
+                        ┌───────────────────┐
+                        │ L3: react.js      │
+                        │ • only framework  │
+                        │ • no direct SDK   │
+                        │                   │
+                        │ Used by:          │
+                        │ react             │
+                        └───────────────────┘
+```
+
+### Protection Coverage Matrix
+
+| Rule Category | SDK | Framework | React | User Code |
+|--------------|-----|-----------|-------|-----------|
+| **Base Rules** | ✅ | ✅ | ✅ | ✅ |
+| no-explicit-any | ✅ | ✅ | ✅ | ✅ |
+| unused-imports | ✅ | ✅ | ✅ | ✅ |
+| no-circular | ✅ | ✅ | ✅ | ✅ |
+| **Layer Rules** | | | | |
+| no @hai3/* imports | ✅ | - | - | - |
+| only SDK imports | - | ✅ | - | - |
+| only framework imports | - | - | ✅ | - |
+| no React | ✅ | ✅ | - | - |
+| **Flux Rules** | | | | |
+| screenset isolation | - | - | - | ✅ |
+| actions→events→effects | - | - | - | ✅ |
+| no direct dispatch | - | - | - | ✅ |
+| **Domain Rules** | | | | |
+| domain-event-format | - | - | - | ✅ |
+| no-barrel-exports | - | - | - | ✅ |
+| no-coordinator-effects | - | - | - | ✅ |
 
 ## Migration Strategy
 

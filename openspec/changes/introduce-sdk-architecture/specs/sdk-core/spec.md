@@ -650,3 +650,74 @@ The system SHALL provide automated testing for AI commands and rules without hum
 - **THEN** word count is measured
 - **AND** commands exceeding 500 words are flagged
 - **AND** efficiency score (value/tokens) is calculated
+
+### Requirement: Layered Protection Architecture
+
+The system SHALL provide layered ESLint and dependency-cruiser configurations following industry best practices (Turborepo, Nx, TanStack patterns).
+
+#### Scenario: Internal config packages exist
+
+- **WHEN** checking `packages/` directory
+- **THEN** `@hai3/eslint-config` internal package exists (private: true)
+- **AND** `@hai3/depcruise-config` internal package exists (private: true)
+- **AND** both packages are NOT published to npm
+
+#### Scenario: ESLint config hierarchy
+
+- **WHEN** checking `packages/eslint-config/`
+- **THEN** `base.js` exists with universal rules (L0)
+- **AND** `sdk.js` exists extending base with SDK rules (L1)
+- **AND** `framework.js` exists extending base with framework rules (L2)
+- **AND** `react.js` exists extending base with react rules (L3)
+- **AND** `screenset.js` exists extending base with user code rules (L4)
+
+#### Scenario: Dependency cruiser config hierarchy
+
+- **WHEN** checking `packages/depcruise-config/`
+- **THEN** `base.cjs` exists with universal rules (L0)
+- **AND** `sdk.cjs` exists extending base with SDK rules (L1)
+- **AND** `framework.cjs` exists extending base with framework rules (L2)
+- **AND** `react.cjs` exists extending base with react rules (L3)
+- **AND** `screenset.cjs` exists extending base with user code rules (L4)
+
+#### Scenario: Per-package ESLint configs
+
+- **WHEN** checking SDK package directories (events, store, layout, api, i18n)
+- **THEN** each has `eslint.config.js` extending `sdk.js`
+- **WHEN** checking `packages/framework/`
+- **THEN** it has `eslint.config.js` extending `framework.js`
+- **WHEN** checking `packages/react/`
+- **THEN** it has `eslint.config.js` extending `react.js`
+
+#### Scenario: Per-package dependency cruiser configs
+
+- **WHEN** checking SDK package directories
+- **THEN** each has `.dependency-cruiser.cjs` extending `sdk.cjs`
+- **WHEN** checking `packages/framework/`
+- **THEN** it has `.dependency-cruiser.cjs` extending `framework.cjs`
+- **WHEN** checking `packages/react/`
+- **THEN** it has `.dependency-cruiser.cjs` extending `react.cjs`
+
+#### Scenario: Layer inheritance works correctly
+
+- **WHEN** SDK package violates base rule (e.g., uses `any` type)
+- **THEN** ESLint error is triggered (base rules apply to SDK)
+- **WHEN** SDK package imports from @hai3/*
+- **THEN** ESLint error is triggered (SDK layer rule)
+- **WHEN** framework package imports React
+- **THEN** ESLint error is triggered (framework layer rule)
+
+#### Scenario: User project configs extend screenset layer
+
+- **WHEN** checking `presets/standalone/configs/eslint.config.js`
+- **THEN** it extends `screenset.js` configuration
+- **AND** ALL existing flux architecture rules are preserved
+- **AND** ALL existing screenset isolation rules are preserved
+
+#### Scenario: Existing protections are never removed
+
+- **WHEN** comparing pre-migration and post-migration protection counts
+- **THEN** ESLint rule count is equal or greater
+- **AND** dependency-cruiser rule count is equal or greater
+- **AND** pre-commit hook count is equal or greater
+- **AND** NO existing rule is removed (only enhanced)
