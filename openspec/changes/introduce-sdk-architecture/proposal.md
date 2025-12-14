@@ -196,5 +196,6 @@ hai3 scaffold layout --ui-kit=custom  # Generates layout without @hai3/uikit imp
   - `packages/cli/` → New scaffold commands, AI sync
   - `.ai/` → All guidelines updated, hai3dev-* vs hai3-* separation
 - **Breaking changes**: None for existing apps (uicore re-exports maintained)
-- **New packages**: events, store, layout, api, i18n, framework, react
+- **New packages**: events, store, layout, api, i18n, framework, react (7 public packages)
+- **Internal packages**: @hai3/eslint-config, @hai3/depcruise-config (private, not published)
 - **SOLID compliance**: Full alignment with all 5 principles
