@@ -584,5 +584,15 @@
   "alert_error_description": "Controleer je facturatiegegevens en probeer het opnieuw.",
   "alert_error_check_card": "Controleer je kaartgegevens",
   "alert_error_ensure_funds": "Zorg voor voldoende saldo",
-  "alert_error_verify_address": "Verifieer factuuradres"
+  "alert_error_verify_address": "Verifieer factuuradres",
+  "alert_dialog_heading": "Waarschuwingsvenster",
+  "alert_dialog_show": "Venster tonen",
+  "alert_dialog_title": "Weet u het absoluut zeker?",
+  "alert_dialog_description": "Deze actie kan niet ongedaan worden gemaakt. Dit zal uw account permanent verwijderen en uw gegevens van onze servers verwijderen.",
+  "alert_dialog_cancel": "Annuleren",
+  "alert_dialog_continue": "Doorgaan",
+  "alert_dialog_delete_trigger": "Account verwijderen",
+  "alert_dialog_delete_title": "Account verwijderen?",
+  "alert_dialog_delete_description": "Dit zal uw account en alle bijbehorende gegevens permanent verwijderen. Deze actie kan niet ongedaan worden gemaakt.",
+  "alert_dialog_delete_action": "Verwijderen"
 }

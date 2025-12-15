@@ -584,5 +584,15 @@
   "alert_error_description": "Lütfen fatura bilgilerinizi doğrulayın ve tekrar deneyin.",
   "alert_error_check_card": "Kart bilgilerinizi kontrol edin",
   "alert_error_ensure_funds": "Yeterli bakiye olduğundan emin olun",
-  "alert_error_verify_address": "Fatura adresini doğrulayın"
+  "alert_error_verify_address": "Fatura adresini doğrulayın",
+  "alert_dialog_heading": "Uyarı İletişim Kutusu",
+  "alert_dialog_show": "İletişim Kutusunu Göster",
+  "alert_dialog_title": "Kesinlikle emin misiniz?",
+  "alert_dialog_description": "Bu işlem geri alınamaz. Hesabınız kalıcı olarak silinecek ve verileriniz sunucularımızdan kaldırılacaktır.",
+  "alert_dialog_cancel": "İptal",
+  "alert_dialog_continue": "Devam",
+  "alert_dialog_delete_trigger": "Hesabı Sil",
+  "alert_dialog_delete_title": "Hesap Silinsin mi?",
+  "alert_dialog_delete_description": "Hesabınız ve tüm ilişkili veriler kalıcı olarak silinecektir. Bu işlem geri alınamaz.",
+  "alert_dialog_delete_action": "Sil"
 }

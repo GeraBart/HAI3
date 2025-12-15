@@ -580,5 +580,15 @@
   "alert_error_description": "يرجى التحقق من معلومات الفاتورة والمحاولة مرة أخرى.",
   "alert_error_check_card": "تحقق من تفاصيل بطاقتك",
   "alert_error_ensure_funds": "تأكد من وجود رصيد كافٍ",
-  "alert_error_verify_address": "تحقق من عنوان الفاتورة"
+  "alert_error_verify_address": "تحقق من عنوان الفاتورة",
+  "alert_dialog_heading": "مربع حوار التنبيه",
+  "alert_dialog_show": "عرض الحوار",
+  "alert_dialog_title": "هل أنت متأكد تماماً؟",
+  "alert_dialog_description": "لا يمكن التراجع عن هذا الإجراء. سيؤدي هذا إلى حذف حسابك نهائياً وإزالة بياناتك من خوادمنا.",
+  "alert_dialog_cancel": "إلغاء",
+  "alert_dialog_continue": "متابعة",
+  "alert_dialog_delete_trigger": "حذف الحساب",
+  "alert_dialog_delete_title": "حذف الحساب؟",
+  "alert_dialog_delete_description": "سيؤدي هذا إلى حذف حسابك وجميع البيانات المرتبطة نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+  "alert_dialog_delete_action": "حذف"
 }

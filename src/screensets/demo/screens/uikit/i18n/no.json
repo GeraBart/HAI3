@@ -584,5 +584,15 @@
   "alert_error_description": "Vennligst bekreft faktureringsinformasjonen din og prøv igjen.",
   "alert_error_check_card": "Sjekk kortdetaljene dine",
   "alert_error_ensure_funds": "Sørg for tilstrekkelig dekning",
-  "alert_error_verify_address": "Bekreft faktureringsadresse"
+  "alert_error_verify_address": "Bekreft faktureringsadresse",
+  "alert_dialog_heading": "Varslingsdialog",
+  "alert_dialog_show": "Vis dialog",
+  "alert_dialog_title": "Er du helt sikker?",
+  "alert_dialog_description": "Denne handlingen kan ikke angres. Dette vil permanent slette kontoen din og fjerne dataene dine fra våre servere.",
+  "alert_dialog_cancel": "Avbryt",
+  "alert_dialog_continue": "Fortsett",
+  "alert_dialog_delete_trigger": "Slett konto",
+  "alert_dialog_delete_title": "Slette konto?",
+  "alert_dialog_delete_description": "Dette vil permanent slette kontoen din og alle tilknyttede data. Denne handlingen kan ikke angres.",
+  "alert_dialog_delete_action": "Slett"
 }

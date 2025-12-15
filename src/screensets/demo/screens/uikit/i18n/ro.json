@@ -584,5 +584,15 @@
   "alert_error_description": "Vă rugăm să verificați informațiile de facturare și să încercați din nou.",
   "alert_error_check_card": "Verificați detaliile cardului",
   "alert_error_ensure_funds": "Asigurați fonduri suficiente",
-  "alert_error_verify_address": "Verificați adresa de facturare"
+  "alert_error_verify_address": "Verificați adresa de facturare",
+  "alert_dialog_heading": "Dialog de alertă",
+  "alert_dialog_show": "Afișează dialogul",
+  "alert_dialog_title": "Sunteți absolut sigur?",
+  "alert_dialog_description": "Această acțiune nu poate fi anulată. Aceasta va șterge permanent contul dumneavoastră și va elimina datele de pe serverele noastre.",
+  "alert_dialog_cancel": "Anulare",
+  "alert_dialog_continue": "Continuare",
+  "alert_dialog_delete_trigger": "Șterge contul",
+  "alert_dialog_delete_title": "Ștergeți contul?",
+  "alert_dialog_delete_description": "Aceasta va șterge permanent contul dumneavoastră și toate datele asociate. Această acțiune nu poate fi inversată.",
+  "alert_dialog_delete_action": "Șterge"
 }

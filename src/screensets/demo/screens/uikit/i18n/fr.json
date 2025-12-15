@@ -584,5 +584,15 @@
   "alert_error_description": "Veuillez vérifier vos informations de facturation et réessayer.",
   "alert_error_check_card": "Vérifiez les détails de votre carte",
   "alert_error_ensure_funds": "Assurez-vous d'avoir des fonds suffisants",
-  "alert_error_verify_address": "Vérifiez l'adresse de facturation"
+  "alert_error_verify_address": "Vérifiez l'adresse de facturation",
+  "alert_dialog_heading": "Boîte de dialogue d'alerte",
+  "alert_dialog_show": "Afficher la boîte",
+  "alert_dialog_title": "Êtes-vous absolument sûr ?",
+  "alert_dialog_description": "Cette action ne peut pas être annulée. Cela supprimera définitivement votre compte et supprimera vos données de nos serveurs.",
+  "alert_dialog_cancel": "Annuler",
+  "alert_dialog_continue": "Continuer",
+  "alert_dialog_delete_trigger": "Supprimer le compte",
+  "alert_dialog_delete_title": "Supprimer le compte ?",
+  "alert_dialog_delete_description": "Cela supprimera définitivement votre compte et toutes les données associées. Cette action est irréversible.",
+  "alert_dialog_delete_action": "Supprimer"
 }

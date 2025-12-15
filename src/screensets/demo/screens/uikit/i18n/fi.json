@@ -584,5 +584,15 @@
   "alert_error_description": "Tarkista laskutustietosi ja yritä uudelleen.",
   "alert_error_check_card": "Tarkista korttitietosi",
   "alert_error_ensure_funds": "Varmista riittävä kate",
-  "alert_error_verify_address": "Vahvista laskutusosoite"
+  "alert_error_verify_address": "Vahvista laskutusosoite",
+  "alert_dialog_heading": "Varoitusikkuna",
+  "alert_dialog_show": "Näytä ikkuna",
+  "alert_dialog_title": "Oletko aivan varma?",
+  "alert_dialog_description": "Tätä toimintoa ei voi kumota. Tämä poistaa tilisi pysyvästi ja poistaa tietosi palvelimiltamme.",
+  "alert_dialog_cancel": "Peruuta",
+  "alert_dialog_continue": "Jatka",
+  "alert_dialog_delete_trigger": "Poista tili",
+  "alert_dialog_delete_title": "Poista tili?",
+  "alert_dialog_delete_description": "Tämä poistaa pysyvästi tilisi ja kaikki siihen liittyvät tiedot. Tätä toimintoa ei voi peruuttaa.",
+  "alert_dialog_delete_action": "Poista"
 }

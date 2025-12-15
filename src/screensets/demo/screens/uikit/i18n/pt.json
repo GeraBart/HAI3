@@ -584,5 +584,15 @@
   "alert_error_description": "Por favor, verifique suas informações de faturamento e tente novamente.",
   "alert_error_check_card": "Verifique os dados do cartão",
   "alert_error_ensure_funds": "Garanta fundos suficientes",
-  "alert_error_verify_address": "Verifique o endereço de cobrança"
+  "alert_error_verify_address": "Verifique o endereço de cobrança",
+  "alert_dialog_heading": "Caixa de diálogo de alerta",
+  "alert_dialog_show": "Mostrar diálogo",
+  "alert_dialog_title": "Tem certeza absoluta?",
+  "alert_dialog_description": "Esta ação não pode ser desfeita. Isso excluirá permanentemente sua conta e removerá seus dados de nossos servidores.",
+  "alert_dialog_cancel": "Cancelar",
+  "alert_dialog_continue": "Continuar",
+  "alert_dialog_delete_trigger": "Excluir conta",
+  "alert_dialog_delete_title": "Excluir conta?",
+  "alert_dialog_delete_description": "Isso excluirá permanentemente sua conta e todos os dados associados. Esta ação não pode ser revertida.",
+  "alert_dialog_delete_action": "Excluir"
 }

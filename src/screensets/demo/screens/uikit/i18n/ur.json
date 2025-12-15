@@ -584,5 +584,15 @@
   "alert_error_description": "براہ کرم اپنی بلنگ معلومات کی تصدیق کریں اور دوبارہ کوشش کریں۔",
   "alert_error_check_card": "اپنے کارڈ کی تفصیلات چیک کریں",
   "alert_error_ensure_funds": "کافی رقم کو یقینی بنائیں",
-  "alert_error_verify_address": "بلنگ ایڈریس کی تصدیق کریں"
+  "alert_error_verify_address": "بلنگ ایڈریس کی تصدیق کریں",
+  "alert_dialog_heading": "انتباہی ڈائیلاگ",
+  "alert_dialog_show": "ڈائیلاگ دکھائیں",
+  "alert_dialog_title": "کیا آپ بالکل یقین رکھتے ہیں؟",
+  "alert_dialog_description": "اس عمل کو واپس نہیں کیا جا سکتا۔ یہ آپ کے اکاؤنٹ کو مستقل طور پر حذف کر دے گا اور ہمارے سرورز سے آپ کا ڈیٹا ہٹا دے گا۔",
+  "alert_dialog_cancel": "منسوخ",
+  "alert_dialog_continue": "جاری رکھیں",
+  "alert_dialog_delete_trigger": "اکاؤنٹ حذف کریں",
+  "alert_dialog_delete_title": "اکاؤنٹ حذف کریں؟",
+  "alert_dialog_delete_description": "یہ آپ کے اکاؤنٹ اور تمام متعلقہ ڈیٹا کو مستقل طور پر حذف کر دے گا۔ اس عمل کو واپس نہیں کیا جا سکتا۔",
+  "alert_dialog_delete_action": "حذف کریں"
 }

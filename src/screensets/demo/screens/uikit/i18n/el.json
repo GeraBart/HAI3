@@ -584,5 +584,15 @@
   "alert_error_description": "Παρακαλώ επαληθεύστε τα στοιχεία χρέωσης και δοκιμάστε ξανά.",
   "alert_error_check_card": "Ελέγξτε τα στοιχεία της κάρτας",
   "alert_error_ensure_funds": "Εξασφαλίστε επαρκές υπόλοιπο",
-  "alert_error_verify_address": "Επαληθεύστε τη διεύθυνση χρέωσης"
+  "alert_error_verify_address": "Επαληθεύστε τη διεύθυνση χρέωσης",
+  "alert_dialog_heading": "Διάλογος ειδοποίησης",
+  "alert_dialog_show": "Εμφάνιση διαλόγου",
+  "alert_dialog_title": "Είστε απολύτως σίγουροι;",
+  "alert_dialog_description": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί. Θα διαγράψει οριστικά τον λογαριασμό σας και θα αφαιρέσει τα δεδομένα σας από τους διακομιστές μας.",
+  "alert_dialog_cancel": "Ακύρωση",
+  "alert_dialog_continue": "Συνέχεια",
+  "alert_dialog_delete_trigger": "Διαγραφή λογαριασμού",
+  "alert_dialog_delete_title": "Διαγραφή λογαριασμού;",
+  "alert_dialog_delete_description": "Θα διαγραφεί οριστικά ο λογαριασμός σας και όλα τα συσχετισμένα δεδομένα. Αυτή η ενέργεια δεν μπορεί να αντιστραφεί.",
+  "alert_dialog_delete_action": "Διαγραφή"
 }

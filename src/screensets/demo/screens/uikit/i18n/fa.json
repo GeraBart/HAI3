@@ -584,5 +584,15 @@
   "alert_error_description": "لطفاً اطلاعات صورتحساب خود را بررسی و دوباره تلاش کنید.",
   "alert_error_check_card": "جزئیات کارت را بررسی کنید",
   "alert_error_ensure_funds": "از موجودی کافی اطمینان حاصل کنید",
-  "alert_error_verify_address": "آدرس صورتحساب را تأیید کنید"
+  "alert_error_verify_address": "آدرس صورتحساب را تأیید کنید",
+  "alert_dialog_heading": "دیالوگ هشدار",
+  "alert_dialog_show": "نمایش دیالوگ",
+  "alert_dialog_title": "آیا کاملاً مطمئن هستید؟",
+  "alert_dialog_description": "این عمل قابل بازگشت نیست. حساب کاربری شما به طور دائم حذف شده و داده‌های شما از سرورهای ما پاک خواهد شد.",
+  "alert_dialog_cancel": "لغو",
+  "alert_dialog_continue": "ادامه",
+  "alert_dialog_delete_trigger": "حذف حساب",
+  "alert_dialog_delete_title": "حذف حساب؟",
+  "alert_dialog_delete_description": "این کار حساب کاربری و تمام داده‌های مرتبط را به طور دائم حذف می‌کند. این عمل قابل بازگشت نیست.",
+  "alert_dialog_delete_action": "حذف"
 }

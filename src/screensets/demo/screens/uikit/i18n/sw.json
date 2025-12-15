@@ -584,5 +584,15 @@
   "alert_error_description": "Tafadhali thibitisha maelezo yako ya kulipia na ujaribu tena.",
   "alert_error_check_card": "Angalia maelezo ya kadi yako",
   "alert_error_ensure_funds": "Hakikisha salio la kutosha",
-  "alert_error_verify_address": "Thibitisha anwani ya kulipia"
+  "alert_error_verify_address": "Thibitisha anwani ya kulipia",
+  "alert_dialog_heading": "Kisanduku cha Tahadhari",
+  "alert_dialog_show": "Onyesha Kisanduku",
+  "alert_dialog_title": "Je, una uhakika kabisa?",
+  "alert_dialog_description": "Kitendo hiki hakiwezi kutenduliwa. Hii itafuta akaunti yako kwa kudumu na kuondoa data yako kutoka kwa seva zetu.",
+  "alert_dialog_cancel": "Ghairi",
+  "alert_dialog_continue": "Endelea",
+  "alert_dialog_delete_trigger": "Futa Akaunti",
+  "alert_dialog_delete_title": "Futa Akaunti?",
+  "alert_dialog_delete_description": "Hii itafuta akaunti yako na data zote zinazohusiana kwa kudumu. Kitendo hiki hakiwezi kutenduliwa.",
+  "alert_dialog_delete_action": "Futa"
 }

@@ -584,5 +584,15 @@
   "alert_error_description": "Harap verifikasi informasi penagihan Anda dan coba lagi.",
   "alert_error_check_card": "Periksa detail kartu Anda",
   "alert_error_ensure_funds": "Pastikan dana mencukupi",
-  "alert_error_verify_address": "Verifikasi alamat penagihan"
+  "alert_error_verify_address": "Verifikasi alamat penagihan",
+  "alert_dialog_heading": "Dialog Peringatan",
+  "alert_dialog_show": "Tampilkan Dialog",
+  "alert_dialog_title": "Apakah Anda benar-benar yakin?",
+  "alert_dialog_description": "Tindakan ini tidak dapat dibatalkan. Ini akan menghapus akun Anda secara permanen dan menghapus data Anda dari server kami.",
+  "alert_dialog_cancel": "Batal",
+  "alert_dialog_continue": "Lanjutkan",
+  "alert_dialog_delete_trigger": "Hapus Akun",
+  "alert_dialog_delete_title": "Hapus Akun?",
+  "alert_dialog_delete_description": "Ini akan menghapus akun Anda dan semua data terkait secara permanen. Tindakan ini tidak dapat dibatalkan.",
+  "alert_dialog_delete_action": "Hapus"
 }

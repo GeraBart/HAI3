@@ -167,6 +167,7 @@ export function getElementId(elementName: string): string {
 export const IMPLEMENTED_ELEMENTS = [
   'Accordion',
   'Alert',
+  'Alert Dialog',
   'Aspect Ratio',
   'Avatar',
   'Badge',

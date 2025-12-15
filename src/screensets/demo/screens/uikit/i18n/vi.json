@@ -584,5 +584,15 @@
   "alert_error_description": "Vui lòng xác minh thông tin thanh toán và thử lại.",
   "alert_error_check_card": "Kiểm tra thông tin thẻ",
   "alert_error_ensure_funds": "Đảm bảo đủ số dư",
-  "alert_error_verify_address": "Xác minh địa chỉ thanh toán"
+  "alert_error_verify_address": "Xác minh địa chỉ thanh toán",
+  "alert_dialog_heading": "Hộp thoại cảnh báo",
+  "alert_dialog_show": "Hiển thị hộp thoại",
+  "alert_dialog_title": "Bạn có chắc chắn không?",
+  "alert_dialog_description": "Hành động này không thể hoàn tác. Điều này sẽ xóa vĩnh viễn tài khoản của bạn và xóa dữ liệu của bạn khỏi máy chủ của chúng tôi.",
+  "alert_dialog_cancel": "Hủy",
+  "alert_dialog_continue": "Tiếp tục",
+  "alert_dialog_delete_trigger": "Xóa tài khoản",
+  "alert_dialog_delete_title": "Xóa tài khoản?",
+  "alert_dialog_delete_description": "Điều này sẽ xóa vĩnh viễn tài khoản của bạn và tất cả dữ liệu liên quan. Hành động này không thể đảo ngược.",
+  "alert_dialog_delete_action": "Xóa"
 }

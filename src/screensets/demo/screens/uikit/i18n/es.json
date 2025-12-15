@@ -580,5 +580,15 @@
   "alert_error_description": "Por favor verifica tu información de facturación e intenta de nuevo.",
   "alert_error_check_card": "Verifica los datos de tu tarjeta",
   "alert_error_ensure_funds": "Asegura fondos suficientes",
-  "alert_error_verify_address": "Verifica la dirección de facturación"
+  "alert_error_verify_address": "Verifica la dirección de facturación",
+  "alert_dialog_heading": "Diálogo de alerta",
+  "alert_dialog_show": "Mostrar diálogo",
+  "alert_dialog_title": "¿Está completamente seguro?",
+  "alert_dialog_description": "Esta acción no se puede deshacer. Eliminará permanentemente su cuenta y eliminará sus datos de nuestros servidores.",
+  "alert_dialog_cancel": "Cancelar",
+  "alert_dialog_continue": "Continuar",
+  "alert_dialog_delete_trigger": "Eliminar cuenta",
+  "alert_dialog_delete_title": "¿Eliminar cuenta?",
+  "alert_dialog_delete_description": "Esto eliminará permanentemente su cuenta y todos los datos asociados. Esta acción no se puede revertir.",
+  "alert_dialog_delete_action": "Eliminar"
 }

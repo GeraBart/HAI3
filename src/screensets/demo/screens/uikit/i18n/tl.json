@@ -584,5 +584,15 @@
   "alert_error_description": "Pakiberipika ang iyong impormasyon sa pagsingil at subukan muli.",
   "alert_error_check_card": "Suriin ang mga detalye ng iyong card",
   "alert_error_ensure_funds": "Tiyaking may sapat na pondo",
-  "alert_error_verify_address": "I-verify ang address ng pagsingil"
+  "alert_error_verify_address": "I-verify ang address ng pagsingil",
+  "alert_dialog_heading": "Alert Dialog",
+  "alert_dialog_show": "Ipakita ang Dialog",
+  "alert_dialog_title": "Sigurado ka bang talaga?",
+  "alert_dialog_description": "Hindi mababawi ang aksyon na ito. Permanenteng mabubura ang iyong account at maaalis ang iyong data mula sa aming mga server.",
+  "alert_dialog_cancel": "Kanselahin",
+  "alert_dialog_continue": "Magpatuloy",
+  "alert_dialog_delete_trigger": "Burahin ang Account",
+  "alert_dialog_delete_title": "Burahin ang Account?",
+  "alert_dialog_delete_description": "Permanenteng mabubura ang iyong account at lahat ng kaugnay na data. Hindi mababawi ang aksyon na ito.",
+  "alert_dialog_delete_action": "Burahin"
 }

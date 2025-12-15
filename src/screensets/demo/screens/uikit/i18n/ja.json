@@ -584,5 +584,15 @@
   "alert_error_description": "請求情報を確認して、もう一度お試しください。",
   "alert_error_check_card": "カード情報を確認",
   "alert_error_ensure_funds": "十分な残高を確保",
-  "alert_error_verify_address": "請求先住所を確認"
+  "alert_error_verify_address": "請求先住所を確認",
+  "alert_dialog_heading": "アラートダイアログ",
+  "alert_dialog_show": "ダイアログを表示",
+  "alert_dialog_title": "本当によろしいですか？",
+  "alert_dialog_description": "この操作は元に戻せません。アカウントが完全に削除され、サーバーからデータが削除されます。",
+  "alert_dialog_cancel": "キャンセル",
+  "alert_dialog_continue": "続行",
+  "alert_dialog_delete_trigger": "アカウントを削除",
+  "alert_dialog_delete_title": "アカウントを削除しますか？",
+  "alert_dialog_delete_description": "アカウントと関連するすべてのデータが完全に削除されます。この操作は取り消せません。",
+  "alert_dialog_delete_action": "削除"
 }

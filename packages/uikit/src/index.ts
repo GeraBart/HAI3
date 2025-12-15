@@ -177,6 +177,21 @@ export {
   DialogDescription,
 } from './base/dialog';
 
+// radix alert-dialog (confirmation modals)
+export {
+  AlertDialog,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from './base/alert-dialog';
+
 // vaul drawer (mobile-friendly)
 export {
   Drawer,

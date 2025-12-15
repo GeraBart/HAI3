@@ -584,5 +584,15 @@
   "alert_error_description": "অনুগ্রহ করে আপনার বিলিং তথ্য যাচাই করুন এবং আবার চেষ্টা করুন।",
   "alert_error_check_card": "আপনার কার্ডের বিবরণ পরীক্ষা করুন",
   "alert_error_ensure_funds": "পর্যাপ্ত তহবিল নিশ্চিত করুন",
-  "alert_error_verify_address": "বিলিং ঠিকানা যাচাই করুন"
+  "alert_error_verify_address": "বিলিং ঠিকানা যাচাই করুন",
+  "alert_dialog_heading": "সতর্কতা ডায়ালগ",
+  "alert_dialog_show": "ডায়ালগ দেখান",
+  "alert_dialog_title": "আপনি কি সম্পূর্ণ নিশ্চিত?",
+  "alert_dialog_description": "এই ক্রিয়াটি পূর্বাবস্থায় ফেরানো যাবে না। এটি স্থায়ীভাবে আপনার অ্যাকাউন্ট মুছে দেবে এবং আমাদের সার্ভার থেকে আপনার ডেটা সরিয়ে দেবে।",
+  "alert_dialog_cancel": "বাতিল",
+  "alert_dialog_continue": "চালিয়ে যান",
+  "alert_dialog_delete_trigger": "অ্যাকাউন্ট মুছুন",
+  "alert_dialog_delete_title": "অ্যাকাউন্ট মুছবেন?",
+  "alert_dialog_delete_description": "এটি স্থায়ীভাবে আপনার অ্যাকাউন্ট এবং সমস্ত সম্পর্কিত ডেটা মুছে দেবে। এই ক্রিয়াটি বিপরীত করা যাবে না।",
+  "alert_dialog_delete_action": "মুছুন"
 }

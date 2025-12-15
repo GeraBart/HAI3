@@ -584,5 +584,15 @@
   "alert_error_description": "Ověřte prosím své fakturační údaje a zkuste to znovu.",
   "alert_error_check_card": "Zkontrolujte údaje karty",
   "alert_error_ensure_funds": "Zajistěte dostatečné prostředky",
-  "alert_error_verify_address": "Ověřte fakturační adresu"
+  "alert_error_verify_address": "Ověřte fakturační adresu",
+  "alert_dialog_heading": "Výstražný dialog",
+  "alert_dialog_show": "Zobrazit dialog",
+  "alert_dialog_title": "Jste si naprosto jisti?",
+  "alert_dialog_description": "Tuto akci nelze vrátit zpět. Trvale odstraní váš účet a odebere vaše data z našich serverů.",
+  "alert_dialog_cancel": "Zrušit",
+  "alert_dialog_continue": "Pokračovat",
+  "alert_dialog_delete_trigger": "Smazat účet",
+  "alert_dialog_delete_title": "Smazat účet?",
+  "alert_dialog_delete_description": "Toto trvale smaže váš účet a všechna související data. Tuto akci nelze vrátit.",
+  "alert_dialog_delete_action": "Smazat"
 }

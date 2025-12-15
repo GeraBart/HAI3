@@ -584,5 +584,15 @@
   "alert_error_description": "청구 정보를 확인하고 다시 시도하세요.",
   "alert_error_check_card": "카드 정보 확인",
   "alert_error_ensure_funds": "잔액 확인",
-  "alert_error_verify_address": "청구 주소 확인"
+  "alert_error_verify_address": "청구 주소 확인",
+  "alert_dialog_heading": "경고 대화상자",
+  "alert_dialog_show": "대화상자 표시",
+  "alert_dialog_title": "정말로 확실합니까?",
+  "alert_dialog_description": "이 작업은 취소할 수 없습니다. 계정이 영구적으로 삭제되고 서버에서 데이터가 제거됩니다.",
+  "alert_dialog_cancel": "취소",
+  "alert_dialog_continue": "계속",
+  "alert_dialog_delete_trigger": "계정 삭제",
+  "alert_dialog_delete_title": "계정을 삭제하시겠습니까?",
+  "alert_dialog_delete_description": "계정과 모든 관련 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
+  "alert_dialog_delete_action": "삭제"
 }

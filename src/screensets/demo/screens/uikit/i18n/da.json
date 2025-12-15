@@ -584,5 +584,15 @@
   "alert_error_description": "Bekræft venligst dine faktureringsoplysninger og prøv igen.",
   "alert_error_check_card": "Kontroller dine kortoplysninger",
   "alert_error_ensure_funds": "Sørg for tilstrækkelige midler",
-  "alert_error_verify_address": "Bekræft faktureringsadresse"
+  "alert_error_verify_address": "Bekræft faktureringsadresse",
+  "alert_dialog_heading": "Advarselsdialog",
+  "alert_dialog_show": "Vis dialog",
+  "alert_dialog_title": "Er du helt sikker?",
+  "alert_dialog_description": "Denne handling kan ikke fortrydes. Dette vil permanent slette din konto og fjerne dine data fra vores servere.",
+  "alert_dialog_cancel": "Annuller",
+  "alert_dialog_continue": "Fortsæt",
+  "alert_dialog_delete_trigger": "Slet konto",
+  "alert_dialog_delete_title": "Slet konto?",
+  "alert_dialog_delete_description": "Dette vil permanent slette din konto og alle tilknyttede data. Denne handling kan ikke fortrydes.",
+  "alert_dialog_delete_action": "Slet"
 }

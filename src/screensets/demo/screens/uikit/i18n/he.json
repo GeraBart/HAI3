@@ -584,5 +584,15 @@
   "alert_error_description": "אנא אמת את פרטי החיוב ונסה שוב.",
   "alert_error_check_card": "בדוק את פרטי הכרטיס",
   "alert_error_ensure_funds": "ודא יתרה מספקת",
-  "alert_error_verify_address": "אמת כתובת לחיוב"
+  "alert_error_verify_address": "אמת כתובת לחיוב",
+  "alert_dialog_heading": "תיבת דו-שיח התראה",
+  "alert_dialog_show": "הצג דו-שיח",
+  "alert_dialog_title": "האם אתה בטוח לחלוטין?",
+  "alert_dialog_description": "לא ניתן לבטל פעולה זו. פעולה זו תמחק לצמיתות את החשבון שלך ותסיר את הנתונים שלך מהשרתים שלנו.",
+  "alert_dialog_cancel": "ביטול",
+  "alert_dialog_continue": "המשך",
+  "alert_dialog_delete_trigger": "מחק חשבון",
+  "alert_dialog_delete_title": "למחוק חשבון?",
+  "alert_dialog_delete_description": "פעולה זו תמחק לצמיתות את החשבון שלך ואת כל הנתונים הקשורים. לא ניתן לבטל פעולה זו.",
+  "alert_dialog_delete_action": "מחק"
 }

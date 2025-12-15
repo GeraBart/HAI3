@@ -584,5 +584,15 @@
   "alert_error_description": "请验证您的账单信息并重试。",
   "alert_error_check_card": "检查您的卡片详情",
   "alert_error_ensure_funds": "确保余额充足",
-  "alert_error_verify_address": "验证账单地址"
+  "alert_error_verify_address": "验证账单地址",
+  "alert_dialog_heading": "警告对话框",
+  "alert_dialog_show": "显示对话框",
+  "alert_dialog_title": "您确定吗？",
+  "alert_dialog_description": "此操作无法撤消。这将永久删除您的帐户并从我们的服务器中删除您的数据。",
+  "alert_dialog_cancel": "取消",
+  "alert_dialog_continue": "继续",
+  "alert_dialog_delete_trigger": "删除帐户",
+  "alert_dialog_delete_title": "删除帐户？",
+  "alert_dialog_delete_description": "这将永久删除您的帐户和所有相关数据。此操作无法撤消。",
+  "alert_dialog_delete_action": "删除"
 }

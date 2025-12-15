@@ -1,5 +1,23 @@
 import React, { useState } from 'react';
-import { Alert, AlertTitle, AlertDescription, Progress, Skeleton, Spinner } from '@hai3/uikit';
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+  Button,
+  ButtonVariant,
+  Progress,
+  Skeleton,
+  Spinner,
+} from '@hai3/uikit';
 import { useTranslation, TextLoader } from '@hai3/uicore';
 import { AlertCircleIcon, CheckCircle2Icon, PopcornIcon } from 'lucide-react';
 import { LoaderIcon } from '../uikit/icons/LoaderIcon';
@@ -86,6 +104,92 @@ export const FeedbackElements: React.FC = () => {
                 </ul>
               </AlertDescription>
             </Alert>
+          </div>
+        </div>
+      </div>
+
+      {/* Alert Dialog Element Block */}
+      <div data-element-id="element-alert-dialog" className="flex flex-col gap-4">
+        <TextLoader skeletonClassName="h-8 w-32">
+          <h2 className="text-2xl font-semibold">
+            {tk('alert_dialog_heading')}
+          </h2>
+        </TextLoader>
+        <div className="flex items-center justify-center p-6 border border-border rounded-lg bg-background overflow-hidden">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {/* Basic Alert Dialog */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant={ButtonVariant.Outline}>
+                  <TextLoader skeletonClassName="h-4 w-20" inheritColor>
+                    {tk('alert_dialog_show')}
+                  </TextLoader>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    <TextLoader skeletonClassName="h-5 w-48" inheritColor>
+                      {tk('alert_dialog_title')}
+                    </TextLoader>
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    <TextLoader skeletonClassName="h-4 w-72">
+                      {tk('alert_dialog_description')}
+                    </TextLoader>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>
+                    <TextLoader skeletonClassName="h-4 w-14" inheritColor>
+                      {tk('alert_dialog_cancel')}
+                    </TextLoader>
+                  </AlertDialogCancel>
+                  <AlertDialogAction>
+                    <TextLoader skeletonClassName="h-4 w-16" inheritColor>
+                      {tk('alert_dialog_continue')}
+                    </TextLoader>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Destructive Alert Dialog */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant={ButtonVariant.Destructive}>
+                  <TextLoader skeletonClassName="h-4 w-28" inheritColor>
+                    {tk('alert_dialog_delete_trigger')}
+                  </TextLoader>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    <TextLoader skeletonClassName="h-5 w-48" inheritColor>
+                      {tk('alert_dialog_delete_title')}
+                    </TextLoader>
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    <TextLoader skeletonClassName="h-4 w-80">
+                      {tk('alert_dialog_delete_description')}
+                    </TextLoader>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>
+                    <TextLoader skeletonClassName="h-4 w-14" inheritColor>
+                      {tk('alert_dialog_cancel')}
+                    </TextLoader>
+                  </AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <TextLoader skeletonClassName="h-4 w-14" inheritColor>
+                      {tk('alert_dialog_delete_action')}
+                    </TextLoader>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

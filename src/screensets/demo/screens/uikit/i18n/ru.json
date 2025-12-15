@@ -584,5 +584,15 @@
   "alert_error_description": "Пожалуйста, проверьте платежные данные и попробуйте снова.",
   "alert_error_check_card": "Проверьте данные карты",
   "alert_error_ensure_funds": "Убедитесь в достаточном балансе",
-  "alert_error_verify_address": "Проверьте адрес выставления счета"
+  "alert_error_verify_address": "Проверьте адрес выставления счета",
+  "alert_dialog_heading": "Диалог предупреждения",
+  "alert_dialog_show": "Показать диалог",
+  "alert_dialog_title": "Вы абсолютно уверены?",
+  "alert_dialog_description": "Это действие нельзя отменить. Ваш аккаунт будет удален навсегда, а данные будут удалены с наших серверов.",
+  "alert_dialog_cancel": "Отмена",
+  "alert_dialog_continue": "Продолжить",
+  "alert_dialog_delete_trigger": "Удалить аккаунт",
+  "alert_dialog_delete_title": "Удалить аккаунт?",
+  "alert_dialog_delete_description": "Ваш аккаунт и все связанные данные будут удалены навсегда. Это действие нельзя отменить.",
+  "alert_dialog_delete_action": "Удалить"
 }

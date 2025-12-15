@@ -584,5 +584,15 @@
   "alert_error_description": "Please verify your billing information and try again.",
   "alert_error_check_card": "Check your card details",
   "alert_error_ensure_funds": "Ensure sufficient funds",
-  "alert_error_verify_address": "Verify billing address"
+  "alert_error_verify_address": "Verify billing address",
+  "alert_dialog_heading": "Alert Dialog",
+  "alert_dialog_show": "Show Dialog",
+  "alert_dialog_title": "Are you absolutely sure?",
+  "alert_dialog_description": "This action cannot be undone. This will permanently delete your account and remove your data from our servers.",
+  "alert_dialog_cancel": "Cancel",
+  "alert_dialog_continue": "Continue",
+  "alert_dialog_delete_trigger": "Delete Account",
+  "alert_dialog_delete_title": "Delete Account?",
+  "alert_dialog_delete_description": "This will permanently delete your account and all associated data. This action cannot be reversed.",
+  "alert_dialog_delete_action": "Delete"
 }

@@ -584,5 +584,15 @@
   "alert_error_description": "कृपया अपनी बिलिंग जानकारी सत्यापित करें और पुनः प्रयास करें।",
   "alert_error_check_card": "अपने कार्ड विवरण जांचें",
   "alert_error_ensure_funds": "पर्याप्त धनराशि सुनिश्चित करें",
-  "alert_error_verify_address": "बिलिंग पता सत्यापित करें"
+  "alert_error_verify_address": "बिलिंग पता सत्यापित करें",
+  "alert_dialog_heading": "अलर्ट डायलॉग",
+  "alert_dialog_show": "डायलॉग दिखाएं",
+  "alert_dialog_title": "क्या आप बिल्कुल निश्चित हैं?",
+  "alert_dialog_description": "इस क्रिया को पूर्ववत नहीं किया जा सकता। यह आपके खाते को स्थायी रूप से हटा देगा और हमारे सर्वर से आपका डेटा हटा देगा।",
+  "alert_dialog_cancel": "रद्द करें",
+  "alert_dialog_continue": "जारी रखें",
+  "alert_dialog_delete_trigger": "खाता हटाएं",
+  "alert_dialog_delete_title": "खाता हटाएं?",
+  "alert_dialog_delete_description": "यह आपके खाते और सभी संबंधित डेटा को स्थायी रूप से हटा देगा। इस क्रिया को वापस नहीं किया जा सकता।",
+  "alert_dialog_delete_action": "हटाएं"
 }

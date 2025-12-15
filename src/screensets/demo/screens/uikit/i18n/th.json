@@ -584,5 +584,15 @@
   "alert_error_description": "กรุณาตรวจสอบข้อมูลการเรียกเก็บเงินและลองอีกครั้ง",
   "alert_error_check_card": "ตรวจสอบรายละเอียดบัตรของคุณ",
   "alert_error_ensure_funds": "ตรวจสอบยอดเงินคงเหลือ",
-  "alert_error_verify_address": "ยืนยันที่อยู่สำหรับเรียกเก็บเงิน"
+  "alert_error_verify_address": "ยืนยันที่อยู่สำหรับเรียกเก็บเงิน",
+  "alert_dialog_heading": "กล่องโต้ตอบแจ้งเตือน",
+  "alert_dialog_show": "แสดงกล่องโต้ตอบ",
+  "alert_dialog_title": "คุณแน่ใจหรือไม่?",
+  "alert_dialog_description": "การดำเนินการนี้ไม่สามารถยกเลิกได้ จะลบบัญชีของคุณอย่างถาวรและลบข้อมูลของคุณออกจากเซิร์ฟเวอร์ของเรา",
+  "alert_dialog_cancel": "ยกเลิก",
+  "alert_dialog_continue": "ดำเนินการต่อ",
+  "alert_dialog_delete_trigger": "ลบบัญชี",
+  "alert_dialog_delete_title": "ลบบัญชี?",
+  "alert_dialog_delete_description": "การดำเนินการนี้จะลบบัญชีของคุณและข้อมูลที่เกี่ยวข้องทั้งหมดอย่างถาวร ไม่สามารถยกเลิกได้",
+  "alert_dialog_delete_action": "ลบ"
 }

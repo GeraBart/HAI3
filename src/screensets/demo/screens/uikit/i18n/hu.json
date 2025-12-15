@@ -584,5 +584,15 @@
   "alert_error_description": "Kérjük, ellenőrizze számlázási adatait és próbálja újra.",
   "alert_error_check_card": "Ellenőrizze a kártyaadatokat",
   "alert_error_ensure_funds": "Biztosítson elegendő fedezetet",
-  "alert_error_verify_address": "Ellenőrizze a számlázási címet"
+  "alert_error_verify_address": "Ellenőrizze a számlázási címet",
+  "alert_dialog_heading": "Figyelmeztető párbeszédpanel",
+  "alert_dialog_show": "Párbeszédpanel megjelenítése",
+  "alert_dialog_title": "Teljesen biztos benne?",
+  "alert_dialog_description": "Ez a művelet nem vonható vissza. Véglegesen törli a fiókját és eltávolítja az adatait a szervereinkről.",
+  "alert_dialog_cancel": "Mégse",
+  "alert_dialog_continue": "Folytatás",
+  "alert_dialog_delete_trigger": "Fiók törlése",
+  "alert_dialog_delete_title": "Fiók törlése?",
+  "alert_dialog_delete_description": "Ez véglegesen törli a fiókját és az összes kapcsolódó adatot. Ez a művelet nem visszavonható.",
+  "alert_dialog_delete_action": "Törlés"
 }

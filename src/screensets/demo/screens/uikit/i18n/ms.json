@@ -584,5 +584,15 @@
   "alert_error_description": "Sila sahkan maklumat pengebilan anda dan cuba lagi.",
   "alert_error_check_card": "Semak butiran kad anda",
   "alert_error_ensure_funds": "Pastikan dana mencukupi",
-  "alert_error_verify_address": "Sahkan alamat pengebilan"
+  "alert_error_verify_address": "Sahkan alamat pengebilan",
+  "alert_dialog_heading": "Dialog Amaran",
+  "alert_dialog_show": "Tunjukkan Dialog",
+  "alert_dialog_title": "Adakah anda benar-benar pasti?",
+  "alert_dialog_description": "Tindakan ini tidak boleh dibuat asal. Ini akan memadamkan akaun anda secara kekal dan mengalih keluar data anda dari pelayan kami.",
+  "alert_dialog_cancel": "Batal",
+  "alert_dialog_continue": "Teruskan",
+  "alert_dialog_delete_trigger": "Padam Akaun",
+  "alert_dialog_delete_title": "Padam Akaun?",
+  "alert_dialog_delete_description": "Ini akan memadamkan akaun anda dan semua data berkaitan secara kekal. Tindakan ini tidak boleh diterbalikkan.",
+  "alert_dialog_delete_action": "Padam"
 }

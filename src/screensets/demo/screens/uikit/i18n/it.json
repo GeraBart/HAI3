@@ -584,5 +584,15 @@
   "alert_error_description": "Verifica le informazioni di fatturazione e riprova.",
   "alert_error_check_card": "Controlla i dati della carta",
   "alert_error_ensure_funds": "Assicurati di avere fondi sufficienti",
-  "alert_error_verify_address": "Verifica l'indirizzo di fatturazione"
+  "alert_error_verify_address": "Verifica l'indirizzo di fatturazione",
+  "alert_dialog_heading": "Finestra di avviso",
+  "alert_dialog_show": "Mostra finestra",
+  "alert_dialog_title": "Sei assolutamente sicuro?",
+  "alert_dialog_description": "Questa azione non può essere annullata. Eliminerà permanentemente il tuo account e rimuoverà i tuoi dati dai nostri server.",
+  "alert_dialog_cancel": "Annulla",
+  "alert_dialog_continue": "Continua",
+  "alert_dialog_delete_trigger": "Elimina account",
+  "alert_dialog_delete_title": "Eliminare account?",
+  "alert_dialog_delete_description": "Questo eliminerà permanentemente il tuo account e tutti i dati associati. Questa azione non può essere annullata.",
+  "alert_dialog_delete_action": "Elimina"
 }

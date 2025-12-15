@@ -584,5 +584,15 @@
   "alert_error_description": "உங்கள் பில்லிங் தகவலை சரிபார்த்து மீண்டும் முயற்சிக்கவும்.",
   "alert_error_check_card": "உங்கள் கார்டு விவரங்களை சரிபார்க்கவும்",
   "alert_error_ensure_funds": "போதுமான இருப்பை உறுதிசெய்க",
-  "alert_error_verify_address": "பில்லிங் முகவரியை சரிபார்க்கவும்"
+  "alert_error_verify_address": "பில்லிங் முகவரியை சரிபார்க்கவும்",
+  "alert_dialog_heading": "எச்சரிக்கை உரையாடல்",
+  "alert_dialog_show": "உரையாடலைக் காட்டு",
+  "alert_dialog_title": "நீங்கள் முற்றிலும் உறுதியாக இருக்கிறீர்களா?",
+  "alert_dialog_description": "இந்தச் செயலை மாற்ற முடியாது. இது உங்கள் கணக்கை நிரந்தரமாக நீக்கி, எங்கள் சர்வர்களிலிருந்து உங்கள் தரவை அகற்றும்.",
+  "alert_dialog_cancel": "ரத்துசெய்",
+  "alert_dialog_continue": "தொடர்க",
+  "alert_dialog_delete_trigger": "கணக்கை நீக்கு",
+  "alert_dialog_delete_title": "கணக்கை நீக்கவா?",
+  "alert_dialog_delete_description": "இது உங்கள் கணக்கையும் அனைத்து தொடர்புடைய தரவையும் நிரந்தரமாக நீக்கும். இந்தச் செயலை மாற்ற முடியாது.",
+  "alert_dialog_delete_action": "நீக்கு"
 }

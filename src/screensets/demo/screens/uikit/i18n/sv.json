@@ -584,5 +584,15 @@
   "alert_error_description": "Vänligen verifiera din faktureringsinformation och försök igen.",
   "alert_error_check_card": "Kontrollera dina kortuppgifter",
   "alert_error_ensure_funds": "Säkerställ tillräckligt saldo",
-  "alert_error_verify_address": "Verifiera faktureringsadress"
+  "alert_error_verify_address": "Verifiera faktureringsadress",
+  "alert_dialog_heading": "Varningsdialog",
+  "alert_dialog_show": "Visa dialog",
+  "alert_dialog_title": "Är du helt säker?",
+  "alert_dialog_description": "Denna åtgärd kan inte ångras. Detta kommer permanent radera ditt konto och ta bort dina data från våra servrar.",
+  "alert_dialog_cancel": "Avbryt",
+  "alert_dialog_continue": "Fortsätt",
+  "alert_dialog_delete_trigger": "Radera konto",
+  "alert_dialog_delete_title": "Radera konto?",
+  "alert_dialog_delete_description": "Detta kommer permanent radera ditt konto och all associerad data. Denna åtgärd kan inte ångras.",
+  "alert_dialog_delete_action": "Radera"
 }

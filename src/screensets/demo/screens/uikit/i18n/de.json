@@ -584,5 +584,15 @@
   "alert_error_description": "Bitte überprüfen Sie Ihre Rechnungsdaten und versuchen Sie es erneut.",
   "alert_error_check_card": "Überprüfen Sie Ihre Kartendaten",
   "alert_error_ensure_funds": "Stellen Sie ausreichend Guthaben sicher",
-  "alert_error_verify_address": "Rechnungsadresse überprüfen"
+  "alert_error_verify_address": "Rechnungsadresse überprüfen",
+  "alert_dialog_heading": "Warndialog",
+  "alert_dialog_show": "Dialog anzeigen",
+  "alert_dialog_title": "Sind Sie absolut sicher?",
+  "alert_dialog_description": "Diese Aktion kann nicht rückgängig gemacht werden. Ihr Konto wird dauerhaft gelöscht und Ihre Daten werden von unseren Servern entfernt.",
+  "alert_dialog_cancel": "Abbrechen",
+  "alert_dialog_continue": "Fortfahren",
+  "alert_dialog_delete_trigger": "Konto löschen",
+  "alert_dialog_delete_title": "Konto löschen?",
+  "alert_dialog_delete_description": "Ihr Konto und alle zugehörigen Daten werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+  "alert_dialog_delete_action": "Löschen"
 }

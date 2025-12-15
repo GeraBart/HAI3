@@ -584,5 +584,15 @@
   "alert_error_description": "Будь ласка, перевірте платіжні дані та спробуйте знову.",
   "alert_error_check_card": "Перевірте дані картки",
   "alert_error_ensure_funds": "Переконайтеся в достатньому балансі",
-  "alert_error_verify_address": "Перевірте адресу виставлення рахунку"
+  "alert_error_verify_address": "Перевірте адресу виставлення рахунку",
+  "alert_dialog_heading": "Діалог попередження",
+  "alert_dialog_show": "Показати діалог",
+  "alert_dialog_title": "Ви абсолютно впевнені?",
+  "alert_dialog_description": "Цю дію неможливо скасувати. Ваш обліковий запис буде видалено назавжди, а дані будуть видалені з наших серверів.",
+  "alert_dialog_cancel": "Скасувати",
+  "alert_dialog_continue": "Продовжити",
+  "alert_dialog_delete_trigger": "Видалити обліковий запис",
+  "alert_dialog_delete_title": "Видалити обліковий запис?",
+  "alert_dialog_delete_description": "Ваш обліковий запис та всі пов'язані дані будуть видалені назавжди. Цю дію неможливо скасувати.",
+  "alert_dialog_delete_action": "Видалити"
 }

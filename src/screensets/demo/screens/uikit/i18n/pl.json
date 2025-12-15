@@ -584,5 +584,15 @@
   "alert_error_description": "Zweryfikuj dane rozliczeniowe i spróbuj ponownie.",
   "alert_error_check_card": "Sprawdź dane karty",
   "alert_error_ensure_funds": "Upewnij się, że masz wystarczające środki",
-  "alert_error_verify_address": "Zweryfikuj adres rozliczeniowy"
+  "alert_error_verify_address": "Zweryfikuj adres rozliczeniowy",
+  "alert_dialog_heading": "Okno dialogowe ostrzeżenia",
+  "alert_dialog_show": "Pokaż okno",
+  "alert_dialog_title": "Czy jesteś całkowicie pewien?",
+  "alert_dialog_description": "Tej akcji nie można cofnąć. Spowoduje to trwałe usunięcie Twojego konta i usunięcie Twoich danych z naszych serwerów.",
+  "alert_dialog_cancel": "Anuluj",
+  "alert_dialog_continue": "Kontynuuj",
+  "alert_dialog_delete_trigger": "Usuń konto",
+  "alert_dialog_delete_title": "Usunąć konto?",
+  "alert_dialog_delete_description": "Spowoduje to trwałe usunięcie Twojego konta i wszystkich powiązanych danych. Tej akcji nie można cofnąć.",
+  "alert_dialog_delete_action": "Usuń"
 }
