@@ -1,7 +1,7 @@
 import React, { type ReactNode } from 'react';
 import { useTranslation } from './useTranslation';
 import { uikitRegistry } from '../uikit/uikitRegistry';
-import { UiKitComponent } from '@hai3/uikit-contracts';
+import { UiKitComponent } from '@hai3/uikit';
 
 export interface TextLoaderProps {
   /**

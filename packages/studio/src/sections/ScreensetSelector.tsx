@@ -1,6 +1,6 @@
 import React from 'react';
 import { upperFirst } from 'lodash';
-import { ButtonVariant } from '@hai3/uikit-contracts';
+import { ButtonVariant } from '@hai3/uikit';
 import {
   DropdownMenu,
   DropdownMenuTrigger,

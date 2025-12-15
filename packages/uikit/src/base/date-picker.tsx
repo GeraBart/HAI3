@@ -10,7 +10,7 @@ import { Input } from "./input"
 import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 import { CalendarIcon } from "../icons/CalendarIcon"
 import { ChevronDownIcon } from "../icons/ChevronDownIcon"
-import { ButtonVariant } from "@hai3/uikit-contracts"
+import { ButtonVariant } from "../types"
 
 // Context for sharing state between DatePicker components
 interface DatePickerContextValue {
@@ -201,7 +201,7 @@ function DatePickerInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setInputValue(value)
-    
+
     // Try to parse the date
     const parsed = new Date(value)
     if (!isNaN(parsed.getTime())) {

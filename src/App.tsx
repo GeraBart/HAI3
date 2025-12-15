@@ -1,15 +1,12 @@
 /**
  * HAI3 Application Component
  *
- * This component returns null because HAI3Provider renders AppRouter internally.
- * The App component exists as the conventional entry point for:
- * - Future app-specific configuration
- * - Additional providers or context (if needed)
+ * This component returns null because HAI3Provider renders AppRouter internally,
+ * which includes the Layout component.
  *
  * HAI3Provider (in main.tsx) handles:
  * - Redux Provider setup
- * - AppRouter with dynamic routing
- * - RouterSync (URL ↔ Redux)
+ * - AppRouter with BrowserRouter + RouterSync + Layout
  *
  * Framework handles everything else:
  * - Footer discovers registered themes/screensets

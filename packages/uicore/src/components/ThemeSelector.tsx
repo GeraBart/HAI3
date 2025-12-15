@@ -3,7 +3,7 @@ import { upperFirst } from 'lodash';
 import { useAppDispatch, useAppSelector } from '../hooks/useRedux';
 import { useTranslation } from '../i18n/useTranslation';
 import { uikitRegistry } from '../uikit/uikitRegistry';
-import { UiKitComponent, ButtonVariant } from '@hai3/uikit-contracts';
+import { UiKitComponent, ButtonVariant } from '@hai3/uikit';
 import { changeTheme } from '../core/actions';
 import { themeRegistry } from '../theme/themeRegistry';
 

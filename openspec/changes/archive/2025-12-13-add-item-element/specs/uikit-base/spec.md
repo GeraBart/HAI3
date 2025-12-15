@@ -150,5 +150,3 @@ The UI kit translations SHALL provide localized strings for all 36 supported lan
 - **WHEN** viewing the Item demo in a non-English language
 - **THEN** all Item labels, titles, descriptions, and action text display in the selected language
 - **AND** translations are contextually appropriate for content display conventions
-
-

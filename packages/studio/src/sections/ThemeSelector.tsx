@@ -1,7 +1,7 @@
 import React from 'react';
 import { upperFirst } from 'lodash';
 import { useAppDispatch, useAppSelector, useTranslation } from '@hai3/uicore';
-import { ButtonVariant } from '@hai3/uikit-contracts';
+import { ButtonVariant } from '@hai3/uikit';
 import { changeTheme, themeRegistry } from '@hai3/uicore';
 import {
   DropdownMenu,

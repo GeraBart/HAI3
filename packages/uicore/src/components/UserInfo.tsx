@@ -3,7 +3,7 @@ import { trim } from 'lodash';
 import { useAppSelector, useAppDispatch } from '../hooks/useRedux';
 import { fetchCurrentUser } from '../core/actions';
 import { uikitRegistry } from '../uikit/uikitRegistry';
-import { UiKitComponent } from '@hai3/uikit-contracts';
+import { UiKitComponent } from '@hai3/uikit';
 
 /**
  * UserInfo Component

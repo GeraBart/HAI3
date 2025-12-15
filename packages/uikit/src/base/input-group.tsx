@@ -7,7 +7,7 @@ import { cn } from "../lib/utils"
 import { Button } from "./button"
 import { Input } from "./input"
 import { Textarea } from "./textarea"
-import { ButtonVariant } from "@hai3/uikit-contracts"
+import { ButtonVariant } from "../types"
 
 const InputGroup = React.forwardRef<
   HTMLDivElement,

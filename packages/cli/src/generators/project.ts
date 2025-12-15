@@ -109,6 +109,14 @@ export async function generateProject(
     files.push(...dirFiles);
   }
 
+  // 3.0 Copy layout templates based on uikit option
+  const layoutUiKit = uikit === 'hai3' ? 'hai3-uikit' : 'custom';
+  const layoutDir = path.join(templatesDir, 'layout', layoutUiKit);
+  if (await fs.pathExists(layoutDir)) {
+    const layoutFiles = await readDirRecursive(layoutDir, 'src/layout');
+    files.push(...layoutFiles);
+  }
+
   // 3.1 Copy AI configuration directories (.ai, .claude, .cursor, .windsurf)
   const aiDirs = ['.ai', '.claude', '.cursor', '.windsurf'];
   for (const dir of aiDirs) {
@@ -175,7 +183,7 @@ export async function generateProject(
   // This resolves to the latest alpha version from npm
   const dependencies: Record<string, string> = {
     '@hai3/uicore': 'alpha',
-    '@hai3/uikit-contracts': 'alpha',
+    '@hai3/uikit': 'alpha',
     '@reduxjs/toolkit': '2.2.1',
     lodash: '4.17.21',
     'lucide-react': '0.344.0',
@@ -185,10 +193,6 @@ export async function generateProject(
     'remark-gfm': '4.0.1',
     'tailwindcss-animate': '1.0.7',
   };
-
-  if (uikit === 'hai3') {
-    dependencies['@hai3/uikit'] = 'alpha';
-  }
 
   const devDependencies: Record<string, string> = {
     '@hai3/cli': 'alpha',
@@ -237,6 +241,7 @@ export async function generateProject(
       'arch:check': 'npx tsx scripts/test-architecture.ts',
       'arch:deps':
         'npx dependency-cruiser src/ --config .dependency-cruiser.cjs --output-type err-long',
+      'ai:sync': 'npx hai3 ai sync',
       'prek:install': 'npx prek install',
       'prek:run': 'npx prek run --all-files',
       postinstall: 'npx prek install',

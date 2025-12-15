@@ -3,7 +3,7 @@ import { useAppSelector } from '../../../hooks/useRedux';
 import { navigateToScreen } from '../../../core/actions';
 import { toggleMenu } from '../../../core/actions';
 import { uikitRegistry } from '../../../uikit/uikitRegistry';
-import { UiKitComponent, UiKitIcon } from '@hai3/uikit-contracts';
+import { UiKitComponent, UiKitIcon } from '@hai3/uikit';
 import { useTranslation } from '../../../i18n/useTranslation';
 import { TextLoader } from '../../../i18n/TextLoader';
 

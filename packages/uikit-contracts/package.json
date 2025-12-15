@@ -1,7 +1,8 @@
 {
   "name": "@hai3/uikit-contracts",
   "version": "0.1.0-alpha.1",
-  "description": "UI Kit contract definitions for HAI3 framework",
+  "description": "[DEPRECATED] UI Kit contract definitions - Use @hai3/uikit types directly",
+  "deprecated": "This package is deprecated. Import types directly from @hai3/uikit.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

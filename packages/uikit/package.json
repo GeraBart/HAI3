@@ -52,7 +52,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@hai3/uikit-contracts": "*",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -98,7 +97,6 @@
     "vaul": "^1.1.2"
   },
   "peerDependencies": {
-    "@hai3/uikit-contracts": "*",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },

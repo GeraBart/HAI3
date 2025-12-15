@@ -146,4 +146,3 @@ The UI kit translations SHALL provide localized strings for all 36 supported lan
 - **WHEN** viewing the Input Group demo in a non-English language
 - **THEN** all Input Group labels, placeholders, button text, and tooltips display in the selected language
 - **AND** translations are contextually appropriate for form conventions
-

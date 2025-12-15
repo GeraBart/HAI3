@@ -1,4 +1,27 @@
 /**
+ * @hai3/uikit-contracts - [DEPRECATED]
+ *
+ * This package is deprecated. Import types directly from @hai3/uikit instead.
+ *
+ * MIGRATION:
+ * - ButtonVariant, ButtonSize, etc. → import from '@hai3/uikit'
+ * - Theme → import from '@hai3/framework' (or define your own)
+ * - TextDirection → import from '@hai3/i18n'
+ *
+ * These exports are maintained for backward compatibility only.
+ *
+ * @deprecated Import types from @hai3/uikit or @hai3/framework
+ */
+
+// Show deprecation warning on import (development only)
+if (process.env.NODE_ENV === 'development') {
+  console.warn(
+    '[@hai3/uikit-contracts] This package is deprecated.\n' +
+    'Import types from @hai3/uikit or @hai3/framework instead.'
+  );
+}
+
+/**
  * Component Type Contracts
  * Defines the public API that any UI Kit implementation must fulfill
  * UI Core depends on these interfaces, not concrete implementations

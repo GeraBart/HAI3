@@ -1,4 +1,4 @@
-import { TextDirection } from '@hai3/uikit-contracts';
+import { TextDirection } from '@hai3/i18n';
 
 /**
  * I18n configuration constants
@@ -15,7 +15,7 @@ export const HTML_DIR_ATTRIBUTE = 'dir';
 
 /**
  * Text direction for languages
- * Re-exported from @hai3/uikit-contracts for convenience
+ * Re-exported from @hai3/i18n for convenience
  */
 export { TextDirection };
 

@@ -3,7 +3,7 @@ import { trim } from 'lodash';
 import { useAppSelector } from '../../../hooks/useRedux';
 import { screensetRegistry } from '../../../screensets/screensetRegistry';
 import { uikitRegistry } from '../../../uikit/uikitRegistry';
-import { UiKitComponent } from '@hai3/uikit-contracts';
+import { UiKitComponent } from '@hai3/uikit';
 
 /**
  * Loading fallback component for lazy-loaded screens

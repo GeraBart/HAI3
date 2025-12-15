@@ -41,5 +41,3 @@ The Item component is a fundamental building block for displaying structured con
 - Uses existing dependencies: `@radix-ui/react-slot`, `class-variance-authority`, and `Separator` component
 - No breaking changes to existing components
 - Follows established shadcn/ui patterns with CVA for variants
-
-

@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { TextDirection } from "@hai3/uikit-contracts"
+import type { TextDirection } from "../types"
 
 import { cn } from "../lib/utils"
 import { CheckIcon } from "../icons/CheckIcon"

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '../../base/button';
 import { ChevronDownIcon } from '../../icons/ChevronDownIcon';
-import { ButtonVariant } from '@hai3/uikit-contracts';
+import { ButtonVariant } from '../../types';
 import { cn } from '../../lib/utils';
 
 /**

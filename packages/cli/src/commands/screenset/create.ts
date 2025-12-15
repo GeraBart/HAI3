@@ -6,6 +6,7 @@ import { generateScreensetFromTemplate } from '../../generators/screensetFromTem
 import { writeGeneratedFiles } from '../../utils/fs.js';
 import { getScreensetsDir, screensetExists } from '../../utils/project.js';
 import { isCamelCase, isReservedScreensetName } from '../../utils/validation.js';
+import { runProjectValidation, skipValidationOption } from '../../utils/projectValidation.js';
 
 /**
  * Arguments for screenset create command
@@ -13,6 +14,7 @@ import { isCamelCase, isReservedScreensetName } from '../../utils/validation.js'
 export interface ScreensetCreateArgs {
   name: string;
   category?: ScreensetCategory;
+  skipValidation?: boolean;
 }
 
 /**
@@ -21,6 +23,7 @@ export interface ScreensetCreateArgs {
 export interface ScreensetCreateResult {
   screensetPath: string;
   files: string[];
+  validationPassed?: boolean;
 }
 
 /**
@@ -48,6 +51,7 @@ export const screensetCreateCommand: CommandDefinition<
       choices: ['drafts', 'mockups', 'production'],
       defaultValue: 'drafts',
     },
+    skipValidationOption,
   ],
 
   validate(args, ctx) {
@@ -122,9 +126,17 @@ export const screensetCreateCommand: CommandDefinition<
       screensetId
     );
 
+    // Run validation unless skipped
+    const validation = await runProjectValidation({
+      projectRoot: projectRoot!,
+      logger,
+      skip: args.skipValidation,
+    });
+
     return {
       screensetPath,
       files: writtenFiles,
+      validationPassed: validation.success,
     };
   },
 };

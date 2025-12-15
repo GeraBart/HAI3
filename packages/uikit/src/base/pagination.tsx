@@ -3,7 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 
 import { cn } from "../lib/utils"
 import { buttonVariants } from "./button"
-import { ButtonVariant, ButtonSize } from "@hai3/uikit-contracts"
+import { ButtonVariant, ButtonSize } from "../types"
 import { ChevronLeftIcon } from "../icons/ChevronLeftIcon"
 import { ChevronRightIcon } from "../icons/ChevronRightIcon"
 import { MoreHorizontalIcon } from "../icons/MoreHorizontalIcon"

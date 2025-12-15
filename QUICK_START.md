@@ -24,9 +24,14 @@ This guide will help you get started with HAI3 UI-Core development.
 
 ```
 packages/                           # Workspace packages
-├── uikit-contracts/                # TypeScript interface definitions
+├── events/                         # SDK L1: Event bus and actions
+├── store/                          # SDK L1: Redux store primitives
+├── layout/                         # SDK L1: Layout domain slices
+├── api/                            # SDK L1: API services and protocols
+├── i18n/                           # SDK L1: Internationalization
+├── framework/                      # L2: Plugin system and registries
+├── react/                          # L3: React bindings and hooks
 ├── uikit/                          # React component library
-├── uicore/                         # Core framework (layout, Redux, events)
 ├── studio/                         # Development overlay (dev only)
 └── cli/                            # CLI tool for project scaffolding
 
@@ -119,25 +124,28 @@ const [open, setOpen] = useState(false);
 
 ### Read state
 ```typescript
-import { useAppSelector } from '@hai3/uicore';
+import { useAppSelector } from '@hai3/react';
 
 const MyComponent = () => {
-  const layout = useAppSelector(state => state.layout);
+  const collapsed = useAppSelector(state => state['layout/menu'].collapsed);
 
-  return <div>Menu collapsed: {layout.menu.collapsed}</div>;
+  return <div>Menu collapsed: {collapsed}</div>;
 };
 ```
 
 ### Use event-driven actions (recommended)
 ```typescript
-import { toggleMenu } from '@hai3/uicore';
+import { useHAI3Actions } from '@hai3/react';
 
 const MyComponent = () => {
+  const { toggleMenu } = useHAI3Actions();
   return <button onClick={toggleMenu}>Toggle Menu</button>;
 };
 ```
 
 HAI3 uses event-driven architecture. Prefer action creators that emit events over direct dispatch.
+
+**Note:** For backward compatibility, `@hai3/uicore` re-exports from `@hai3/react` but is deprecated.
 
 ## Styling with Tailwind
 

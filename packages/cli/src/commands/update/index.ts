@@ -4,6 +4,7 @@ import path from 'path';
 import type { CommandDefinition } from '../../core/command.js';
 import { validationOk, validationError } from '../../core/types.js';
 import { syncTemplates } from '../../core/templates.js';
+import { aiSyncCommand } from '../ai/sync.js';
 
 /**
  * Arguments for update command
@@ -12,6 +13,7 @@ export interface UpdateCommandArgs {
   alpha?: boolean;
   stable?: boolean;
   templatesOnly?: boolean;
+  skipAiSync?: boolean;
 }
 
 /**
@@ -24,6 +26,8 @@ export interface UpdateCommandResult {
   templatesUpdated: boolean;
   syncedTemplates: string[];
   channel: 'alpha' | 'stable';
+  aiSyncRun: boolean;
+  aiSyncFiles: string[];
 }
 
 /**
@@ -78,6 +82,12 @@ export const updateCommand: CommandDefinition<
       type: 'boolean',
       defaultValue: false,
     },
+    {
+      name: 'skip-ai-sync',
+      description: 'Skip running AI sync after update',
+      type: 'boolean',
+      defaultValue: false,
+    },
   ],
 
   validate(args) {
@@ -94,8 +104,10 @@ export const updateCommand: CommandDefinition<
     let cliUpdated = false;
     let projectUpdated = false;
     let templatesUpdated = false;
+    let aiSyncRun = false;
     const updatedPackages: string[] = [];
     const syncedTemplates: string[] = [];
+    const aiSyncFiles: string[] = [];
 
     // Determine which channel to use
     let channel: 'alpha' | 'stable';
@@ -188,6 +200,31 @@ export const updateCommand: CommandDefinition<
       } else {
         logger.info('Templates are already up to date');
       }
+
+      // Run AI sync unless skipped
+      if (!args.skipAiSync) {
+        logger.newline();
+        logger.info('Syncing AI assistant configurations...');
+
+        try {
+          const aiSyncResult = await aiSyncCommand.execute(
+            { tool: 'all', detectPackages: true },
+            ctx
+          );
+          aiSyncRun = true;
+          aiSyncFiles.push(...aiSyncResult.filesGenerated);
+          if (aiSyncResult.filesGenerated.length > 0) {
+            logger.success(`AI configs updated: ${aiSyncResult.filesGenerated.length} files`);
+            for (const file of aiSyncResult.filesGenerated) {
+              logger.info(`  - ${file}`);
+            }
+          } else {
+            logger.info('AI configs are already up to date');
+          }
+        } catch (_error) {
+          logger.warn('AI sync skipped (no .ai directory found)');
+        }
+      }
     }
 
     logger.newline();
@@ -200,6 +237,8 @@ export const updateCommand: CommandDefinition<
       templatesUpdated,
       syncedTemplates,
       channel,
+      aiSyncRun,
+      aiSyncFiles,
     };
   },
 };

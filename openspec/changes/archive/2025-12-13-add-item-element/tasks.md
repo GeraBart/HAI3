@@ -15,5 +15,3 @@
 - [ ] 2.3 Verify all variants and sizes work as expected
 - [ ] 2.4 Verify ItemGroup and ItemSeparator work correctly
 - [ ] 2.5 Verify translations display correctly in all languages
-
-

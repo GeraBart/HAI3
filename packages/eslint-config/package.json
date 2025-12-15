@@ -1,0 +1,36 @@
+{
+  "name": "@hai3/eslint-config",
+  "version": "0.1.0-alpha.0",
+  "description": "Layered ESLint configuration for HAI3 SDK architecture",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./base": "./base.js",
+    "./base.js": "./base.js",
+    "./sdk": "./sdk.js",
+    "./sdk.js": "./sdk.js",
+    "./framework": "./framework.js",
+    "./framework.js": "./framework.js",
+    "./react": "./react.js",
+    "./react.js": "./react.js",
+    "./screenset": "./screenset.js",
+    "./screenset.js": "./screenset.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "peerDependencies": {
+    "@eslint/js": ">=9.0.0",
+    "eslint": ">=9.0.0",
+    "eslint-plugin-react-hooks": ">=5.0.0",
+    "eslint-plugin-unused-imports": ">=4.0.0",
+    "globals": ">=15.0.0",
+    "typescript-eslint": ">=8.0.0"
+  },
+  "keywords": [
+    "eslint",
+    "eslint-config",
+    "hai3"
+  ]
+}

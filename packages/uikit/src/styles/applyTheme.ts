@@ -5,7 +5,7 @@
  * Maps to shadcn CSS variable naming convention
  */
 
-import type { Theme } from '@hai3/uikit-contracts';
+import type { Theme } from '../types';
 
 /**
  * Normalize color value for CSS variable

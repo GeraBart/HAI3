@@ -9,7 +9,8 @@
  * - UI Core depends on interfaces, not implementations
  */
 
-import type { UiKitComponentMap, ComponentName, UiKitIcon } from '@hai3/uikit-contracts';
+import type { UiKitComponentMap, ComponentName } from '@hai3/uikit';
+import { UiKitIcon } from '@hai3/uikit';
 import type { ReactNode } from 'react';
 
 class UiKitRegistry {

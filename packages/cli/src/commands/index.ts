@@ -26,3 +26,23 @@ export type {
   ValidateComponentsResult,
   ComponentViolation,
 } from './validate/index.js';
+
+export { scaffoldLayoutCommand } from './scaffold/layout.js';
+export type {
+  ScaffoldLayoutArgs,
+  ScaffoldLayoutResult,
+  UiKitOption,
+} from './scaffold/layout.js';
+
+export { aiSyncCommand } from './ai/sync.js';
+export type {
+  AiSyncArgs,
+  AiSyncResult,
+  AiTool,
+} from './ai/sync.js';
+
+export { updateLayoutCommand } from './update/layout.js';
+export type {
+  UpdateLayoutArgs,
+  UpdateLayoutResult,
+} from './update/layout.js';

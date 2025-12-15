@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 
 import { cn } from "../lib/utils"
 import { Button, type ButtonProps } from "./button"
-import { ButtonVariant, ButtonSize } from "@hai3/uikit-contracts"
+import { ButtonVariant, ButtonSize } from "../types"
 
 type CarouselApi = UseEmblaCarouselType[1]
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>

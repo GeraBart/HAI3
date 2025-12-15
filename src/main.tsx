@@ -9,8 +9,13 @@ import '@/screensets/screensetRegistry'; // Auto-registers screensets (includes 
 import '@/themes/themeRegistry'; // Auto-registers themes
 import App from './App';
 
-// Initialize API services
-const initialUseMockApi = store.getState().uicore.app.useMockApi;
+// Initialize API services (using mock mode by default for dev)
+interface LegacyState {
+  'layout/app'?: { useMockApi?: boolean };
+  uicore?: { app?: { useMockApi?: boolean } };
+}
+const state = store.getState() as unknown as LegacyState;
+const initialUseMockApi = state?.['layout/app']?.useMockApi ?? state?.uicore?.app?.useMockApi ?? true;
 apiRegistry.initialize({
   useMockApi: initialUseMockApi,
   mockDelay: 500,
@@ -25,7 +30,7 @@ apiRegistry.initialize({
  * 2. Components show skeleton loaders (translationsReady = false)
  * 3. User fetched → language set → translations loaded
  * 4. Components re-render with actual text (translationsReady = true)
- * 5. In DEV mode: HAI3Provider auto-loads StudioOverlay if @hai3/studio is installed
+ * 5. HAI3Provider includes AppRouter for URL-based navigation
  */
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

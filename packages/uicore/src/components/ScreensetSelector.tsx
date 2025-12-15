@@ -1,7 +1,7 @@
 import React from 'react';
 import { upperFirst } from 'lodash';
 import { uikitRegistry } from '../uikit/uikitRegistry';
-import { UiKitComponent, ButtonVariant } from '@hai3/uikit-contracts';
+import { UiKitComponent, ButtonVariant } from '@hai3/uikit';
 import { useTranslation } from '../i18n/useTranslation';
 
 /**

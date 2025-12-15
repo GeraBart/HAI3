@@ -18,6 +18,9 @@ import {
   screensetCreateCommand,
   screensetCopyCommand,
   validateComponentsCommand,
+  scaffoldLayoutCommand,
+  aiSyncCommand,
+  updateLayoutCommand,
 } from './commands/index.js';
 
 // CLI version
@@ -29,6 +32,9 @@ registry.register(updateCommand);
 registry.register(screensetCreateCommand);
 registry.register(screensetCopyCommand);
 registry.register(validateComponentsCommand);
+registry.register(scaffoldLayoutCommand);
+registry.register(aiSyncCommand);
+registry.register(updateLayoutCommand);
 
 // Create Commander program
 const program = new Command();
@@ -44,12 +50,13 @@ program.option('-q, --quiet', 'Suppress non-essential output');
 // hai3 create <project-name>
 program
   .command('create <project-name>')
-  .description('Create a new HAI3 project')
+  .description('Create a new HAI3 project or layer package')
   .option('--uikit <type>', 'UIKit to use (hai3 or custom)', undefined)
   .option('--studio', 'Include Studio package')
   .option('--no-studio', 'Exclude Studio package')
   .option('--no-git', 'Skip git initialization')
   .option('--no-install', 'Skip npm install')
+  .option('-l, --layer <type>', 'Create a package for a specific SDK layer (sdk, framework, react)')
   .action(async (projectName: string, options: Record<string, unknown>) => {
     const result = await executeCommand(
       createCommand,
@@ -59,6 +66,7 @@ program
         studio: options.studio as boolean | undefined,
         git: options.git as boolean,
         install: options.install as boolean,
+        layer: options.layer as 'sdk' | 'framework' | 'react' | 'app' | undefined,
       },
       { interactive: true }
     );
@@ -68,13 +76,19 @@ program
     }
   });
 
-// hai3 update
-program
+// hai3 update subcommand
+const updateCmd = program
   .command('update')
+  .description('Update commands for HAI3 projects');
+
+// hai3 update (default - updates CLI and packages)
+updateCmd
+  .command('packages', { isDefault: true })
   .description('Update HAI3 CLI and project packages')
   .option('-a, --alpha', 'Update to latest alpha/prerelease version')
   .option('-s, --stable', 'Update to latest stable version')
   .option('--templates-only', 'Only sync templates (skip CLI and package updates)')
+  .option('--skip-ai-sync', 'Skip running AI sync after update')
   .action(async (options: Record<string, unknown>) => {
     const result = await executeCommand(
       updateCommand,
@@ -82,6 +96,31 @@ program
         alpha: options.alpha as boolean | undefined,
         stable: options.stable as boolean | undefined,
         templatesOnly: options.templatesOnly as boolean | undefined,
+        skipAiSync: options.skipAiSync as boolean | undefined,
+      },
+      { interactive: true }
+    );
+
+    if (!result.success) {
+      process.exit(1);
+    }
+  });
+
+// hai3 update layout
+updateCmd
+  .command('layout')
+  .description('Update layout components from templates')
+  .option(
+    '-u, --ui-kit <type>',
+    'UI kit to use (hai3-uikit or custom)'
+  )
+  .option('-f, --force', 'Force update without prompting')
+  .action(async (options: Record<string, unknown>) => {
+    const result = await executeCommand(
+      updateLayoutCommand,
+      {
+        uiKit: options.uiKit as 'hai3-uikit' | 'custom' | undefined,
+        force: options.force as boolean,
       },
       { interactive: true }
     );
@@ -171,6 +210,68 @@ validateCmd
     );
 
     if (!result.success || !result.data?.passed) {
+      process.exit(1);
+    }
+  });
+
+// hai3 scaffold subcommand
+const scaffoldCmd = program
+  .command('scaffold')
+  .description('Generate project components from templates');
+
+// hai3 scaffold layout
+scaffoldCmd
+  .command('layout')
+  .description('Generate layout components in your project')
+  .option(
+    '-u, --ui-kit <type>',
+    'UI kit to use (hai3-uikit or custom)',
+    'hai3-uikit'
+  )
+  .option('-f, --force', 'Overwrite existing layout files')
+  .action(async (options: Record<string, unknown>) => {
+    const result = await executeCommand(
+      scaffoldLayoutCommand,
+      {
+        uiKit: options.uiKit as 'hai3-uikit' | 'custom',
+        force: options.force as boolean,
+      },
+      { interactive: true }
+    );
+
+    if (!result.success) {
+      process.exit(1);
+    }
+  });
+
+// hai3 ai subcommand
+const aiCmd = program
+  .command('ai')
+  .description('AI assistant configuration commands');
+
+// hai3 ai sync
+aiCmd
+  .command('sync')
+  .description('Sync AI assistant configuration files')
+  .option(
+    '-t, --tool <tool>',
+    'Specific tool to sync (claude, copilot, cursor, windsurf, all)',
+    'all'
+  )
+  .option('-d, --detect-packages', 'Detect installed @hai3 packages')
+  .option('--diff', 'Show diff of changes without writing files')
+  .action(async (options: Record<string, unknown>) => {
+    const result = await executeCommand(
+      aiSyncCommand,
+      {
+        tool: options.tool as 'claude' | 'copilot' | 'cursor' | 'windsurf' | 'all',
+        detectPackages: options.detectPackages as boolean,
+        diff: options.diff as boolean,
+      },
+      { interactive: true }
+    );
+
+    if (!result.success) {
       process.exit(1);
     }
   });

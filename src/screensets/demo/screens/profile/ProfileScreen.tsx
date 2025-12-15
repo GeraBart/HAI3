@@ -1,5 +1,12 @@
 import React, { useEffect } from 'react';
-import { useAppSelector, useAppDispatch, fetchCurrentUser, useTranslation, TextLoader, useScreenTranslations, I18nRegistry, Language } from '@hai3/uicore';
+import { useAppSelector, useAppDispatch, fetchCurrentUser, useTranslation, TextLoader, useScreenTranslations, I18nRegistry, Language, type AppDispatch } from '@hai3/uicore';
+import type { ThunkAction, UnknownAction } from '@reduxjs/toolkit';
+
+// Type helper for thunk actions
+type ThunkDispatch = (thunk: ThunkAction<void, unknown, unknown, UnknownAction>) => void;
+const dispatchThunk = (dispatch: AppDispatch, thunk: ReturnType<typeof fetchCurrentUser>) => {
+  (dispatch as unknown as ThunkDispatch)(thunk as unknown as ThunkAction<void, unknown, unknown, UnknownAction>);
+};
 import { Button, Card, CardContent, CardFooter } from '@hai3/uikit';
 import { PROFILE_SCREEN_ID } from "../../ids";
 import { DEMO_SCREENSET_ID } from "../../ids";
@@ -53,16 +60,45 @@ const translations = I18nRegistry.createLoader({
  * - Displays user info from Redux state
  * - Shows loading/error states
  */
+// User type for profile screen
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  avatarUrl?: string;
+  extra?: { department?: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Legacy state accessor for backward compatibility
+interface LegacyAppState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+}
+
+interface LegacyState {
+  'uicore/app'?: LegacyAppState;
+  uicore?: { app?: LegacyAppState };
+}
+
 export const ProfileScreen: React.FC = () => {
   // Register translations for this screen
   useScreenTranslations(DEMO_SCREENSET_ID, PROFILE_SCREEN_ID, translations);
   const dispatch = useAppDispatch();
-  const { user, loading, error } = useAppSelector((state) => state.uicore.app);
+  // Use correct slice path (uicore/app instead of uicore.app)
+  const { user, loading, error } = useAppSelector((state): LegacyAppState => {
+    const s = state as unknown as LegacyState;
+    return s['uicore/app'] ?? s?.uicore?.app ?? { user: null, loading: false, error: null };
+  });
   const { t } = useTranslation();
 
   useEffect(() => {
     // Fetch user data on mount
-    dispatch(fetchCurrentUser());
+    dispatchThunk(dispatch, fetchCurrentUser());
   }, [dispatch]);
 
   if (loading) {
@@ -85,7 +121,7 @@ export const ProfileScreen: React.FC = () => {
             {t(`screen.${DEMO_SCREENSET_ID}.${PROFILE_SCREEN_ID}:error_prefix`)} {error}
           </p>
         </TextLoader>
-        <Button onClick={() => dispatch(fetchCurrentUser())}>
+        <Button onClick={() => dispatchThunk(dispatch, fetchCurrentUser())}>
           <TextLoader skeletonClassName="h-6 w-20" inheritColor>
             {t(`screen.${DEMO_SCREENSET_ID}.${PROFILE_SCREEN_ID}:retry`)}
           </TextLoader>
@@ -102,7 +138,7 @@ export const ProfileScreen: React.FC = () => {
             {t(`screen.${DEMO_SCREENSET_ID}.${PROFILE_SCREEN_ID}:no_user_data`)}
           </p>
         </TextLoader>
-        <Button onClick={() => dispatch(fetchCurrentUser())}>
+        <Button onClick={() => dispatchThunk(dispatch, fetchCurrentUser())}>
           <TextLoader skeletonClassName="h-6 w-24" inheritColor>
             {t(`screen.${DEMO_SCREENSET_ID}.${PROFILE_SCREEN_ID}:load_user`)}
           </TextLoader>
@@ -190,7 +226,7 @@ export const ProfileScreen: React.FC = () => {
         </CardContent>
 
         <CardFooter>
-          <Button onClick={() => dispatch(fetchCurrentUser())}>
+          <Button onClick={() => dispatchThunk(dispatch, fetchCurrentUser())}>
             <TextLoader skeletonClassName="h-6 w-20" inheritColor>
               {t(`screen.${DEMO_SCREENSET_ID}.${PROFILE_SCREEN_ID}:refresh`)}
             </TextLoader>

@@ -21,9 +21,7 @@ export class _blankApiService extends BaseApiService {
   constructor() {
     super(
       { baseURL: '/api/_blank' },
-      new RestProtocol({
-        timeout: 30000,
-      })
+      new RestProtocol()
     );
   }
 

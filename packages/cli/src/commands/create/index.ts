@@ -3,8 +3,15 @@ import path from 'path';
 import type { CommandDefinition } from '../../core/command.js';
 import { validationOk, validationError } from '../../core/types.js';
 import { generateProject } from '../../generators/project.js';
+import { generateLayerPackage } from '../../generators/layerPackage.js';
 import { writeGeneratedFiles } from '../../utils/fs.js';
 import { isValidPackageName } from '../../utils/validation.js';
+import { aiSyncCommand } from '../ai/sync.js';
+
+/**
+ * Layer types for SDK architecture
+ */
+export type LayerType = 'sdk' | 'framework' | 'react' | 'app';
 
 /**
  * Arguments for create command
@@ -15,6 +22,7 @@ export interface CreateCommandArgs {
   studio?: boolean;
   git?: boolean;
   install?: boolean;
+  layer?: LayerType;
 }
 
 /**
@@ -53,6 +61,13 @@ export const createCommand: CommandDefinition<
       description: 'Include Studio package',
       type: 'boolean',
     },
+    {
+      name: 'layer',
+      shortName: 'l',
+      description: 'Create a package for a specific SDK layer (sdk, framework, react)',
+      type: 'string',
+      choices: ['sdk', 'framework', 'react', 'app'],
+    },
   ],
 
   validate(args, ctx) {
@@ -80,6 +95,7 @@ export const createCommand: CommandDefinition<
   async execute(args, ctx): Promise<CreateCommandResult> {
     const { logger, prompt } = ctx;
     const projectPath = path.join(ctx.cwd, args.projectName);
+    const layer = args.layer ?? 'app';
 
     // Check for existing directory
     if (await fs.pathExists(projectPath)) {
@@ -99,7 +115,54 @@ export const createCommand: CommandDefinition<
       await fs.remove(projectPath);
     }
 
-    // Get configuration via prompts if not provided
+    // For layer packages (sdk, framework, react), skip uikit/studio prompts
+    if (layer !== 'app') {
+      logger.newline();
+      logger.info(`Creating ${layer}-layer package '${args.projectName}'...`);
+      logger.newline();
+
+      // Generate layer package files
+      const files = generateLayerPackage({
+        packageName: args.projectName,
+        layer,
+      });
+
+      // Write files
+      const writtenFiles = await writeGeneratedFiles(projectPath, files);
+      logger.success(`Generated ${writtenFiles.length} files`);
+
+      // Run ai sync to generate IDE config files
+      logger.newline();
+      logger.info('Generating AI assistant configurations...');
+      try {
+        await aiSyncCommand.execute(
+          { tool: 'all' },
+          { ...ctx, projectRoot: projectPath }
+        );
+      } catch {
+        // Ignore errors - ai sync is optional
+      }
+
+      // Done
+      logger.newline();
+      logger.success(`Package '${args.projectName}' created successfully!`);
+      logger.newline();
+      logger.log('Next steps:');
+      logger.log(`  cd ${args.projectName}`);
+      logger.log('  npm install');
+      logger.log('  npm run build');
+      logger.newline();
+      logger.log(`This is a ${layer}-layer package.`);
+      logger.log('See .ai/GUIDELINES.md for layer-specific rules.');
+      logger.newline();
+
+      return {
+        projectPath,
+        files: writtenFiles,
+      };
+    }
+
+    // App project - get configuration via prompts if not provided
     let uikit = args.uikit;
     let studio = args.studio;
 
@@ -144,6 +207,18 @@ export const createCommand: CommandDefinition<
     // Write files
     const writtenFiles = await writeGeneratedFiles(projectPath, files);
     logger.success(`Generated ${writtenFiles.length} files`);
+
+    // Run ai sync to generate IDE config files
+    logger.newline();
+    logger.info('Generating AI assistant configurations...');
+    try {
+      await aiSyncCommand.execute(
+        { tool: 'all' },
+        { ...ctx, projectRoot: projectPath }
+      );
+    } catch {
+      // Ignore errors - ai sync is optional
+    }
 
     // Done
     logger.newline();

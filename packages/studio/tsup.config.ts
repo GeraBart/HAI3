@@ -23,7 +23,6 @@ export default defineConfig({
     'react/jsx-runtime',
     'react-redux',
     '@reduxjs/toolkit',
-    '@hai3/uikit-contracts',
     '@hai3/uicore',
     '@hai3/uikit',
     'lodash',

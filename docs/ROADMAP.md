@@ -68,57 +68,66 @@ This roadmap outlines practical, actionable tasks. V#1 defines the core dual-mod
 
 ---
 
-## V#1 - Dual-Mode Architecture (SDK + Full Platform)
+## V#1 - 3-Layer SDK Architecture ✅ COMPLETE
 
-**Goal**: HAI3 operates in two modes - a pure SDK for data flow and micro-frontend orchestration (`@hai3/uicore/sdk`), and a full out-of-the-box SaaS platform constructor (`@hai3/uicore`).
+**Goal**: HAI3 operates with a layered architecture - SDK packages (L1) for pure data flow, Framework (L2) for plugin system and registries, and React (L3) for UI bindings.
 
-### Phase 1: Preparation (Decoupling)
-- [ ] Refactor store.ts to separate SDK-safe configuration from layout reducers
-- [ ] Create ModuleRegistry abstraction (layout-agnostic screensets)
-- [ ] Separate layout-agnostic events (User, API, I18n) from UI events (Navigation, Menu)
-- [ ] Extract API layer to SDK directory (no React/DOM dependencies)
-- [ ] Extract i18n registry to SDK (keep TextLoader in layout area)
-- [ ] Split appSlice concerns (user, language, loading vs UI-specific state)
+### 3-Layer Package Structure ✅
 
-### Phase 2: SDK Extraction
-- [ ] Create SDK entry point (`src/sdk/index.ts`)
-- [ ] Add subpath export in package.json (`@hai3/uicore/sdk`)
-- [ ] Create HAI3SDKProvider (minimal provider: Redux + Event Bus, no routing/layout)
-- [ ] Configure separate SDK build with tsup (smaller bundle target: <50% of full)
-- [ ] Create ModuleConfig interface (screensets without screens)
-- [ ] Update uikit-contracts (split core contracts vs UI contracts)
-- [ ] Add deprecation warnings for SDK imports from main entry
+```
+L1 (SDK)        @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
+                Zero cross-dependencies, no React, use anywhere
+                    ↓
+L2 (Framework)  @hai3/framework
+                Plugin system, registries, composed from SDK
+                    ↓
+L3 (React)      @hai3/react
+                React bindings, hooks, providers
+```
 
-### Phase 3: SDK Documentation & Tooling
-- [ ] Create `docs/SDK_MODE.md` with use cases and migration guide
-- [ ] Add `hai3 create --mode=sdk` CLI option
-- [ ] Add `hai3 module create` command for SDK-only modules
-- [ ] Add architecture validation rules (prevent SDK/layout coupling)
-- [ ] Update `.ai/targets/` with SDK mode guidance
+### Phase 1: SDK Package Implementation ✅
+- [x] Create @hai3/events package (EventBus, createAction, type-safe events)
+- [x] Create @hai3/store package (Redux primitives, registerSlice)
+- [x] Create @hai3/layout package (domain slices: header, menu, screen, etc.)
+- [x] Create @hai3/api package (BaseApiService, RestProtocol, MockPlugin)
+- [x] Create @hai3/i18n package (Language enum, translation loading)
+- [x] All SDK packages have zero @hai3 dependencies
+- [x] All SDK packages work without React
 
-### Phase 4: Studio (Dev Tools for Both Modes)
+### Phase 2: Framework Implementation ✅
+- [x] Create @hai3/framework with plugin system
+- [x] Implement createHAI3() builder with .use() and .build()
+- [x] Implement plugins: screensets, themes, layout, routing, navigation, i18n
+- [x] Implement presets: full (all plugins), minimal, headless (screensets only)
+- [x] createHAI3App() convenience function
+- [x] Plugin dependency resolution and lifecycle management
+
+### Phase 3: React Bindings ✅
+- [x] Create @hai3/react package
+- [x] Implement HAI3Provider component
+- [x] Implement hooks: useAppSelector, useAppDispatch, useTranslation
+- [x] Implement AppRouter component
+- [x] Only @hai3/framework as dependency
+
+### Phase 4: Tooling & Validation ✅
+- [x] Layer-specific ESLint configs (@hai3/eslint-config)
+- [x] Layer-specific dependency-cruiser configs (@hai3/depcruise-config)
+- [x] Per-package eslint.config.js and .dependency-cruiser.cjs
+- [x] Architecture tests: npm run arch:sdk, arch:layers
+- [x] CLI updates: scaffold layout, ai sync, layer support
+- [x] Package-level CLAUDE.md documentation
+
+### Phase 5: Deprecation & Migration ✅
+- [x] @hai3/uicore re-exports from @hai3/framework + @hai3/react (deprecated)
+- [x] @hai3/uikit-contracts re-exports from @hai3/uikit (deprecated)
+- [x] State migration helpers for old state paths
+- [x] Layout components moved to CLI templates
+- [x] Backward compatibility maintained
+
+### Future: Studio & Emulator (Planned)
 - [ ] Adapt Studio to work with SDK modules (not just screensets)
-- [ ] Add module inspector panel for SDK mode
-- [ ] Add event bus monitoring (both modes)
-- [ ] Add Redux state viewer (both modes)
-- [ ] Add API call logging and tracing panel
-- [ ] Add performance monitoring hooks
-- [ ] Create shared logger with configurable log levels
-
-### Phase 5: Backend Emulator (@hai3/emulator)
-Replaces current mock API mode with sophisticated backend simulation for development and AI-assisted testing.
-
-- [ ] Create separate @hai3/emulator package
-- [ ] Add as Studio dependency (replaces current mock plugin)
-- [ ] Implement API call interception layer
-- [ ] Add response scenarios (success, partial, empty)
-- [ ] Implement latency simulation (configurable delays, jitter)
-- [ ] Add error simulation (4xx, 5xx, timeouts, network failures)
-- [ ] Create scenario presets (happy path, degraded, offline)
-- [ ] Create UI panel for humans (configure scenarios, inspect requests)
-- [ ] Implement MCP interface for AI agents
-- [ ] Define acceptance criteria schema for AI-generated screensets/modules
-- [ ] Add validation that screens handle all error scenarios gracefully
+- [ ] Add event bus monitoring and Redux state viewer
+- [ ] Create @hai3/emulator package for backend simulation
 
 ### Full Platform Mode (Layout System)
 - [x] Implement menu collapse/expand toggle

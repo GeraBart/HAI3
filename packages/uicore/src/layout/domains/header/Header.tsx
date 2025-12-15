@@ -2,7 +2,7 @@ import React from 'react';
 import { useAppSelector } from '../../../hooks/useRedux';
 import { UserInfo } from '../../../components/UserInfo';
 import { uikitRegistry } from '../../../uikit/uikitRegistry';
-import { UiKitComponent } from '@hai3/uikit-contracts';
+import { UiKitComponent } from '@hai3/uikit';
 
 /**
  * Header Domain

@@ -111,8 +111,8 @@ async function generateCommandAdapters(
 
     const cmdFileName = path.basename(relativePath); // e.g., "hai3-validate.md"
 
-    // Skip hai3dev-* commands (monorepo-only)
-    if (cmdFileName.startsWith('hai3dev-')) continue;
+    // Skip internal commands (monorepo-only - hai3dev-* and commands/internal/)
+    if (cmdFileName.startsWith('hai3dev-') || relativePath.includes('commands/internal/')) continue;
 
     const srcPath = path.join(PROJECT_ROOT, '.ai', relativePath);
     const description = await extractCommandDescription(srcPath);
@@ -423,6 +423,16 @@ async function copyTemplates() {
     console.log(`  ✓ screenset-template/ (${fileCount} files)`);
   }
 
+  // Copy layout templates (from packages/cli/templates-source/layout/)
+  // These are separate from the project files and provide scaffold layout options
+  const layoutSrc = path.join(CLI_ROOT, 'templates-source', 'layout');
+  const layoutDest = path.join(TEMPLATES_DIR, 'layout');
+  if (await fs.pathExists(layoutSrc)) {
+    await fs.copy(layoutSrc, layoutDest);
+    const fileCount = await countFiles(layoutDest);
+    console.log(`  ✓ layout/ templates (${fileCount} files)`);
+  }
+
   // ============================================
   // STAGE 1c: Assemble .ai/ from markers
   // ============================================
@@ -443,8 +453,8 @@ async function copyTemplates() {
     const destPath = path.join(aiDestDir, relativePath);
     await fs.ensureDir(path.dirname(destPath));
 
-    // Skip hai3dev-* commands (monorepo-only)
-    if (relativePath.includes('hai3dev-')) continue;
+    // Skip internal commands (monorepo-only - hai3dev-* and commands/internal/)
+    if (relativePath.includes('hai3dev-') || relativePath.includes('commands/internal/')) continue;
 
     if (marker === 'standalone') {
       // Copy verbatim from root .ai/
@@ -489,7 +499,7 @@ async function copyTemplates() {
   // Write manifest
   // ============================================
   const standaloneCommandFiles = standaloneCommands
-    .filter((f) => f.startsWith('commands/') && !f.includes('hai3dev-'));
+    .filter((f) => f.startsWith('commands/') && !f.includes('hai3dev-') && !f.includes('commands/internal/'));
   const manifest = {
     pipeline: '3-stage',
     stage1a: {
@@ -505,7 +515,7 @@ async function copyTemplates() {
     stage1c: {
       source: 'root .ai/ (marker-based)',
       standaloneFiles: markedFiles
-        .filter((f) => f.marker === 'standalone' && !f.relativePath.includes('hai3dev-'))
+        .filter((f) => f.marker === 'standalone' && !f.relativePath.includes('hai3dev-') && !f.relativePath.includes('commands/internal/'))
         .map((f) => f.relativePath),
       overrideFiles: markedFiles
         .filter((f) => f.marker === 'override')

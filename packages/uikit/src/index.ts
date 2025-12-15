@@ -23,8 +23,8 @@ export {
   ButtonGroupSeparator,
   buttonGroupVariants,
 } from './base/button-group';
-// Re-export contract types to ensure consistency
-export { ButtonVariant, ButtonSize } from '@hai3/uikit-contracts';
+// Component types (from local types - replaces @hai3/uikit-contracts)
+export { ButtonVariant, ButtonSize } from './types';
 export { Badge, badgeVariants, type BadgeProps } from './base/badge';
 export { Calendar, CalendarDayButton } from './base/calendar';
 export { Checkbox } from './base/checkbox';
@@ -441,8 +441,7 @@ export {
 // Composite components
 export { IconButton, type IconButtonProps } from './composite/buttons/IconButton';
 export { DropdownButton, type DropdownButtonProps } from './composite/buttons/DropdownButton';
-// Re-export contract types to ensure consistency
-export { IconButtonSize } from '@hai3/uikit-contracts';
+export { IconButtonSize } from './types';
 
 // Composite form components
 export { InputGroup, InputGroupAddon, InputGroupButton, InputGroupText, InputGroupInput, InputGroupTextarea } from './base/input-group';
@@ -479,4 +478,63 @@ export { ChevronUpIcon } from './icons/ChevronUpIcon';
 
 // Theme system (utilities only - theme definitions in app)
 export { applyTheme } from './styles/applyTheme';
-export type { Theme } from '@hai3/uikit-contracts';
+export type { Theme } from './types';
+
+// UI Kit registry types (replaces @hai3/uikit-contracts)
+export {
+  UiKitComponent,
+  UiKitIcon,
+} from './types';
+export type {
+  UiKitComponentMap,
+  ComponentName,
+  TextDirection,
+  // Contract prop types (aliased to avoid conflicts with component exports)
+  ButtonProps as ButtonPropsContract,
+  IconButtonProps as IconButtonPropsContract,
+  DropdownButtonProps as DropdownButtonPropsContract,
+  SwitchProps as SwitchPropsContract,
+  SkeletonProps as SkeletonPropsContract,
+  SpinnerProps as SpinnerPropsContract,
+  SidebarProps as SidebarPropsContract,
+  SidebarContentProps as SidebarContentPropsContract,
+  SidebarHeaderProps as SidebarHeaderPropsContract,
+  SidebarMenuProps as SidebarMenuPropsContract,
+  SidebarMenuItemProps as SidebarMenuItemPropsContract,
+  SidebarMenuButtonProps as SidebarMenuButtonPropsContract,
+  SidebarMenuIconProps as SidebarMenuIconPropsContract,
+  SidebarMenuLabelProps as SidebarMenuLabelPropsContract,
+  HeaderProps as HeaderPropsContract,
+  UserInfoProps as UserInfoPropsContract,
+  DropdownMenuProps as DropdownMenuPropsContract,
+  DropdownMenuTriggerProps as DropdownMenuTriggerPropsContract,
+  DropdownMenuContentProps as DropdownMenuContentPropsContract,
+  DropdownMenuItemProps as DropdownMenuItemPropsContract,
+  DropdownMenuSubProps as DropdownMenuSubPropsContract,
+  DropdownMenuSubTriggerProps as DropdownMenuSubTriggerPropsContract,
+  DropdownMenuSubContentProps as DropdownMenuSubContentPropsContract,
+  // Component types for registry
+  ButtonComponent,
+  IconButtonComponent,
+  DropdownButtonComponent,
+  SwitchComponent,
+  SkeletonComponent,
+  SpinnerComponent,
+  SidebarComponent,
+  SidebarContentComponent,
+  SidebarHeaderComponent,
+  SidebarMenuComponent,
+  SidebarMenuItemComponent,
+  SidebarMenuButtonComponent,
+  SidebarMenuIconComponent,
+  SidebarMenuLabelComponent,
+  HeaderComponent,
+  UserInfoComponent,
+  DropdownMenuComponent,
+  DropdownMenuTriggerComponent,
+  DropdownMenuContentComponent,
+  DropdownMenuItemComponent,
+  DropdownMenuSubComponent,
+  DropdownMenuSubTriggerComponent,
+  DropdownMenuSubContentComponent,
+} from './types';

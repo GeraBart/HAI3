@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppSelector } from '../../../hooks/useRedux';
 import { uikitRegistry } from '../../../uikit/uikitRegistry';
-import { UiKitComponent, ButtonVariant } from '@hai3/uikit-contracts';
+import { UiKitComponent, ButtonVariant } from '@hai3/uikit';
 
 /**
  * Core Footer component (production-ready)

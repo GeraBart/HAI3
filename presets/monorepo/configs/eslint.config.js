@@ -78,6 +78,21 @@ export default [
     },
   },
 
+  // SDK packages: Allow explicit any for type casting (Redux/TypeScript compatibility)
+  // These packages require `any` for: Redux replaceReducer, plugin constructors, event bus emit
+  {
+    files: [
+      'packages/events/**/*.ts',
+      'packages/store/**/*.ts',
+      'packages/layout/**/*.ts',
+      'packages/api/**/*.ts',
+      'packages/i18n/**/*.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+
   // Monorepo: uicore components must also follow flux rules (no direct slice dispatch)
   {
     files: [

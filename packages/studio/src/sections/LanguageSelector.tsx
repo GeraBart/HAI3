@@ -1,5 +1,5 @@
 import { useTranslation, LanguageDisplayMode, TextDirection } from '@hai3/uicore';
-import { ButtonVariant } from '@hai3/uikit-contracts';
+import { ButtonVariant } from '@hai3/uikit';
 import {
   DropdownMenu,
   DropdownMenuTrigger,

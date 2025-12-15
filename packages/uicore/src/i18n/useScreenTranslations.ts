@@ -1,9 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import type { RootState } from '../store';
 import { incrementScreenTranslationsVersion } from '../app/appSlice';
 import { i18nRegistry } from './i18nRegistry';
+import { selectActiveScreen } from '@hai3/layout';
 import type { Language, TranslationDictionary } from './types';
+
+// Legacy root state interface for backward compatibility
+interface LegacyRootState {
+  uicore?: {
+    app?: { language?: Language };
+    layout?: { selectedScreen?: string };
+  };
+  'layout/app'?: { language?: Language };
+  'layout/screen'?: { activeScreen?: string };
+}
+
+// Legacy-compatible language selector
+const selectLanguage = (state: LegacyRootState): Language | undefined => {
+  // Try new path first
+  if (state['layout/app']?.language) {
+    return state['layout/app'].language;
+  }
+  // Fall back to legacy path
+  return state.uicore?.app?.language;
+};
+
+// Legacy-compatible screen selector
+const selectScreen = (state: LegacyRootState): string | undefined => {
+  // Try new selector first
+  try {
+    const result = selectActiveScreen(state as Parameters<typeof selectActiveScreen>[0]);
+    if (result) return result;
+  } catch {
+    // Fall through to legacy
+  }
+  // Fall back to legacy path
+  return state.uicore?.layout?.selectedScreen;
+};
 
 /**
  * Hook to register screen-level translations
@@ -37,8 +70,8 @@ export function useScreenTranslations(
   const registered = useRef(false);
   const loadedLanguage = useRef<Language | null>(null);
   const [, setLoaded] = useState(0);
-  const language = useSelector((state: RootState) => state.uicore.app.language);
-  const selectedScreen = useSelector((state: RootState) => state.uicore.layout.selectedScreen);
+  const language = useSelector(selectLanguage);
+  const selectedScreen = useSelector(selectScreen);
   const dispatch = useDispatch();
 
   // Register loader once

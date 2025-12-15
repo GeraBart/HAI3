@@ -55,7 +55,7 @@ Error display with:
 // Field name context
 FormFieldContext = { name: TName }
 
-// Item ID context  
+// Item ID context
 FormItemContext = { id: string }
 ```
 

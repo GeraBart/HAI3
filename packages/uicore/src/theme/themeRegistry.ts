@@ -1,4 +1,4 @@
-import type { Theme } from '@hai3/uikit-contracts';
+import type { Theme } from '@hai3/uikit';
 
 /**
  * Theme Registry

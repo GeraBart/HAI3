@@ -212,9 +212,16 @@ HAI3/                               # Repository root
 │   └── ROADMAP.md                  # Planned milestones
 ├── index.html                      # Vite HTML entry
 ├── packages/                       # Workspaces with reusable libraries
-│   ├── uikit-contracts/            # TypeScript interface definitions
+│   ├── events/                     # SDK L1: Event bus and actions
+│   ├── store/                      # SDK L1: Redux store primitives
+│   ├── layout/                     # SDK L1: Layout domain slices
+│   ├── api/                        # SDK L1: API services and protocols
+│   ├── i18n/                       # SDK L1: Internationalization
+│   ├── framework/                  # L2: Plugin system and registries
+│   ├── react/                      # L3: React bindings and hooks
 │   ├── uikit/                      # React component library
-│   ├── uicore/                     # Core framework (layout, Redux, events)
+│   ├── uicore/                     # [DEPRECATED] Use @hai3/react instead
+│   ├── uikit-contracts/            # [DEPRECATED] Use @hai3/uikit instead
 │   ├── studio/                     # Development overlay (optional)
 │   └── cli/                        # CLI tool for project scaffolding
 ├── src/                            # App source code
@@ -225,16 +232,33 @@ HAI3/                               # Repository root
 │   │   ├── _blank/                 # Blank screenset template
 │   │   └── screensetRegistry.tsx   # Registry to switch screen-sets
 │   └── themes/                     # Theme tokens and registries
-│       ├── dark.ts                 # Dark theme
-│       ├── dracula-large.ts        # Dracula theme (large spacing/typography)
-│       ├── dracula.ts              # Dracula theme
-│       ├── light.ts                # Light theme
-│       └── themeRegistry.ts        # Theme registry and utilities
 ├── tailwind.config.ts              # TailwindCSS configuration
 ├── tsconfig.json                   # TypeScript config (root)
 ├── tsconfig.node.json              # TS config for tooling/node
 └── vite.config.ts                  # Vite build/dev configuration
 ```
+
+### SDK Architecture (3-Layer)
+
+HAI3 follows a layered architecture for maximum flexibility:
+
+```
+L1 (SDK)        @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
+                Zero cross-dependencies, no React, use anywhere
+                    ↓
+L2 (Framework)  @hai3/framework
+                Plugin system, registries, composed from SDK
+                    ↓
+L3 (React)      @hai3/react
+                React bindings, hooks, providers
+                    ↓
+User Code       Screensets, themes, custom components
+```
+
+**Use Cases:**
+- **Full HAI3**: Import `@hai3/react` for complete platform with UI
+- **Headless/External**: Import `@hai3/framework` for screensets-only (no UI)
+- **Custom Integration**: Import SDK packages directly for maximum control
 
 ### Creating a New Screen-Set
 

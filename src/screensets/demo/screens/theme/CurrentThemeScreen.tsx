@@ -45,6 +45,12 @@ const translations = I18nRegistry.createLoader({
   [Language.ChineseTraditional]: () => import('./i18n/zh-TW.json'),
 });
 
+// Legacy state accessor for backward compatibility
+interface LegacyState {
+  'layout/app'?: { theme?: string };
+  uicore?: { layout?: { theme?: string } };
+}
+
 /**
  * Current Theme Screen
  * Displays the currently active theme
@@ -52,7 +58,11 @@ const translations = I18nRegistry.createLoader({
 export const CurrentThemeScreen: React.FC = () => {
   // Register translations for this screen
   useScreenTranslations(DEMO_SCREENSET_ID, CURRENT_THEME_SCREEN_ID, translations);
-  const theme = useAppSelector((state) => state.uicore.layout.theme);
+  // Use correct slice path (layout/app for theme instead of uicore.layout.theme)
+  const theme = useAppSelector((state): string => {
+    const s = state as unknown as LegacyState;
+    return s['layout/app']?.theme ?? s?.uicore?.layout?.theme ?? 'default';
+  });
   const { t } = useTranslation();
 
   return (

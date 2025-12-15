@@ -36,4 +36,3 @@ The Input Group component is a composite form element that combines input fields
 - No breaking changes to existing components
 - Follows established composite component patterns
 - Uses container queries and focus state management for accessibility
-
