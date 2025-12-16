@@ -8,28 +8,27 @@ Defines the 3-layer SDK architecture for HAI3: flat SDK packages, headless frame
 
 ### Requirement: Flat SDK Layer
 
-The system SHALL provide 5 flat SDK packages with ZERO @hai3 inter-dependencies, each with a single responsibility.
+The system SHALL provide 4 flat SDK packages with ZERO @hai3 inter-dependencies, each with a single responsibility.
 
 #### Scenario: SDK packages have no @hai3 dependencies
 
-- **WHEN** checking any SDK package's `package.json` (events, store, layout, api, i18n)
+- **WHEN** checking any SDK package's `package.json` (flux, layout, api, i18n)
 - **THEN** no `@hai3/*` packages appear in dependencies or peerDependencies
 - **AND** the package can be used standalone without other HAI3 packages
 
-#### Scenario: @hai3/events package
+#### Scenario: @hai3/flux package
 
-- **WHEN** importing from `@hai3/events`
-- **THEN** `EventBus`, `eventBus`, `EventPayloadMap` are available
-- **AND** `Action` type and `createAction` helper are available
-- **AND** the package has ZERO external dependencies
+- **WHEN** importing from `@hai3/flux`
+- **THEN** `EventBus`, `eventBus`, `EventPayloadMap` are available (event system)
+- **AND** `store`, `createStore`, `registerSlice`, `hasSlice`, `createSlice` are available (store)
+- **AND** `RootState`, `AppDispatch`, `EffectInitializer` types are available
+- **AND** the only external dependency is `@reduxjs/toolkit`
 - **AND** it works in Node.js without React
 
-#### Scenario: @hai3/store package
-
-- **WHEN** importing from `@hai3/store`
-- **THEN** `store`, `registerSlice`, `RootState`, `AppDispatch` are available
-- **AND** the only external dependency is `@reduxjs/toolkit`
-- **AND** it has ZERO @hai3 dependencies
+**Why @hai3/flux instead of separate events/store packages:**
+- Events and store are tightly coupled in the Flux pattern
+- Neither makes sense standalone - events without handlers, store without events
+- The complete dataflow pattern is the atomic unit of value
 
 #### Scenario: @hai3/layout package
 
@@ -60,7 +59,7 @@ The system SHALL provide a `@hai3/framework` package that wires SDK packages tog
 #### Scenario: Framework depends only on SDK packages
 
 - **WHEN** checking `@hai3/framework` package.json
-- **THEN** only SDK packages appear as @hai3 dependencies: events, store, layout, api, i18n
+- **THEN** only SDK packages appear as @hai3 dependencies: flux, layout, api, i18n
 - **AND** NO React or react-dom dependency exists
 - **AND** NO @hai3/uikit-contracts dependency exists
 
@@ -85,52 +84,86 @@ The system SHALL provide a `@hai3/framework` package that wires SDK packages tog
 
 ### Requirement: Action Pattern
 
-The system SHALL define the action pattern (types and helpers) in `@hai3/events`, with action instances in `@hai3/framework` and user code.
+The system SHALL enforce that actions are **handwritten pure functions** that emit events. Actions are the ONLY entry point for event emission, maintaining strict knowledge separation.
 
-#### Scenario: @hai3/events provides action pattern
-
-- **WHEN** importing from `@hai3/events`
-- **THEN** `Action<TPayload>` type is available
-- **AND** `createAction(eventName)` helper function is available
-- **AND** actions created with `createAction` are fully typed via `EventPayloadMap`
+**Core Principle: Knowledge Separation**
+- Components call action functions (know nothing about events)
+- Actions emit events (know nothing about effects or slices)
+- Effects subscribe to events and update state
+- This separation prevents tight coupling and enables testability
 
 #### Scenario: Action type definition
 
 - **WHEN** defining an action
-- **THEN** it MUST be a pure function that returns void
-- **AND** it MUST only emit events via `eventBus.emit()`
+- **THEN** it MUST be a handwritten pure function that returns void
+- **AND** it MUST emit events via `eventBus.emit()` from `@hai3/flux`
 - **AND** it MUST NOT dispatch directly to Redux store
+- **AND** it MAY contain validation logic before emitting
 
-#### Scenario: Framework provides core action instances via plugins
+#### Scenario: No createAction helper in SDK
 
-- **WHEN** using `createHAI3App()` (full preset)
-- **THEN** all actions are available on the app instance:
-  - navigation actions: `navigateToScreen`, `navigateToScreenset` (from navigation plugin)
-  - layout actions: `showPopup`, `hidePopup`, `showOverlay`, `hideOverlay` (from layout plugin)
-  - theme actions: `changeTheme` (from themes plugin)
-  - language actions: `setLanguage` (from i18n plugin)
-- **AND** all actions are created using `createAction` from `@hai3/events`
-
-#### Scenario: Action availability depends on plugins
-
-- **WHEN** using `createHAI3().use(presets.headless()).build()`
-- **THEN** navigation/layout/theme/language actions are NOT available
-- **AND** only screensets plugin capabilities are present
-- **BECAUSE** headless preset only includes screensets plugin
+- **WHEN** checking SDK package exports (`@hai3/flux`, `@hai3/layout`, etc.)
+- **THEN** NO `createAction` helper function is exported
+- **AND** actions are defined as handwritten functions in screensets
+- **BECAUSE** a factory pattern would:
+  - Encourage components to create inline actions (violating knowledge separation)
+  - Hide the fact that actions contain business logic
+  - Make it too easy to bypass the action layer
 
 #### Scenario: User-defined action instances
 
 - **WHEN** a screenset needs domain-specific actions
 - **THEN** actions are defined in user's screenset code (e.g., `src/screensets/chat/actions/`)
-- **AND** actions use `createAction` from `@hai3/events`
+- **AND** actions import `eventBus` from `@hai3/flux`
+- **AND** actions are handwritten functions with proper TypeScript typing
 - **AND** actions emit screenset-specific events
 
-#### Scenario: SDK packages export only primitives
+```typescript
+// Example: src/screensets/chat/actions/threads.ts
+import { eventBus } from '@hai3/flux';
 
-- **WHEN** checking SDK package exports (store, layout, api, i18n)
-- **THEN** no action instances are exported
-- **AND** only primitives (types, slices, registries) are available
-- **BUT** `@hai3/events` exports the action pattern (`Action` type, `createAction` helper)
+export function selectThread(threadId: string): void {
+  if (!threadId) {
+    console.warn('selectThread called with empty threadId');
+    return;
+  }
+  eventBus.emit('chat/threads/selected', { threadId });
+}
+```
+
+#### Scenario: Framework provides core action instances internally
+
+- **WHEN** using `createHAI3App()` (full preset)
+- **THEN** core actions are provided via the plugin system:
+  - navigation actions: `navigateToScreen`, `navigateToScreenset` (from navigation plugin)
+  - theme actions: `changeTheme` (from themes plugin)
+  - language actions: `setLanguage` (from i18n plugin)
+- **AND** these actions are defined internally in `@hai3/framework` (not in SDK)
+- **AND** user code calls them via `app.actions.*`
+
+#### Scenario: Action availability depends on plugins
+
+- **WHEN** using `createHAI3().use(presets.headless()).build()`
+- **THEN** navigation/theme/language actions are NOT available
+- **AND** only screensets plugin capabilities are present
+- **BECAUSE** headless preset only includes screensets plugin
+
+#### Scenario: Component knowledge isolation
+
+- **WHEN** a component needs to trigger an action
+- **THEN** it imports the action function (NOT eventBus)
+- **AND** it calls the action function directly
+- **AND** it has NO knowledge of the underlying event system
+
+```typescript
+// ✅ CORRECT: Component calls action function
+import { selectThread } from '../../actions/threads';
+onClick={() => selectThread(thread.id)}
+
+// ❌ FORBIDDEN: Component uses eventBus directly
+import { eventBus } from '@hai3/flux';
+onClick={() => eventBus.emit('chat/threads/selected', { threadId: thread.id })}
+```
 
 ### Requirement: React Adapter Layer
 
@@ -140,7 +173,7 @@ The system SHALL provide a `@hai3/react` package with React bindings but NO layo
 
 - **WHEN** checking `@hai3/react` package.json
 - **THEN** only `@hai3/framework` appears as @hai3 dependency
-- **AND** NO direct SDK package imports (events, store, layout, api, i18n)
+- **AND** NO direct SDK package imports (flux, layout, api, i18n)
 - **AND** NO @hai3/uikit-contracts dependency exists
 
 #### Scenario: React provides HAI3Provider
@@ -239,13 +272,13 @@ The system SHALL use TypeScript module augmentation for extensibility across pac
 #### Scenario: EventPayloadMap augmentation
 
 - **WHEN** a screenset defines custom events
-- **THEN** it augments `EventPayloadMap` from `@hai3/events`
+- **THEN** it augments `EventPayloadMap` from `@hai3/flux`
 - **AND** custom events are type-safe in `eventBus.emit()` and `eventBus.on()`
 
 #### Scenario: RootState augmentation
 
 - **WHEN** a screenset registers a slice
-- **THEN** it augments `RootState` from `@hai3/store`
+- **THEN** it augments `RootState` from `@hai3/flux`
 - **AND** slice state is available in `useAppSelector()` with full typing
 
 #### Scenario: Type safety across layers
@@ -283,7 +316,7 @@ The system SHALL enforce strict layer dependencies via ESLint and dependency-cru
 #### Scenario: User code can import any package
 
 - **WHEN** user code (screensets, generated layout) imports from @hai3 packages
-- **THEN** it CAN import from any layer: `@hai3/events`, `@hai3/layout`, `@hai3/react`
+- **THEN** it CAN import from any layer: `@hai3/flux`, `@hai3/layout`, `@hai3/react`
 - **AND** layer rules do NOT apply to user's src/ directory
 - **AND** this allows generated layout to import selectors from `@hai3/layout`
 
@@ -294,7 +327,7 @@ The system SHALL build packages in layer order with SDK packages parallelizable.
 #### Scenario: SDK packages build in parallel
 
 - **WHEN** running `npm run build:packages`
-- **THEN** SDK packages (events, store, layout, api, i18n) can build in parallel
+- **THEN** SDK packages (flux, layout, api, i18n) can build in parallel
 - **AND** they have no build-time dependencies on each other
 
 #### Scenario: Framework builds after SDK
@@ -349,9 +382,9 @@ The system SHALL comply with all SOLID principles.
 
 #### Scenario: Interface Segregation
 
-- **WHEN** a user needs only event bus functionality
-- **THEN** they import only `@hai3/events`
-- **AND** they do not receive Redux, axios, or React as dependencies
+- **WHEN** a user needs the Flux dataflow pattern (events + store)
+- **THEN** they import only `@hai3/flux`
+- **AND** they do not receive axios or React as dependencies
 
 #### Scenario: Dependency Inversion
 

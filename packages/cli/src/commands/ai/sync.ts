@@ -1,7 +1,9 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { trim } from 'lodash';
+import lodash from 'lodash';
 import type { CommandDefinition } from '../../core/command.js';
+
+const { trim } = lodash;
 import { validationOk, validationError } from '../../core/types.js';
 
 /**
@@ -285,41 +287,103 @@ ${userRules}
 }
 
 /**
+ * Scan installed @hai3 packages for commands
+ */
+async function scanPackageCommands(
+  projectRoot: string
+): Promise<{ package: string; commandPath: string; name: string }[]> {
+  const commands: { package: string; commandPath: string; name: string }[] = [];
+  const nodeModulesDir = path.join(projectRoot, 'node_modules', '@hai3');
+
+  if (!(await fs.pathExists(nodeModulesDir))) {
+    return commands;
+  }
+
+  const packages = await fs.readdir(nodeModulesDir);
+
+  for (const pkg of packages) {
+    const commandsDir = path.join(nodeModulesDir, pkg, 'commands');
+    if (!(await fs.pathExists(commandsDir))) continue;
+
+    const entries = await fs.readdir(commandsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      // Skip hai3dev-* commands (monorepo-only)
+      if (entry.name.startsWith('hai3dev-')) continue;
+
+      commands.push({
+        package: `@hai3/${pkg}`,
+        commandPath: path.join(commandsDir, entry.name),
+        name: entry.name,
+      });
+    }
+  }
+
+  return commands;
+}
+
+/**
  * Generate command adapters for an IDE
  */
 async function generateCommandAdapters(
   projectRoot: string,
   commandsDir: string,
-  targetDir: string
+  targetDir: string,
+  packageCommands: { package: string; commandPath: string; name: string }[] = []
 ): Promise<number> {
-  if (!(await fs.pathExists(commandsDir))) {
-    return 0;
-  }
-
   await fs.ensureDir(targetDir);
-  const entries = await fs.readdir(commandsDir, { withFileTypes: true });
   let count = 0;
 
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
-    // Skip hai3dev-* commands (monorepo-only)
-    if (entry.name.startsWith('hai3dev-')) continue;
+  // Generate adapters from local .ai/commands/
+  if (await fs.pathExists(commandsDir)) {
+    const entries = await fs.readdir(commandsDir, { withFileTypes: true });
 
-    const srcPath = path.join(commandsDir, entry.name);
-    const description = await extractCommandDescription(srcPath);
-    const relativePath = `commands/${entry.name}`;
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      // Skip hai3dev-* commands (monorepo-only)
+      if (entry.name.startsWith('hai3dev-')) continue;
 
-    const adapterContent = `---
+      const srcPath = path.join(commandsDir, entry.name);
+      const description = await extractCommandDescription(srcPath);
+      const relativePath = `commands/${entry.name}`;
+
+      const adapterContent = `---
 description: ${description}
 ---
 
 Use \`.ai/${relativePath}\` as the single source of truth.
 `;
-    await fs.writeFile(path.join(targetDir, entry.name), adapterContent);
+      await fs.writeFile(path.join(targetDir, entry.name), adapterContent);
+      count++;
+    }
+  }
+
+  // Generate adapters from installed package commands
+  for (const cmd of packageCommands) {
+    // Skip if already exists from local commands
+    const targetPath = path.join(targetDir, cmd.name);
+    if (await fs.pathExists(targetPath)) continue;
+
+    const content = await fs.readFile(cmd.commandPath, 'utf-8');
+
+    // Copy the full command content (not just an adapter)
+    await fs.writeFile(targetPath, content);
     count++;
   }
 
   return count;
+}
+
+/**
+ * Generate GitHub Copilot command adapters
+ */
+async function generateCopilotCommands(
+  projectRoot: string,
+  commandsDir: string,
+  packageCommands: { package: string; commandPath: string; name: string }[] = []
+): Promise<number> {
+  const targetDir = path.join(projectRoot, '.github', 'copilot-commands');
+  return generateCommandAdapters(projectRoot, commandsDir, targetDir, packageCommands);
 }
 
 /**
@@ -406,6 +470,15 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
       logger.log('  ✓ Found user rules in .ai/rules/app.md');
     }
 
+    // Scan installed package commands if --detect-packages is enabled
+    let packageCommands: { package: string; commandPath: string; name: string }[] = [];
+    if (detectPackages) {
+      packageCommands = await scanPackageCommands(projectRoot!);
+      if (packageCommands.length > 0 && !showDiff) {
+        logger.log(`  ✓ Found ${packageCommands.length} commands from installed packages`);
+      }
+    }
+
     const genOptions: GenerateOptions = { showDiff, logger };
 
     // Generate files for each tool
@@ -417,7 +490,8 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         const claudeCount = await generateCommandAdapters(
           projectRoot!,
           commandsDir,
-          claudeCommandsDir
+          claudeCommandsDir,
+          packageCommands
         );
         commandsGenerated += claudeCount;
         toolsUpdated.push('Claude');
@@ -430,9 +504,17 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
     if (tool === 'all' || tool === 'copilot') {
       const result = await generateCopilotInstructions(projectRoot!, userRules, genOptions);
       if (result.changed) filesGenerated.push(result.file);
-      toolsUpdated.push('GitHub Copilot');
       if (!showDiff) {
-        logger.log('  ✓ GitHub Copilot: .github/copilot-instructions.md');
+        const copilotCount = await generateCopilotCommands(
+          projectRoot!,
+          commandsDir,
+          packageCommands
+        );
+        commandsGenerated += copilotCount;
+        toolsUpdated.push('GitHub Copilot');
+        logger.log(`  ✓ GitHub Copilot: .github/copilot-instructions.md + ${copilotCount} commands`);
+      } else {
+        toolsUpdated.push('GitHub Copilot');
       }
     }
 
@@ -444,7 +526,8 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         const cursorCount = await generateCommandAdapters(
           projectRoot!,
           commandsDir,
-          cursorCommandsDir
+          cursorCommandsDir,
+          packageCommands
         );
         commandsGenerated += cursorCount;
         toolsUpdated.push('Cursor');
@@ -462,7 +545,8 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
         const windsurfCount = await generateCommandAdapters(
           projectRoot!,
           commandsDir,
-          windsurfWorkflowsDir
+          windsurfWorkflowsDir,
+          packageCommands
         );
         commandsGenerated += windsurfCount;
         toolsUpdated.push('Windsurf');
@@ -472,7 +556,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
       }
     }
 
-    // Detect installed packages and include their CLAUDE.md
+    // Report detected packages
     if (detectPackages) {
       const nodeModulesDir = path.join(projectRoot!, 'node_modules', '@hai3');
       if (await fs.pathExists(nodeModulesDir)) {

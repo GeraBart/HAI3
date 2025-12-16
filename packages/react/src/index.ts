@@ -89,9 +89,8 @@ export {
   createThemeRegistry,
   createRouteRegistry,
 
-  // Events
+  // Flux (Event bus + Store)
   eventBus,
-  createAction,
 
   // Store
   createStore,
@@ -190,10 +189,9 @@ export type {
   ChangeThemePayload,
   SetLanguagePayload,
 
-  // Events
+  // Flux (Events + Store)
   EventPayloadMap,
   EventHandler,
-  Action,
   Subscription,
 
   // Store

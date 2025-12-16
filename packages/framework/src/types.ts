@@ -9,12 +9,12 @@
 // Type Imports from SDK Packages
 // ============================================================================
 
-// From @hai3/store
+// From @hai3/flux
 import type {
   HAI3Store as StoreType,
   SliceObject,
   EffectInitializer,
-} from '@hai3/store';
+} from '@hai3/flux';
 
 // From @hai3/layout
 import type { ScreensetDefinition } from '@hai3/layout';

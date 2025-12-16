@@ -20,7 +20,9 @@
   },
   "files": [
     "dist",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "llms.txt",
+    "commands"
   ],
   "scripts": {
     "build": "tsup",
@@ -32,15 +34,13 @@
     "typescript": "^5.4.2"
   },
   "peerDependencies": {
-    "@hai3/events": "*",
-    "@hai3/store": "*",
+    "@hai3/flux": "*",
     "@hai3/layout": "*",
     "@hai3/api": "*",
     "@hai3/i18n": "*"
   },
   "peerDependenciesMeta": {
-    "@hai3/events": { "optional": false },
-    "@hai3/store": { "optional": false },
+    "@hai3/flux": { "optional": false },
     "@hai3/layout": { "optional": false },
     "@hai3/api": { "optional": false },
     "@hai3/i18n": { "optional": false }

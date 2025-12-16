@@ -35,7 +35,11 @@ The framework is built on clean architecture principles with dependency inversio
 
 ### Monorepo Structure
 - **npm workspaces** - Package management
-- Three workspace packages: `@hai3/uikit-contracts`, `@hai3/uikit`, `@hai3/uicore`
+- **SDK Layer (L1)**: `@hai3/events`, `@hai3/store`, `@hai3/layout`, `@hai3/api`, `@hai3/i18n` - Zero @hai3 dependencies
+- **Framework Layer (L2)**: `@hai3/framework` - Plugin-based composition, depends on SDK
+- **React Layer (L3)**: `@hai3/react` - React bindings (HAI3Provider, hooks)
+- **UI Layer**: `@hai3/uikit-contracts`, `@hai3/uikit`, `@hai3/uicore`, `@hai3/studio`
+- **Tooling**: `@hai3/cli`, `@hai3/eslint-config`, `@hai3/depcruise-config`
 
 ## Project Conventions
 
@@ -66,20 +70,37 @@ The framework is built on clean architecture principles with dependency inversio
 
 ### Architecture Patterns
 
-#### 1. Three-Layer Package Structure with Dependency Inversion
+#### 1. Four-Layer SDK Architecture
 
 ```
 App (src/)
   ↓ depends on
-uicore + uikit
+React Layer (L3): @hai3/react - HAI3Provider, hooks
   ↓ depends on
-uikit-contracts (pure interfaces)
+Framework Layer (L2): @hai3/framework - Plugin composition, presets
+  ↓ depends on
+SDK Layer (L1): @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
+  (zero @hai3 dependencies - can be used independently)
 ```
 
-- **uikit-contracts**: Pure TypeScript interfaces - no implementation
-- **uikit**: React components implementing contracts - NO dependency on uicore
-- **uicore**: Layout orchestration, Redux store, event bus, registries
-- **App**: Registers uikit implementations with uicore at runtime
+**SDK Packages (L1):**
+- `@hai3/events` - Event bus with typed events
+- `@hai3/store` - Redux store factory and slice registration
+- `@hai3/layout` - Layout domain slices (header, footer, menu, sidebar, screen, popup, overlay)
+- `@hai3/api` - API service registry with protocol/plugin system
+- `@hai3/i18n` - Internationalization with 36 languages
+
+**Framework Package (L2):**
+- `@hai3/framework` - Plugin-based app builder (`createHAI3().use(plugins).build()`)
+
+**React Package (L3):**
+- `@hai3/react` - `HAI3Provider`, `useHAI3()`, React-specific hooks
+
+**UI Packages (Separate Layer):**
+- `@hai3/uikit-contracts` - Pure TypeScript interfaces
+- `@hai3/uikit` - React components (NO uicore dependency)
+- `@hai3/uicore` - Legacy compatibility layer (re-exports from SDK/Framework)
+- `@hai3/studio` - Development overlay (tree-shaken in production)
 
 #### 2. Event-Driven Flux Pattern
 
@@ -213,18 +234,38 @@ Actions emit events. Effects listen and update slices. Never dispatch slice acti
 
 ### Package Isolation
 
+**Layer Rules (Enforced by ESLint + dependency-cruiser):**
+- SDK packages (L1) MUST NOT depend on any @hai3 packages
+- Framework (L2) MAY only depend on SDK packages
+- React (L3) MAY only depend on Framework
 - `uikit` MUST NOT depend on `uicore`
-- Only `uikit-contracts` can be imported by both `uikit` and `uicore`
-- App code MUST NOT import package internals (`@hai3/uikit/src/*` is forbidden)
-- Enforced by `dependency-cruiser` rules
+- App code MUST NOT import package internals (`@hai3/*/src/*` is forbidden)
 
 ### Build Order
 
-Packages have strict build dependencies:
-1. `@hai3/uikit-contracts` (no dependencies)
-2. `@hai3/uikit` (depends on contracts)
-3. `@hai3/uicore` (depends on contracts)
-4. App/Vite build (depends on all three)
+Packages have strict build dependencies (handled by `npm run build:packages`):
+
+**SDK Layer (L1) - No internal dependencies:**
+1. `@hai3/events`
+2. `@hai3/store`
+3. `@hai3/layout`
+4. `@hai3/api`
+5. `@hai3/i18n`
+
+**Framework Layer (L2):**
+6. `@hai3/framework` (depends on all SDK packages)
+
+**React Layer (L3):**
+7. `@hai3/react` (depends on framework)
+
+**UI Layer:**
+8. `@hai3/uikit-contracts` (no dependencies)
+9. `@hai3/uikit` (depends on contracts)
+10. `@hai3/uicore` (depends on SDK + framework)
+11. `@hai3/studio` (depends on uicore)
+
+**Tooling:**
+12. `@hai3/cli` (depends on all)
 
 Breaking this order causes TypeScript compilation errors.
 
@@ -240,6 +281,21 @@ Breaking this order causes TypeScript compilation errors.
 When adding new events, API services, or extending core types, screensets MUST use TypeScript module augmentation:
 
 ```typescript
+// For events (SDK layer)
+declare module '@hai3/events' {
+  interface EventPayloadMap {
+    'custom/event': CustomPayload;
+  }
+}
+
+// For API services (SDK layer)
+declare module '@hai3/api' {
+  interface ApiServicesMap {
+    myService: MyApiService;
+  }
+}
+
+// Legacy (still works via re-exports)
 declare module '@hai3/uicore' {
   interface EventPayloadMap {
     'custom/event': CustomPayload;
@@ -255,6 +311,40 @@ declare module '@hai3/uicore' {
 - See `.ai/MCP_TROUBLESHOOTING.md` for recovery procedures
 
 ## External Dependencies
+
+### Plugin-Based Framework
+
+The framework uses a plugin architecture for flexible app composition:
+
+```typescript
+import { createHAI3, screensets, themes, layout, navigation, i18n } from '@hai3/framework';
+
+// Full customization
+const app = createHAI3()
+  .use(screensets())
+  .use(themes())
+  .use(layout())
+  .use(navigation())
+  .use(i18n())
+  .build();
+
+// Or use presets
+import { createHAI3App, presets } from '@hai3/framework';
+
+const fullApp = createHAI3App();  // All plugins
+const minimalApp = createHAI3().use(presets.minimal()).build();  // screensets + themes
+const headlessApp = createHAI3().use(presets.headless()).build();  // screensets only
+```
+
+**Available Plugins:**
+| Plugin | Provides | Dependencies |
+|--------|----------|--------------|
+| `screensets()` | screensetRegistry, screenSlice | - |
+| `themes()` | themeRegistry, changeTheme action | - |
+| `layout()` | header, footer, menu, sidebar slices | screensets |
+| `navigation()` | navigateToScreen action | screensets, routing |
+| `routing()` | routeRegistry, URL sync | screensets |
+| `i18n()` | i18nRegistry, setLanguage action | - |
 
 ### API Services (Domain-Based)
 

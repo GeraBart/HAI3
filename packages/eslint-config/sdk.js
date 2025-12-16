@@ -1,6 +1,6 @@
 /**
  * HAI3 ESLint SDK Configuration (L1)
- * Rules for SDK packages: @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
+ * Rules for SDK packages: @hai3/flux, @hai3/layout, @hai3/api, @hai3/i18n
  *
  * SDK packages MUST have:
  * - ZERO @hai3/* dependencies (complete isolation)

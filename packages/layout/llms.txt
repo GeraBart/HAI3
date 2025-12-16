@@ -1,0 +1,52 @@
+# @hai3/layout
+
+> Layout domain slices, selectors, and types for HAI3 SDK. Manages header, footer, menu, sidebar, screen, popup, overlay state.
+
+Part of the HAI3 SDK Layer (L1) - can be used independently without other @hai3 packages. Peer dependency on @reduxjs/toolkit.
+
+## Core API
+
+- [Layout Slices](https://hai3.dev/docs/layout/slices): headerSlice, footerSlice, menuSlice, sidebarSlice, screenSlice, popupSlice, overlaySlice
+- [Layout Selectors](https://hai3.dev/docs/layout/selectors): selectHeader, selectMenu, selectActiveScreen, etc.
+- [Layout Types](https://hai3.dev/docs/layout/types): LayoutState, ScreensetDefinition, MenuItemConfig
+
+## Key Patterns
+
+- Each domain has its own slice (header, footer, menu, sidebar, screen, popup, overlay)
+- Selectors for accessing layout state
+- Screenset definitions with menu items and screens
+- Category-based organization (drafts, mockups, production)
+
+## Quick Start
+
+```typescript
+import {
+  selectActiveScreen,
+  selectMenuCollapsed,
+  ScreensetDefinition,
+  ScreensetCategory
+} from '@hai3/layout';
+
+// Define screenset
+const myScreenset: ScreensetDefinition = {
+  id: 'myScreenset',
+  name: 'My Screenset',
+  category: ScreensetCategory.Drafts,
+  defaultScreen: 'home',
+  menu: [
+    {
+      menuItem: { id: 'home', label: 'Home', icon: 'home' },
+      screen: () => import('./screens/Home')
+    }
+  ]
+};
+
+// Use selectors
+const activeScreen = selectActiveScreen(state);
+const isCollapsed = selectMenuCollapsed(state);
+```
+
+## Optional
+
+- [Migration Guide](https://hai3.dev/docs/layout/migration): Migrating from @hai3/uicore
+- [Custom Layouts](https://hai3.dev/docs/layout/custom): Building custom layout components

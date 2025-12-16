@@ -1,0 +1,60 @@
+# @hai3/react
+
+> React bindings, hooks, and components for HAI3 SDK. Provides type-safe integration with React applications.
+
+Part of the HAI3 React Layer (L3) - depends on @hai3/framework. Peer dependency on react and react-dom.
+
+## Core API
+
+- [HAI3Provider](https://hai3.dev/docs/react/provider): Root context provider
+- [AppRouter](https://hai3.dev/docs/react/router): Screen rendering with lazy loading
+- [TextLoader](https://hai3.dev/docs/react/textloader): Prevents flash of untranslated content
+
+## Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useHAI3()` | Access app instance |
+| `useAppDispatch()` | Type-safe dispatch |
+| `useAppSelector()` | Type-safe selector |
+| `useTranslation()` | Translation utilities (t, language, setLanguage, isRTL) |
+| `useScreenTranslations()` | Lazy load screen translations |
+| `useNavigation()` | Navigate between screens |
+| `useTheme()` | Theme utilities (currentTheme, themes, setTheme) |
+
+## Quick Start
+
+```tsx
+import { HAI3Provider, AppRouter, useTranslation, useNavigation } from '@hai3/react';
+
+// Wrap app with provider
+function App() {
+  return (
+    <HAI3Provider>
+      <Layout>
+        <AppRouter fallback={<Loading />} />
+      </Layout>
+    </HAI3Provider>
+  );
+}
+
+// Use hooks in components
+function MyComponent() {
+  const { t, isRTL } = useTranslation();
+  const { navigateToScreen } = useNavigation();
+
+  return (
+    <div dir={isRTL ? 'rtl' : 'ltr'}>
+      <h1>{t('common:title')}</h1>
+      <button onClick={() => navigateToScreen('demo', 'home')}>
+        Go Home
+      </button>
+    </div>
+  );
+}
+```
+
+## Optional
+
+- [Screen Translations](https://hai3.dev/docs/react/translations): Per-screen lazy loading
+- [Custom Hooks](https://hai3.dev/docs/react/hooks): Building on HAI3 hooks

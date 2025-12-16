@@ -19,11 +19,12 @@ import {
   popupActions,
   overlayActions,
 } from '@hai3/layout';
-import { createAction, eventBus } from '@hai3/events';
+import { eventBus } from '@hai3/flux';
+import { createAction } from '../actions';
 import type { HAI3Plugin, ShowPopupPayload } from '../types';
 
 // Define layout events for module augmentation
-declare module '@hai3/events' {
+declare module '@hai3/flux' {
   interface EventPayloadMap {
     'layout/popup/requested': ShowPopupPayload;
     'layout/popup/hidden': void;

@@ -20,7 +20,9 @@
   },
   "files": [
     "dist",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "llms.txt",
+    "commands"
   ],
   "scripts": {
     "build": "tsup",

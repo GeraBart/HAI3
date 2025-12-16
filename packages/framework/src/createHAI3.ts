@@ -7,8 +7,8 @@
  * Framework Layer: L2 (Depends on SDK packages)
  */
 
-import { createStore } from '@hai3/store';
-import type { EffectInitializer } from '@hai3/store';
+import { createStore } from '@hai3/flux';
+import type { EffectInitializer } from '@hai3/flux';
 import type { Reducer } from '@reduxjs/toolkit';
 import type {
   HAI3Config,

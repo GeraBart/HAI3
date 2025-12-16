@@ -13,13 +13,27 @@
 - REQUIRED: When user says "follow X.md rules", read X.md before any change.
 
 ## ROUTING
-- Data flow / events -> .ai/targets/EVENTS.md
-- API services (screenset-owned) -> .ai/targets/SCREENSETS.md
-- API base classes (uicore) -> .ai/targets/API.md
+
+### SDK Layer (L1) - Zero @hai3 dependencies
+- packages/events -> .ai/targets/EVENTS.md
+- packages/store -> .ai/targets/STORE.md
+- packages/layout -> .ai/targets/LAYOUT.md
+- packages/api -> .ai/targets/API.md
+- packages/i18n -> .ai/targets/I18N.md
+
+### Framework Layer (L2) - Depends on SDK packages
+- packages/framework -> .ai/targets/FRAMEWORK.md
+
+### React Layer (L3) - Depends on Framework
+- packages/react -> .ai/targets/REACT.md
+
+### Legacy/Compatibility Packages
 - packages/uicore -> .ai/targets/UICORE.md
 - packages/uikit -> .ai/targets/UIKIT.md
 - packages/uikit-contracts -> .ai/targets/UIKIT_CONTRACTS.md
 - packages/studio -> .ai/targets/STUDIO.md
+
+### Other
 - packages/cli -> .ai/targets/CLI.md
 - presets/standalone, presets/monorepo -> .ai/targets/CLI.md
 - src/screensets -> .ai/targets/SCREENSETS.md
@@ -31,7 +45,7 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @hai3/uicore, @hai3/uikit, react, react-dom.
+- App-level deps limited to: @hai3/react (or @hai3/uicore for legacy), @hai3/uikit, react, react-dom.
 - Cross-domain communication only via events.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.

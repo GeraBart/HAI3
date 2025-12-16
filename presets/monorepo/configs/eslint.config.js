@@ -51,9 +51,19 @@ export default [
   },
 
   // App: Studio should only be imported via HAI3Provider (auto-detection)
+  // NOTE: Exclude action/effect files to preserve flux architecture rules from screenset.js
   {
     files: ['src/**/*'],
-    ignores: ['src/main.tsx', '**/HAI3Provider.tsx'],
+    ignores: [
+      'src/main.tsx',
+      '**/HAI3Provider.tsx',
+      '**/*Actions.ts',
+      '**/*Actions.tsx',
+      '**/actions/**/*',
+      '**/*Effects.ts',
+      '**/*Effects.tsx',
+      '**/effects/**/*',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -82,8 +92,7 @@ export default [
   // These packages require `any` for: Redux replaceReducer, plugin constructors, event bus emit
   {
     files: [
-      'packages/events/**/*.ts',
-      'packages/store/**/*.ts',
+      'packages/flux/**/*.ts',
       'packages/layout/**/*.ts',
       'packages/api/**/*.ts',
       'packages/i18n/**/*.ts',

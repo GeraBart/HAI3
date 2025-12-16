@@ -29,9 +29,9 @@ export const StudioEvents = {
 
 /**
  * Module Augmentation
- * Extend EventPayloadMap from @hai3/events for type safety
+ * Extend EventPayloadMap from @hai3/flux for type safety
  */
-declare module '@hai3/events' {
+declare module '@hai3/flux' {
   interface EventPayloadMap {
     'studio/positionChanged': PositionChangedPayload;
     'studio/sizeChanged': SizeChangedPayload;

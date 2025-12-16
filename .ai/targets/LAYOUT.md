@@ -1,0 +1,66 @@
+<!-- @standalone -->
+# @hai3/layout Guidelines (Canonical)
+
+## AI WORKFLOW (REQUIRED)
+1) Summarize 3-6 rules from this file before making changes.
+2) STOP if you add new layout domains or modify existing domain slices.
+
+## SCOPE
+- Package: `packages/layout/`
+- Layer: L1 SDK (zero @hai3 dependencies)
+- Peer dependency: `@reduxjs/toolkit`
+
+## CRITICAL RULES
+- Seven fixed layout domains: header, footer, menu, sidebar, screen, popup, overlay.
+- Domain slices are read-only (modifications require proposal).
+- Use selectors for state access (never access state directly).
+- Actions dispatch through domain actions (e.g., `headerActions.setVisible()`).
+- Screenset definitions follow `ScreensetDefinition` type.
+
+## LAYOUT DOMAINS
+
+| Domain | Purpose | Key Selectors |
+|--------|---------|---------------|
+| header | Top navigation | `selectHeaderVisible`, `selectHeaderUser` |
+| footer | Bottom bar | `selectFooterVisible`, `selectFooterConfig` |
+| menu | Side navigation | `selectMenuCollapsed`, `selectMenuItems` |
+| sidebar | Collapsible panel | `selectSidebarVisible`, `selectSidebarWidth` |
+| screen | Main content | `selectActiveScreen`, `selectScreenLoading` |
+| popup | Modal dialogs | `selectActivePopup`, `selectHasPopup` |
+| overlay | Full-screen overlays | `selectActiveOverlay`, `selectHasOverlay` |
+
+## SCREENSET DEFINITION
+```typescript
+// REQUIRED: Follow ScreensetDefinition type
+const myScreenset: ScreensetDefinition = {
+  id: SCREENSET_ID,
+  name: 'My Screenset',
+  category: ScreensetCategory.Drafts,
+  defaultScreen: 'home',
+  localization: translationLoader,
+  menu: [
+    { menuItem: { id: 'home', ... }, screen: () => import('./Home') }
+  ]
+};
+```
+
+## SELECTOR USAGE
+```typescript
+// GOOD: Use typed selectors
+const isCollapsed = useAppSelector(selectMenuCollapsed);
+
+// BAD: Direct state access
+const isCollapsed = state.layout.menu.collapsed; // FORBIDDEN
+```
+
+## STOP CONDITIONS
+- Adding new layout domains (requires architecture decision).
+- Modifying domain slice reducers.
+- Bypassing selectors for direct state access.
+- Creating custom layout slices outside the 7 domains.
+
+## PRE-DIFF CHECKLIST
+- [ ] Using domain selectors (not direct state access).
+- [ ] Using domain actions (not direct dispatch).
+- [ ] Screenset follows ScreensetDefinition type.
+- [ ] No modifications to layout domain slices.

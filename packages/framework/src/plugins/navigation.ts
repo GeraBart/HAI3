@@ -5,12 +5,13 @@
  */
 
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
-import { createAction, eventBus } from '@hai3/events';
+import { eventBus } from '@hai3/flux';
 import { screenActions } from '@hai3/layout';
+import { createAction } from '../actions';
 import type { HAI3Plugin, NavigateToScreenPayload, NavigateToScreensetPayload } from '../types';
 
 // Define navigation events for module augmentation
-declare module '@hai3/events' {
+declare module '@hai3/flux' {
   interface EventPayloadMap {
     'navigation/screen/navigated': NavigateToScreenPayload;
     'navigation/screenset/navigated': NavigateToScreensetPayload;

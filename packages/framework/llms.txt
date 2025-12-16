@@ -1,0 +1,52 @@
+# @hai3/framework
+
+> Plugin-based application framework for HAI3 SDK. Orchestrates SDK packages into cohesive applications.
+
+Part of the HAI3 Framework Layer (L2) - depends on all SDK packages (@hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n).
+
+## Core API
+
+- [createHAI3](https://hai3.dev/docs/framework/create): App builder with plugin composition
+- [createHAI3App](https://hai3.dev/docs/framework/app): Convenience function (full preset)
+- [presets](https://hai3.dev/docs/framework/presets): Pre-configured plugin combinations (full, minimal, headless)
+
+## Available Plugins
+
+| Plugin | Provides |
+|--------|----------|
+| `screensets()` | screensetRegistry, screen slice |
+| `themes()` | themeRegistry, changeTheme action |
+| `layout()` | header, footer, menu, sidebar, popup, overlay slices |
+| `navigation()` | navigateToScreen, navigateToScreenset actions |
+| `routing()` | routeRegistry, URL sync |
+| `i18n()` | i18nRegistry, setLanguage action |
+| `effects()` | Core effect coordination |
+
+## Quick Start
+
+```typescript
+import { createHAI3, screensets, themes, layout, navigation, i18n } from '@hai3/framework';
+
+// Compose plugins
+const app = createHAI3()
+  .use(screensets())
+  .use(themes())
+  .use(layout())
+  .use(navigation())
+  .use(i18n())
+  .build();
+
+// Or use preset (equivalent to above)
+import { createHAI3App } from '@hai3/framework';
+const app = createHAI3App();
+
+// Access registries and actions
+app.screensetRegistry.getAll();
+app.actions.navigateToScreen({ screensetId: 'demo', screenId: 'home' });
+app.actions.changeTheme({ themeId: 'dark' });
+```
+
+## Optional
+
+- [Custom Plugins](https://hai3.dev/docs/framework/plugins): Creating custom plugins
+- [Migration Guide](https://hai3.dev/docs/framework/migration): Migrating from @hai3/uicore
