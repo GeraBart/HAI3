@@ -77,8 +77,8 @@ export type {
 // Re-exports from SDK packages for convenience
 // ============================================================================
 
-// From @hai3/flux (unified Flux dataflow pattern)
-export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@hai3/flux';
+// From @hai3/state (unified Flux dataflow pattern)
+export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@hai3/state';
 export type {
   EventPayloadMap,
   EventHandler,
@@ -88,7 +88,7 @@ export type {
   SliceObject,
   HAI3Store,
   EffectInitializer,
-} from '@hai3/flux';
+} from '@hai3/state';
 
 // From @hai3/layout
 export {

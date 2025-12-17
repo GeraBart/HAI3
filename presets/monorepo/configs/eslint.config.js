@@ -92,7 +92,7 @@ export default [
   // These packages require `any` for: Redux replaceReducer, plugin constructors, event bus emit
   {
     files: [
-      'packages/flux/**/*.ts',
+      'packages/state/**/*.ts',
       'packages/layout/**/*.ts',
       'packages/api/**/*.ts',
       'packages/i18n/**/*.ts',

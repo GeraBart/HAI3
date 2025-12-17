@@ -1,5 +1,5 @@
 /**
- * @hai3/flux - Complete Flux Dataflow Pattern
+ * @hai3/state - Complete Flux Dataflow Pattern
  *
  * This package provides the unified Flux dataflow pattern:
  * - Type-safe event bus for pub/sub communication

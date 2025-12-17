@@ -578,15 +578,15 @@ At the end of each PHASE, all tasks in that phase MUST pass verification before 
 
 Consolidates the functionality of the previous @hai3/events and @hai3/store packages.
 
-- [ ] 3.1.1 Create `packages/flux/` directory structure
-- [ ] 3.1.2 Create `packages/flux/package.json` (only redux-toolkit dep)
-- [ ] 3.1.3 Create `packages/flux/tsconfig.json`
-- [ ] 3.1.4 Create `packages/flux/tsup.config.ts`
+- [ ] 3.1.1 Create `packages/state/` directory structure
+- [ ] 3.1.2 Create `packages/state/package.json` (only redux-toolkit dep)
+- [ ] 3.1.3 Create `packages/state/tsconfig.json`
+- [ ] 3.1.4 Create `packages/state/tsup.config.ts`
 - [ ] 3.1.5 Implement `EventBus` class (from events)
 - [ ] 3.1.6 Export singleton `eventBus` instance (from events)
 - [ ] 3.1.7 Implement Redux store creation (from store)
 - [ ] 3.1.8 Implement `registerSlice()` function (from store)
-- [ ] 3.1.9 Create `packages/flux/src/index.ts` with all exports
+- [ ] 3.1.9 Create `packages/state/src/index.ts` with all exports
 - [ ] 3.1.10 Verify: `npm run build:packages:flux` succeeds
 - [ ] 3.1.11 Verify: Zero @hai3 dependencies in package.json
 
@@ -651,7 +651,7 @@ The old @hai3/store package is replaced by @hai3/flux.
 
 **Each package includes CLAUDE.md for `hai3 ai sync --detect-packages`**
 
-- [ ] 3.7.1 Create `packages/flux/CLAUDE.md` with flux package rules (replaces events + store)
+- [ ] 3.7.1 Create `packages/state/CLAUDE.md` with flux package rules (replaces events + store)
 - [x] 3.7.2 Create `packages/layout/CLAUDE.md` with layout package rules ✅
 - [x] 3.7.3 Create `packages/api/CLAUDE.md` with api package rules ✅
 - [x] 3.7.4 Create `packages/i18n/CLAUDE.md` with i18n package rules ✅
@@ -660,7 +660,7 @@ The old @hai3/store package is replaced by @hai3/flux.
 - [x] 3.7.7 Create `packages/uikit/CLAUDE.md` with uikit package rules (standalone) ✅
 - [ ] 3.7.8 Remove `packages/events/CLAUDE.md` (deprecated)
 - [ ] 3.7.9 Remove `packages/store/CLAUDE.md` (deprecated)
-- [ ] 3.7.10 Add CLAUDE.md to `packages/flux/package.json` files array
+- [ ] 3.7.10 Add CLAUDE.md to `packages/state/package.json` files array
 - [ ] 3.7.11 Verify: `hai3 ai sync --detect-packages` reads all CLAUDE.md files (detects 7 packages)
 
 ### 3.8 SDK Package Installation Testing (CHECKPOINT) ⏳ NEEDS RE-TEST
@@ -1438,12 +1438,12 @@ The `packages/framework/src/actions/createAction.ts` file exports a `createActio
 
 #### 12.3.1 Create @hai3/flux Package ✅
 
-- [x] 12.3.1.1 Create `packages/flux/` directory structure ✅
+- [x] 12.3.1.1 Create `packages/state/` directory structure ✅
 - [x] 12.3.1.2 Move EventBus implementation from `packages/events/src/` ✅
 - [x] 12.3.1.3 Move store implementation from `packages/store/src/` ✅
-- [x] 12.3.1.4 Create `packages/flux/package.json` with redux-toolkit peer dep ✅
-- [x] 12.3.1.5 Create `packages/flux/src/index.ts` with all exports ✅
-- [x] 12.3.1.6 Create `packages/flux/CLAUDE.md` with package documentation ✅
+- [x] 12.3.1.4 Create `packages/state/package.json` with redux-toolkit peer dep ✅
+- [x] 12.3.1.5 Create `packages/state/src/index.ts` with all exports ✅
+- [x] 12.3.1.6 Create `packages/state/CLAUDE.md` with package documentation ✅
 - [x] 12.3.1.7 Do NOT export `createAction` from @hai3/flux ✅
 
 #### 12.3.2 Update @hai3/framework Imports ✅
@@ -1474,8 +1474,8 @@ The `packages/framework/src/actions/createAction.ts` file exports a `createActio
 - [x] 12.3.5.3 Update `packages/eslint-config/react.js` - block @hai3/flux (via framework) ✅
 - [x] 12.3.5.4 Update `packages/depcruise-config/sdk.cjs` - reference @hai3/flux ✅
 - [x] 12.3.5.5 Update `packages/depcruise-config/framework.cjs` - allow @hai3/flux ✅
-- [x] 12.3.5.6 Create `packages/flux/eslint.config.js` ✅
-- [x] 12.3.5.7 Create `packages/flux/.dependency-cruiser.cjs` ✅
+- [x] 12.3.5.6 Create `packages/state/eslint.config.js` ✅
+- [x] 12.3.5.7 Create `packages/state/.dependency-cruiser.cjs` ✅
 
 #### 12.3.6 Update AI Commands and Documentation ✅
 

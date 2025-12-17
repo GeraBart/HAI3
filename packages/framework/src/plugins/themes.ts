@@ -4,13 +4,13 @@
  * Framework Layer: L2
  */
 
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 import { createAction } from '../actions';
 import type { HAI3Plugin, ChangeThemePayload } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
 // Define theme events for module augmentation
-declare module '@hai3/flux' {
+declare module '@hai3/state' {
   interface EventPayloadMap {
     'theme/changed': ChangeThemePayload;
   }

@@ -11,8 +11,8 @@
  * Screenset actions should be handwritten functions, not generated.
  */
 
-import { eventBus } from '@hai3/flux';
-import type { EventPayloadMap, EventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
+import type { EventPayloadMap, EventBus } from '@hai3/state';
 
 /**
  * Simple action type - a function that takes payload and returns void

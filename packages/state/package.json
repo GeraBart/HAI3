@@ -1,7 +1,7 @@
 {
-  "name": "@hai3/flux",
+  "name": "@hai3/state",
   "version": "0.1.0-alpha.0",
-  "description": "Complete Flux dataflow pattern for HAI3 SDK - event bus, store, and effects",
+  "description": "State management for HAI3 SDK - event bus, store, and effects",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -38,13 +38,13 @@
   },
   "keywords": [
     "hai3",
-    "flux",
+    "state",
+    "state-management",
     "events",
     "store",
     "redux",
     "event-bus",
     "pub-sub",
-    "state-management",
     "typescript"
   ],
   "author": "HAI3",

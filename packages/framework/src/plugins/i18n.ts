@@ -4,13 +4,13 @@
  * Framework Layer: L2
  */
 
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 import { createI18nRegistry, Language } from '@hai3/i18n';
 import { createAction } from '../actions';
 import type { HAI3Plugin, SetLanguagePayload } from '../types';
 
 // Define i18n events for module augmentation
-declare module '@hai3/flux' {
+declare module '@hai3/state' {
   interface EventPayloadMap {
     'i18n/language/changed': SetLanguagePayload;
   }

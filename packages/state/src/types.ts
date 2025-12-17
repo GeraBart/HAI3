@@ -1,5 +1,5 @@
 /**
- * @hai3/flux - Type Definitions
+ * @hai3/state - Type Definitions
  *
  * Core types for the HAI3 Flux dataflow pattern.
  * Combines event system and store types into a unified package.
@@ -22,7 +22,7 @@ import type { Reducer, UnknownAction } from '@reduxjs/toolkit';
  *
  * @example
  * ```typescript
- * declare module '@hai3/flux' {
+ * declare module '@hai3/state' {
  *   interface EventPayloadMap {
  *     'chat/threads/selected': { threadId: string };
  *     'chat/messages/received': { message: Message };
@@ -179,7 +179,7 @@ export type PayloadOf<K extends EventKey> = EventPayloadMap[K];
  *
  * @example
  * ```typescript
- * declare module '@hai3/flux' {
+ * declare module '@hai3/state' {
  *   interface EventPayloadMap {
  *     'app/initialized': void;
  *   }
@@ -203,7 +203,7 @@ export type VoidPayload = void;
  * @example
  * ```typescript
  * // In your screenset code
- * declare module '@hai3/flux' {
+ * declare module '@hai3/state' {
  *   interface RootState {
  *     'chat/threads': ThreadsState;
  *     'chat/messages': MessagesState;

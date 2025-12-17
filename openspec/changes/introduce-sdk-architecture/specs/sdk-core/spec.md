@@ -16,16 +16,16 @@ The system SHALL provide 4 flat SDK packages with ZERO @hai3 inter-dependencies,
 - **THEN** no `@hai3/*` packages appear in dependencies or peerDependencies
 - **AND** the package can be used standalone without other HAI3 packages
 
-#### Scenario: @hai3/flux package
+#### Scenario: @hai3/state package
 
-- **WHEN** importing from `@hai3/flux`
+- **WHEN** importing from `@hai3/state`
 - **THEN** `EventBus`, `eventBus`, `EventPayloadMap` are available (event system)
 - **AND** `store`, `createStore`, `registerSlice`, `hasSlice`, `createSlice` are available (store)
 - **AND** `RootState`, `AppDispatch`, `EffectInitializer` types are available
 - **AND** the only external dependency is `@reduxjs/toolkit`
 - **AND** it works in Node.js without React
 
-**Why @hai3/flux instead of separate events/store packages:**
+**Why @hai3/state instead of separate events/store packages:**
 - Events and store are tightly coupled in the Flux pattern
 - Neither makes sense standalone - events without handlers, store without events
 - The complete dataflow pattern is the atomic unit of value
@@ -96,13 +96,13 @@ The system SHALL enforce that actions are **handwritten pure functions** that em
 
 - **WHEN** defining an action
 - **THEN** it MUST be a handwritten pure function that returns void
-- **AND** it MUST emit events via `eventBus.emit()` from `@hai3/flux`
+- **AND** it MUST emit events via `eventBus.emit()` from `@hai3/state`
 - **AND** it MUST NOT dispatch directly to Redux store
 - **AND** it MAY contain validation logic before emitting
 
 #### Scenario: No createAction helper in SDK
 
-- **WHEN** checking SDK package exports (`@hai3/flux`, `@hai3/layout`, etc.)
+- **WHEN** checking SDK package exports (`@hai3/state`, `@hai3/layout`, etc.)
 - **THEN** NO `createAction` helper function is exported
 - **AND** actions are defined as handwritten functions in screensets
 - **BECAUSE** a factory pattern would:
@@ -114,13 +114,13 @@ The system SHALL enforce that actions are **handwritten pure functions** that em
 
 - **WHEN** a screenset needs domain-specific actions
 - **THEN** actions are defined in user's screenset code (e.g., `src/screensets/chat/actions/`)
-- **AND** actions import `eventBus` from `@hai3/flux`
+- **AND** actions import `eventBus` from `@hai3/state`
 - **AND** actions are handwritten functions with proper TypeScript typing
 - **AND** actions emit screenset-specific events
 
 ```typescript
 // Example: src/screensets/chat/actions/threads.ts
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 
 export function selectThread(threadId: string): void {
   if (!threadId) {
@@ -161,7 +161,7 @@ import { selectThread } from '../../actions/threads';
 onClick={() => selectThread(thread.id)}
 
 // ❌ FORBIDDEN: Component uses eventBus directly
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 onClick={() => eventBus.emit('chat/threads/selected', { threadId: thread.id })}
 ```
 
@@ -272,13 +272,13 @@ The system SHALL use TypeScript module augmentation for extensibility across pac
 #### Scenario: EventPayloadMap augmentation
 
 - **WHEN** a screenset defines custom events
-- **THEN** it augments `EventPayloadMap` from `@hai3/flux`
+- **THEN** it augments `EventPayloadMap` from `@hai3/state`
 - **AND** custom events are type-safe in `eventBus.emit()` and `eventBus.on()`
 
 #### Scenario: RootState augmentation
 
 - **WHEN** a screenset registers a slice
-- **THEN** it augments `RootState` from `@hai3/flux`
+- **THEN** it augments `RootState` from `@hai3/state`
 - **AND** slice state is available in `useAppSelector()` with full typing
 
 #### Scenario: Type safety across layers
@@ -316,7 +316,7 @@ The system SHALL enforce strict layer dependencies via ESLint and dependency-cru
 #### Scenario: User code can import any package
 
 - **WHEN** user code (screensets, generated layout) imports from @hai3 packages
-- **THEN** it CAN import from any layer: `@hai3/flux`, `@hai3/layout`, `@hai3/react`
+- **THEN** it CAN import from any layer: `@hai3/state`, `@hai3/layout`, `@hai3/react`
 - **AND** layer rules do NOT apply to user's src/ directory
 - **AND** this allows generated layout to import selectors from `@hai3/layout`
 
@@ -383,7 +383,7 @@ The system SHALL comply with all SOLID principles.
 #### Scenario: Interface Segregation
 
 - **WHEN** a user needs the Flux dataflow pattern (events + store)
-- **THEN** they import only `@hai3/flux`
+- **THEN** they import only `@hai3/state`
 - **AND** they do not receive axios or React as dependencies
 
 #### Scenario: Dependency Inversion
