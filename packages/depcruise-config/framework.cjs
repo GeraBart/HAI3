@@ -3,7 +3,7 @@
  * Rules for @hai3/framework package
  *
  * Framework package CAN import:
- * - @hai3/flux, @hai3/layout, @hai3/api, @hai3/i18n (SDK packages)
+ * - @hai3/state, @hai3/layout, @hai3/api, @hai3/i18n (SDK packages)
  *
  * Framework package CANNOT import:
  * - @hai3/react (would create circular dependency)
@@ -24,7 +24,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^packages/framework/src' },
       to: { path: 'node_modules/@hai3/(react|uikit|uikit-contracts|uicore)' },
-      comment: 'FRAMEWORK VIOLATION: Framework can only import SDK packages (@hai3/flux, layout, api, i18n).',
+      comment: 'FRAMEWORK VIOLATION: Framework can only import SDK packages (@hai3/state, layout, api, i18n).',
     },
     {
       name: 'framework-no-react',

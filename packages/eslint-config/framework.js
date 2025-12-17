@@ -3,7 +3,7 @@
  * Rules for @hai3/framework package
  *
  * Framework package CAN import:
- * - @hai3/flux, @hai3/layout, @hai3/api, @hai3/i18n (SDK packages)
+ * - @hai3/state, @hai3/layout, @hai3/api, @hai3/i18n (SDK packages)
  *
  * Framework package CANNOT import:
  * - @hai3/react (would create circular dependency)

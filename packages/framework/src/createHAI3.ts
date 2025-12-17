@@ -18,6 +18,7 @@ import type {
   HAI3Actions,
   HAI3Store,
   PluginFactory,
+  RegisterableSlice,
   ScreensetRegistry,
   ThemeRegistry,
   RouteRegistry,
@@ -206,7 +207,7 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
    */
   private aggregateProvides(plugins: HAI3Plugin[]) {
     const registries: Record<string, unknown> = {};
-    const slices: Array<{ name: string; reducer: Reducer }> = [];
+    const slices: RegisterableSlice[] = [];
     const effects: EffectInitializer[] = [];
     // Actions are typed via module augmentation - each plugin declares its actions
     // in HAI3Actions interface. At runtime we merge them all together.
@@ -222,9 +223,7 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
 
       // Collect slices
       if (plugin.provides.slices) {
-        plugin.provides.slices.forEach((slice) => {
-          slices.push(slice as { name: string; reducer: Reducer });
-        });
+        slices.push(...plugin.provides.slices);
       }
 
       // Collect effects
@@ -244,9 +243,7 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
   /**
    * Create store with all aggregated slices.
    */
-  private createStoreWithSlices(
-    slices: Array<{ name: string; reducer: Reducer }>
-  ): HAI3Store {
+  private createStoreWithSlices(slices: RegisterableSlice[]): HAI3Store {
     // Create initial reducers map
     const initialReducers: Record<string, Reducer> = {};
     slices.forEach((slice) => {

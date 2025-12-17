@@ -1,128 +1,125 @@
 # @hai3/state
 
-State management for HAI3 applications - event bus, store, and effects.
+State management for HAI3 applications - event bus, store, and slices.
 
 ## SDK Layer
 
-This package is part of the **SDK Layer (L1)** - it has zero @hai3 dependencies and can be used independently. It has `@reduxjs/toolkit` as a peer dependency.
+This package is part of the **SDK Layer (L1)** - zero @hai3 dependencies, can be used independently. Only peer dependency is `@reduxjs/toolkit`.
+
+## Terminology
+
+- **Action**: Function that emits events via `eventBus.emit()` (e.g., `selectThread()`)
+- **Reducer**: Pure function in a slice that updates state
+- **ReducerPayload**: Type for reducer parameters
+
+**IMPORTANT:** The word "action" refers ONLY to HAI3 Actions (event emitters). Redux internals are completely hidden.
 
 ## Core Concepts
 
 ### EventBus
 
-The `eventBus` singleton provides type-safe event emission and subscription:
+Type-safe event emission and subscription:
 
 ```typescript
 import { eventBus } from '@hai3/state';
 
 // Subscribe to events
-const unsubscribe = eventBus.on('user/loggedIn', (payload) => {
+const subscription = eventBus.on('user/loggedIn', (payload) => {
   console.log('User logged in:', payload.userId);
 });
 
-// Emit events (only from actions!)
+// Emit events (only from Actions!)
 eventBus.emit('user/loggedIn', { userId: '123' });
 
 // Cleanup
-unsubscribe();
+subscription.unsubscribe();
 ```
 
-### Store
+### Slices
 
-Dynamic slice registration and Redux store management:
+HAI3's `createSlice` returns `{ slice, ...reducerFunctions }`:
 
 ```typescript
-import { createStore, registerSlice, getStore } from '@hai3/state';
+import { createSlice, registerSlice, type ReducerPayload } from '@hai3/state';
 
-// Create store with optional initial reducers
-const store = createStore({
-  someFeature: someFeatureReducer
+const { slice, setSelected, setLoading } = createSlice({
+  name: 'chat/threads',
+  initialState: { selected: null as string | null, loading: false },
+  reducers: {
+    setSelected: (state, payload: ReducerPayload<string>) => {
+      state.selected = payload.payload;
+    },
+    setLoading: (state, payload: ReducerPayload<boolean>) => {
+      state.loading = payload.payload;
+    },
+  },
 });
 
-// Register dynamic slice
-registerSlice(mySlice, initMyEffects);
+// Register slice with effects
+registerSlice(slice, initThreadsEffects);
 
-// Get store instance later
-const store = getStore();
+// Export reducer functions for effects
+export { setSelected, setLoading };
 ```
 
-### Type Safety via Module Augmentation
+### Effects
 
-Extend `EventPayloadMap` and `RootState` to add custom events and state:
+Effects subscribe to events and dispatch to reducers:
+
+```typescript
+import { eventBus, type AppDispatch } from '@hai3/state';
+import { setSelected } from './threadsSlice';
+
+export function initThreadsEffects(dispatch: AppDispatch): void {
+  eventBus.on(ThreadsEvents.Selected, ({ threadId }) => {
+    dispatch(setSelected(threadId));
+  });
+}
+```
+
+### Module Augmentation
+
+Extend `EventPayloadMap` and `RootState` for type safety:
 
 ```typescript
 declare module '@hai3/state' {
   interface EventPayloadMap {
-    'user/loggedIn': { userId: string };
-    'chat/messageReceived': { threadId: string; message: string };
+    'chat/threads/selected': { threadId: string };
   }
 
   interface RootState {
     'chat/threads': ThreadsState;
-    'chat/messages': MessagesState;
   }
 }
 ```
-
-## Event Naming Convention
-
-Events should follow the pattern: `domain/eventName`
-
-- `user/loggedIn` - User domain, logged in event
-- `chat/messageReceived` - Chat domain, message received event
-- `theme/changed` - Theme domain, changed event
 
 ## Key Rules
 
-1. **Actions emit events** - Only action functions call `eventBus.emit()`
-2. **Components call actions** - Components never use `eventBus` directly
-3. **Effects subscribe** - Effects subscribe to events and dispatch to slices
+1. **Actions emit events** - Only Action functions call `eventBus.emit()`
+2. **Components call Actions** - Components never use `eventBus` directly
+3. **Effects subscribe and dispatch** - Effects listen to events, dispatch to reducers
 4. **One-way flow** - Actions → Events → Effects → State updates
-5. **Type safety** - Always use module augmentation for custom events/state
-
-## NO createAction Helper
-
-This package intentionally does NOT export a `createAction` helper:
-- Actions are handwritten functions in screensets
-- Actions contain validation and business logic
-- This maintains knowledge separation (components don't know about events)
-
-Example action (in screenset):
-```typescript
-import { eventBus } from '@hai3/state';
-
-export function selectThread(threadId: string): void {
-  if (!threadId) {
-    console.warn('selectThread called with empty threadId');
-    return;
-  }
-  eventBus.emit('chat/threads/selected', { threadId });
-}
-```
 
 ## Exports
 
-### Event System
+### Functions
 - `eventBus` - Singleton EventBus instance
-- `EventBus` - EventBus interface (type)
-- `EventPayloadMap` - Augmentable event payload interface
-- `EventHandler` - Handler function type
-- `Subscription` - Subscription object with unsubscribe
-
-### Store
+- `createSlice` - Create slice, returns `{ slice, ...reducerFunctions }`
 - `createStore` - Create HAI3 store
 - `getStore` - Get store instance
 - `registerSlice` - Register dynamic slice
 - `unregisterSlice` - Remove dynamic slice
 - `hasSlice` - Check if slice exists
-- `getRegisteredSlices` - List all registered slices
-- `resetStore` - Reset store to initial state
-- `createSlice` - Re-exported from Redux Toolkit
-- `combineReducers` - Re-exported from Redux Toolkit
+- `getRegisteredSlices` - List registered slices
+- `resetStore` - Reset store (for testing)
 
 ### Types
+- `ReducerPayload<T>` - Payload type for reducer parameters
+- `EventPayloadMap` - Augmentable event payload interface
 - `RootState` - Augmentable root state interface
-- `AppDispatch` - Store dispatch type
+- `AppDispatch` - Dispatch type for effects
+- `EffectInitializer` - Effect initializer function type
 - `HAI3Store` - Store type
-- `SliceObject` - Slice interface
-- `EffectInitializer` - Effect initializer type
+- `SliceObject<TState>` - Slice interface (name + reducer)
+- `EventBus` - EventBus interface
+- `Subscription` - Subscription with unsubscribe method

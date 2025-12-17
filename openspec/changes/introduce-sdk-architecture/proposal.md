@@ -191,6 +191,189 @@ hai3 scaffold layout                  # Generates layout using @hai3/uikit
 hai3 scaffold layout --ui-kit=custom  # Generates layout without @hai3/uikit imports
 ```
 
+## Open Issues (Require Resolution)
+
+### Issue 1: createAction in Framework is a Flux Violation
+
+**Status:** MUST FIX
+
+The current implementation has `createAction` as an "internal framework helper" in `packages/framework/src/actions/createAction.ts`. This is a **flux architecture violation**.
+
+**Problem:** Even internal use of `createAction` violates the principle that actions are handwritten functions containing business logic. The factory pattern hides the event emission, breaking the explicit data flow.
+
+**Current (Wrong):**
+```typescript
+// packages/framework/src/plugins/themes.ts
+import { createAction } from '../actions';
+const changeTheme = createAction<'theme/changed'>('theme/changed');
+```
+
+**Correct:**
+```typescript
+// packages/framework/src/plugins/themes.ts
+import { eventBus } from '@hai3/state';
+export function changeTheme(payload: { themeId: string }): void {
+  eventBus.emit('theme/changed', payload);
+}
+```
+
+**Action Required:**
+1. Delete `packages/framework/src/actions/createAction.ts`
+2. Rewrite all framework plugins (themes, layout, navigation, i18n) to use `eventBus.emit()` directly
+3. Update all references in tasks.md that mention "keep createAction as internal helper"
+
+### Issue 2: ESLint/Depcruise Decomposition Misunderstanding
+
+**Status:** NEEDS RE-ASSESSMENT
+
+The current implementation created per-package ESLint/depcruise configs in each SDK package:
+- `packages/state/eslint.config.js` extending `sdk.js`
+- `packages/layout/eslint.config.js` extending `sdk.js`
+- etc.
+
+**Problem:** This conflates two different purposes:
+
+| Purpose | Scope | Where It Should Live |
+|---------|-------|---------------------|
+| Protect SDK source code | Monorepo only | `presets/monorepo/` (NOT shipped to users) |
+| Protect SDK users' code | User projects | Shipped with CLI templates |
+
+**Monorepo-level rules (for SDK source code):**
+- `no-explicit-any` in SDK packages
+- SDK packages cannot import @hai3/* packages
+- SDK packages cannot import React
+
+**User-level rules (shipped to protect user code):**
+- Actions can only emit events (no getState, no async)
+- Effects cannot emit events
+- Components cannot dispatch directly
+- Cross-screenset import prohibition
+
+**Action Required:**
+1. Research: Which rules are for SDK source vs SDK users?
+2. Keep monorepo-level rules in `presets/monorepo/` (single config)
+3. Remove per-package `eslint.config.js` files from SDK packages
+4. User-level rules stay in `presets/standalone/` (shipped via CLI)
+5. Update Phase 1 in tasks.md with corrected approach
+
+### Issue 3: Static AI Commands for Plugin-Based Framework
+
+**Status:** ARCHITECTURAL GAP
+
+If the framework is plugin-based (users pick which plugins to use), why are AI commands/guidelines static?
+
+**Problem:** Current approach:
+- User installs `@hai3/framework` and composes: `createHAI3().use(screensets()).use(themes()).build()`
+- But AI commands in `.ai/commands/` are static and include ALL plugins
+- User who doesn't use `layout()` plugin still gets layout-related guidelines
+
+**Possible Solutions:**
+
+1. **Plugin-contributed guidelines**: Each plugin contributes its own section to CLAUDE.md
+   ```typescript
+   const themes = (): HAI3Plugin => ({
+     name: 'themes',
+     guidelines: `## Themes\nUse changeTheme() action...`,
+   });
+   ```
+
+2. **Dynamic command generation**: `hai3 ai sync` detects installed plugins and generates only relevant commands
+
+3. **Modular GUIDELINES.md**: Break into plugin-specific sections that are conditionally included
+
+**Action Required:**
+1. Decide which solution fits the plugin architecture best
+2. Update proposal with chosen approach
+3. Add tasks for implementation
+
+### Issue 4: Hide Redux Internals, Provide Clean HAI3 API
+
+**Status:** ✅ RESOLVED
+
+The `@hai3/state` package provides a clean API that completely hides Redux internals. The word "action" is reserved exclusively for HAI3 Actions (event emitters).
+
+**Principle:** Redux is an internal implementation detail. Users never see `.actions`, `PayloadAction`, or other Redux terminology.
+
+**HAI3 Terminology:**
+- **Action**: Function that emits events via `eventBus.emit()` (e.g., `selectThread()`)
+- **Reducer**: Pure function in a slice that updates state
+- **ReducerPayload<T>**: Type for reducer parameters (HAI3 alias for RTK's PayloadAction)
+
+**HAI3 createSlice Wrapper:**
+
+HAI3 provides a `createSlice` wrapper that returns `{ slice, ...reducerFunctions }` instead of RTK's object with `.actions`:
+
+```typescript
+import { createSlice, registerSlice, type ReducerPayload } from '@hai3/state';
+
+// createSlice returns { slice, setMenuCollapsed, setMenuItems }
+// NO .actions property - Redux is hidden
+const { slice, setMenuCollapsed, setMenuItems } = createSlice({
+  name: 'uicore/menu',
+  initialState: { collapsed: false, items: [] },
+  reducers: {
+    setMenuCollapsed: (state, payload: ReducerPayload<boolean>) => {
+      state.collapsed = payload.payload;
+    },
+    setMenuItems: (state, payload: ReducerPayload<MenuItem[]>) => {
+      state.items = payload.payload;
+    },
+  },
+});
+
+// Register slice with effects
+registerSlice(slice, initMenuEffects);
+
+// Export reducer functions for effects
+export { setMenuCollapsed, setMenuItems };
+```
+
+**Effects dispatch to reducers:**
+```typescript
+import { eventBus, type AppDispatch } from '@hai3/state';
+import { setMenuItems } from './menuSlice';
+
+export function initMenuEffects(dispatch: AppDispatch): void {
+  eventBus.on(MenuEvents.ItemsChanged, ({ items }) => {
+    dispatch(setMenuItems(items));
+  });
+}
+```
+
+**Minimal Public API:**
+
+| Export | Purpose |
+|--------|---------|
+| `eventBus` | Singleton EventBus instance |
+| `createSlice` | HAI3 wrapper that returns `{ slice, ...reducerFunctions }` |
+| `createStore`, `getStore` | Store management |
+| `registerSlice`, `unregisterSlice`, `hasSlice`, `getRegisteredSlices` | Slice registration |
+| `resetStore` | Testing utility |
+| `ReducerPayload<T>` | Type for reducer parameters |
+| `EventPayloadMap`, `RootState` | Module augmentation interfaces |
+| `AppDispatch`, `EffectInitializer` | Types for effects |
+| `HAI3Store`, `SliceObject`, `EventBus`, `Subscription` | Core types |
+
+**NOT Exported (Hidden Redux internals):**
+
+| Hidden | Reason |
+|--------|--------|
+| `.actions` property | RTK's actions hidden by wrapper |
+| `combineReducers` | Internal store implementation |
+| `Reducer` type | Internal type |
+| `ThunkDispatch` | Not used in HAI3 pattern |
+| `Selector`, `ParameterizedSelector` | Use @hai3/react hooks instead |
+
+**Headless / Framework-Agnostic:**
+
+`@hai3/state` MUST work without React:
+- NO React imports
+- NO React hooks
+- Works in Node.js
+- React bindings are in `@hai3/react` package
+
+---
+
 ## Impact
 
 - **Affected specs**: None (new capability, deprecates old)

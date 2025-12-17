@@ -20,7 +20,6 @@ import {
   overlayActions,
 } from '@hai3/layout';
 import { eventBus } from '@hai3/state';
-import { createAction } from '../actions';
 import type { HAI3Plugin, ShowPopupPayload } from '../types';
 
 // Define layout events for module augmentation
@@ -33,6 +32,48 @@ declare module '@hai3/state' {
     'layout/menu/collapsed': { collapsed: boolean };
     'layout/sidebar/collapsed': { collapsed: boolean };
   }
+}
+
+/**
+ * Show popup action.
+ */
+function showPopup(payload: ShowPopupPayload): void {
+  eventBus.emit('layout/popup/requested', payload);
+}
+
+/**
+ * Hide popup action.
+ */
+function hidePopup(): void {
+  eventBus.emit('layout/popup/hidden');
+}
+
+/**
+ * Show overlay action.
+ */
+function showOverlay(payload: { id: string }): void {
+  eventBus.emit('layout/overlay/requested', payload);
+}
+
+/**
+ * Hide overlay action.
+ */
+function hideOverlay(): void {
+  eventBus.emit('layout/overlay/hidden');
+}
+
+/**
+ * Toggle menu collapsed action.
+ */
+function toggleMenuCollapsed(payload: { collapsed: boolean }): void {
+  eventBus.emit('layout/menu/collapsed', payload);
+}
+
+/**
+ * Toggle sidebar collapsed action.
+ */
+function toggleSidebarCollapsed(payload: { collapsed: boolean }): void {
+  eventBus.emit('layout/sidebar/collapsed', payload);
 }
 
 /**
@@ -49,13 +90,6 @@ declare module '@hai3/state' {
  * ```
  */
 export function layout(): HAI3Plugin {
-  // Create actions
-  const showPopup = createAction<'layout/popup/requested'>('layout/popup/requested');
-  const hidePopup = createAction<'layout/popup/hidden'>('layout/popup/hidden');
-  const showOverlay = createAction<'layout/overlay/requested'>('layout/overlay/requested');
-  const hideOverlay = createAction<'layout/overlay/hidden'>('layout/overlay/hidden');
-  const toggleMenuCollapsed = createAction<'layout/menu/collapsed'>('layout/menu/collapsed');
-  const toggleSidebarCollapsed = createAction<'layout/sidebar/collapsed'>('layout/sidebar/collapsed');
 
   return {
     name: 'layout',

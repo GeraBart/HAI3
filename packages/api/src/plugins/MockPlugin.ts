@@ -10,6 +10,7 @@
 import type {
   ApiPlugin,
   ApiPluginRequestContext,
+  JsonValue,
   MockMap,
   MockResponseFactory,
 } from '../types';
@@ -81,7 +82,7 @@ export class MockPlugin implements ApiPlugin {
       }
 
       // Get mock data from factory
-      const mockData = mockFactory(context.body as any);
+      const mockData = mockFactory(context.body as JsonValue);
 
       // Return context with mock response (short-circuits chain)
       return {

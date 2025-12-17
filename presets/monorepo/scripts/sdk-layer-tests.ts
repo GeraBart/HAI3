@@ -58,12 +58,12 @@ function getHai3Dependencies(pkg: PackageJson): string[] {
 }
 
 // SDK packages that should have ZERO @hai3 dependencies
-const SDK_PACKAGES = ['events', 'store', 'layout', 'api', 'i18n'];
+// Note: @hai3/events + @hai3/store were consolidated into @hai3/state
+const SDK_PACKAGES = ['state', 'layout', 'api', 'i18n'];
 
 // Framework can only import these SDK packages
 const ALLOWED_SDK_DEPS = [
-  '@hai3/events',
-  '@hai3/store',
+  '@hai3/state',   // Consolidated from @hai3/events + @hai3/store
   '@hai3/layout',
   '@hai3/api',
   '@hai3/i18n',

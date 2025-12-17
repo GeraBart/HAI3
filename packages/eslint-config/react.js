@@ -7,7 +7,7 @@
  * - react, react-dom (React adapter)
  *
  * React package CANNOT import:
- * - @hai3/flux, @hai3/layout, @hai3/api, @hai3/i18n (use framework re-exports)
+ * - @hai3/state, @hai3/layout, @hai3/api, @hai3/i18n (use framework re-exports)
  * - @hai3/uikit-contracts (deprecated)
  * - @hai3/uicore (deprecated)
  */
@@ -40,7 +40,7 @@ export const reactConfig = [
         {
           patterns: [
             {
-              group: ['@hai3/flux', '@hai3/flux/*'],
+              group: ['@hai3/state', '@hai3/state/*'],
               message: 'REACT VIOLATION: Import from @hai3/framework instead. React package uses framework re-exports.',
             },
             {

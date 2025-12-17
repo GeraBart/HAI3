@@ -1,5 +1,5 @@
 /**
- * @hai3/flux Dependency Cruiser Configuration
+ * @hai3/state Dependency Cruiser Configuration
  * Extends SDK layer config - enforces zero @hai3 dependencies and no React
  */
 

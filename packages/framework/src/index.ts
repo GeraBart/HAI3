@@ -80,15 +80,18 @@ export type {
 // From @hai3/state (unified Flux dataflow pattern)
 export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@hai3/state';
 export type {
+  ReducerPayload,
   EventPayloadMap,
   EventHandler,
   Subscription,
   RootState,
   AppDispatch,
   SliceObject,
-  HAI3Store,
   EffectInitializer,
 } from '@hai3/state';
+
+// Re-export HAI3Store from types (wrapped version)
+export type { HAI3Store } from './types';
 
 // From @hai3/layout
 export {

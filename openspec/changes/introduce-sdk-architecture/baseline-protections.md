@@ -221,7 +221,8 @@ All must pass with 0 errors and 0 warnings.
    - SDK layer restrictions enforced
    - Screenset protection rules preserved
 
-3. **Package-Level Protection Configs**
+3. **Package-Level Protection Configs** ⚠️ NEEDS RE-ASSESSMENT
+   > See [proposal.md Issue 2](./proposal.md#issue-2-eslintdepcruise-decomposition-misunderstanding). This approach conflates monorepo-level (SDK source code) vs user-level (shipped to users) protection. Phase 13.2 in tasks.md addresses this.
    - Each SDK package has its own eslint.config.js
    - Each SDK package has its own .dependency-cruiser.cjs
    - Configs enforce layer-appropriate restrictions

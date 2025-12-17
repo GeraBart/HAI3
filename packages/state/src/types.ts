@@ -7,7 +7,41 @@
  * SDK Layer: L1 (Only peer dependency on @reduxjs/toolkit)
  */
 
-import type { Reducer, UnknownAction } from '@reduxjs/toolkit';
+import type { PayloadAction, Reducer, UnknownAction } from '@reduxjs/toolkit';
+
+// ============================================================================
+// Reducer Payload Type (Renamed from PayloadAction)
+// ============================================================================
+
+/**
+ * HAI3 Reducer Payload Type
+ * Type alias for Redux Toolkit's PayloadAction.
+ *
+ * TERMINOLOGY: Named "ReducerPayload" (not "PayloadAction") to avoid confusion
+ * with HAI3 Actions. In HAI3:
+ * - **HAI3 Action**: Function that emits events via eventBus.emit()
+ * - **ReducerPayload**: The payload shape received by reducers in createSlice
+ *
+ * Redux is an internal implementation detail of @hai3/state.
+ *
+ * @template T - The payload type
+ *
+ * @example
+ * ```typescript
+ * import { createSlice, type ReducerPayload } from '@hai3/state';
+ *
+ * const menuSlice = createSlice({
+ *   name: 'uicore/menu',
+ *   initialState,
+ *   reducers: {
+ *     setMenuCollapsed: (state, action: ReducerPayload<boolean>) => {
+ *       state.collapsed = action.payload;
+ *     },
+ *   },
+ * });
+ * ```
+ */
+export type ReducerPayload<T> = PayloadAction<T>;
 
 // ============================================================================
 // Event Payload Map
@@ -226,19 +260,9 @@ export interface RootState {
 /**
  * App Dispatch Type
  * The dispatch function type for the HAI3 store.
- * Supports both plain actions and thunks.
+ * Supports plain actions (not thunks - HAI3 uses event-driven pattern instead).
  */
 export type AppDispatch = (action: UnknownAction) => UnknownAction;
-
-/**
- * Thunk Dispatch Type
- * Extended dispatch that supports async thunk actions.
- *
- * @template TState - The state type (defaults to RootState)
- */
-export type ThunkDispatch<TState = RootState> = (
-  action: UnknownAction | ((dispatch: AppDispatch, getState: () => TState) => void)
-) => unknown;
 
 // ============================================================================
 // Slice Types
@@ -246,15 +270,14 @@ export type ThunkDispatch<TState = RootState> = (
 
 /**
  * Slice Object Interface
- * Represents a Redux Toolkit slice object.
- * Used for dynamic slice registration.
+ * Minimal interface for slice registration.
+ * Only includes what registerSlice() actually needs.
  *
- * NOTE: Default generic parameter uses `any` following Redux Toolkit's pattern.
- * This is intentional for heterogeneous slice collections where type safety
- * comes from individual slice definitions, not collection type.
- * See: https://github.com/reduxjs/redux-toolkit (Slice<State = any>)
+ * @template TState - The slice state type (required, no default)
  *
- * @template TState - The slice state type
+ * NOTE: This interface is intentionally minimal. Redux Toolkit's createSlice
+ * returns additional properties (actions, selectors, etc.) but those are
+ * internal implementation details used by effects, not part of the registration API.
  *
  * @example
  * ```typescript
@@ -268,18 +291,11 @@ export type ThunkDispatch<TState = RootState> = (
  * registerSlice(threadsSlice, initThreadsEffects);
  * ```
  */
-// TState defaults to any for Redux Toolkit compatibility
-export interface SliceObject<TState = any> {
+export interface SliceObject<TState> {
   /** Slice name - becomes the state key */
-  name: string;
+  readonly name: string;
   /** Slice reducer function */
-  reducer: Reducer<TState>;
-  /** Slice action creators */
-  actions: Record<string, unknown>;
-  /** Slice selectors (optional) */
-  selectors?: Record<string, unknown>;
-  /** Initial state */
-  getInitialState?: () => TState;
+  readonly reducer: Reducer<TState>;
 }
 
 // ============================================================================

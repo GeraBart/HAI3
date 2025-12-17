@@ -7,7 +7,6 @@
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
 import { eventBus } from '@hai3/state';
 import { screenActions } from '@hai3/layout';
-import { createAction } from '../actions';
 import type { HAI3Plugin, NavigateToScreenPayload, NavigateToScreensetPayload } from '../types';
 
 // Define navigation events for module augmentation
@@ -16,6 +15,26 @@ declare module '@hai3/state' {
     'navigation/screen/navigated': NavigateToScreenPayload;
     'navigation/screenset/navigated': NavigateToScreensetPayload;
   }
+}
+
+/**
+ * Navigate to screen action.
+ * Emits 'navigation/screen/navigated' event.
+ *
+ * @param payload - The navigation payload
+ */
+function navigateToScreen(payload: NavigateToScreenPayload): void {
+  eventBus.emit('navigation/screen/navigated', payload);
+}
+
+/**
+ * Navigate to screenset action.
+ * Emits 'navigation/screenset/navigated' event.
+ *
+ * @param payload - The navigation payload
+ */
+function navigateToScreenset(payload: NavigateToScreensetPayload): void {
+  eventBus.emit('navigation/screenset/navigated', payload);
 }
 
 /**
@@ -34,9 +53,6 @@ declare module '@hai3/state' {
  * ```
  */
 export function navigation(): HAI3Plugin {
-  // Create actions
-  const navigateToScreen = createAction<'navigation/screen/navigated'>('navigation/screen/navigated');
-  const navigateToScreenset = createAction<'navigation/screenset/navigated'>('navigation/screenset/navigated');
 
   return {
     name: 'navigation',

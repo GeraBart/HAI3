@@ -85,9 +85,9 @@ export abstract class BaseApiService implements ApiService {
   /**
    * Unregister a plugin by class.
    *
-   * @param pluginClass - Plugin class constructor
+   * @param pluginClass - Plugin class (uses name for matching)
    */
-  unregisterPlugin<T extends ApiPlugin>(pluginClass: new (...args: any[]) => T): void {
+  unregisterPlugin<T extends ApiPlugin>(pluginClass: { readonly name: string; prototype: T }): void {
     const index = this.plugins.findIndex(
       (p) => p.constructor.name === pluginClass.name
     );
@@ -105,10 +105,10 @@ export abstract class BaseApiService implements ApiService {
   /**
    * Check if a plugin is registered.
    *
-   * @param pluginClass - Plugin class constructor
+   * @param pluginClass - Plugin class (uses name for matching)
    * @returns True if registered
    */
-  hasPlugin<T extends ApiPlugin>(pluginClass: new (...args: any[]) => T): boolean {
+  hasPlugin<T extends ApiPlugin>(pluginClass: { readonly name: string; prototype: T }): boolean {
     return this.plugins.some((p) => p.constructor.name === pluginClass.name);
   }
 

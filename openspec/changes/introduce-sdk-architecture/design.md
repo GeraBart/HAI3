@@ -843,6 +843,8 @@ Unlike shadcn/ui's approach where components are copied into user's codebase, @h
 
 ## AI Infrastructure Architecture
 
+> **⚠️ ARCHITECTURAL GAP:** See [proposal.md Issue 3](./proposal.md#issue-3-static-ai-commands-for-plugin-based-framework). The framework is plugin-based but AI commands/guidelines are static. Users who select specific plugins still get ALL guidelines. Phase 13.3 in tasks.md addresses this.
+
 HAI3 separates AI tooling into two distinct domains, following [Nx's generator/executor pattern](https://nx.dev/docs/concepts/decisions/why-monorepos) and [Turborepo's internal vs published packages](https://turborepo.com/docs/core-concepts/internal-packages):
 
 ### Two Command Namespaces
@@ -1133,6 +1135,8 @@ Each package also generates `llms.txt` following the [llms.txt standard](https:/
 ```
 
 ## Layered Protection Architecture
+
+> **⚠️ NEEDS RE-ASSESSMENT:** See [proposal.md Issue 2](./proposal.md#issue-2-eslintdepcruise-decomposition-misunderstanding). The per-package config approach conflates monorepo-level (SDK source code) protection with user-level (shipped to users) protection. Phase 13.2 in tasks.md addresses this.
 
 Following industry best practices from [Turborepo](https://turborepo.com/docs/guides/tools/eslint), [Nx](https://nx.dev/docs/technologies/eslint), and [TanStack](https://tanstack.com/config/latest/docs/eslint), HAI3 uses a **hybrid configuration pattern**:
 

@@ -12,9 +12,10 @@
 // From @hai3/state
 import type {
   HAI3Store as StoreType,
-  SliceObject,
   EffectInitializer,
 } from '@hai3/state';
+
+import type { Reducer } from '@reduxjs/toolkit';
 
 // From @hai3/layout
 import type { ScreensetDefinition } from '@hai3/layout';
@@ -43,6 +44,27 @@ export interface HAI3Config {
   devMode?: boolean;
   /** Enable strict mode (throws on errors) */
   strictMode?: boolean;
+}
+
+// ============================================================================
+// Internal Slice Types
+// ============================================================================
+
+/**
+ * Registerable Slice Interface
+ * Minimal interface for slices that can be registered with the framework.
+ * Used for heterogeneous slice collections where different state types are mixed.
+ *
+ * This is an internal framework type - plugins provide slices matching this structure.
+ * The Reducer type uses RTK's default, avoiding explicit `any` in HAI3 code.
+ */
+export interface RegisterableSlice {
+  /** Slice name - becomes the state key */
+  readonly name: string;
+  /** Slice reducer function */
+  readonly reducer: Reducer;
+  /** Slice action creators (optional for registration) */
+  readonly actions?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -113,7 +135,7 @@ export interface PluginProvides {
   /** Registry contributions */
   registries?: Record<string, unknown>;
   /** Redux slices to register */
-  slices?: SliceObject[];
+  slices?: RegisterableSlice[];
   /** Effect initializers to register */
   effects?: EffectInitializer[];
   /** Actions provided by the plugin (subset of HAI3Actions) */

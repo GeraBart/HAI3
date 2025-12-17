@@ -9,7 +9,13 @@
  * SDK Layer: L1 (Zero @hai3 dependencies)
  */
 
-import { configureStore, combineReducers, type Reducer } from '@reduxjs/toolkit';
+import {
+  configureStore,
+  combineReducers,
+  type Reducer,
+  type EnhancedStore,
+  type UnknownAction,
+} from '@reduxjs/toolkit';
 import type { RootState, AppDispatch, SliceObject, EffectInitializer, HAI3Store } from './types';
 
 // ============================================================================
@@ -22,8 +28,8 @@ let staticReducers: Record<string, Reducer> = {};
 /** Dynamic reducers registered by screensets */
 const dynamicReducers: Record<string, Reducer> = {};
 
-/** The Redux store instance */
-let storeInstance: ReturnType<typeof configureStore> | null = null;
+/** The Redux store instance - typed for RootState for replaceReducer compatibility */
+let storeInstance: EnhancedStore<RootState, UnknownAction> | null = null;
 
 /** Effect cleanup functions */
 const effectCleanups: Map<string, () => void> = new Map();
@@ -170,8 +176,9 @@ export function registerSlice<TState>(
     ...dynamicReducers,
   });
 
-  // Replace store's reducer (any cast needed for Redux replaceReducer compatibility)
-  storeInstance.replaceReducer(rootReducer as any);
+  // Type assertion needed: combineReducers returns inferred type, but RootState is extensible
+  // via module augmentation. The cast is to the expected type, not an escape hatch.
+  storeInstance.replaceReducer(rootReducer as Reducer<RootState>);
 
   // Initialize effects if provided
   if (initEffects) {
@@ -211,8 +218,8 @@ export function unregisterSlice(sliceName: string): void {
     ? combineReducers(allReducers)
     : (state: RootState | undefined) => state ?? ({} as RootState);
 
-  // any cast needed for Redux replaceReducer compatibility
-  storeInstance.replaceReducer(rootReducer as any);
+  // Type assertion: RootState is extensible via module augmentation
+  storeInstance.replaceReducer(rootReducer as Reducer<RootState>);
 }
 
 /**

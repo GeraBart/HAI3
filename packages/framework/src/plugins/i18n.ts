@@ -6,7 +6,6 @@
 
 import { eventBus } from '@hai3/state';
 import { createI18nRegistry, Language } from '@hai3/i18n';
-import { createAction } from '../actions';
 import type { HAI3Plugin, SetLanguagePayload } from '../types';
 
 // Define i18n events for module augmentation
@@ -14,6 +13,16 @@ declare module '@hai3/state' {
   interface EventPayloadMap {
     'i18n/language/changed': SetLanguagePayload;
   }
+}
+
+/**
+ * Set language action.
+ * Emits 'i18n/language/changed' event to trigger language change.
+ *
+ * @param payload - The language change payload
+ */
+function setLanguage(payload: SetLanguagePayload): void {
+  eventBus.emit('i18n/language/changed', payload);
 }
 
 /**
@@ -35,7 +44,6 @@ export function i18n(): HAI3Plugin {
     defaultLanguage: Language.English,
     fallbackLanguage: Language.English,
   });
-  const setLanguage = createAction<'i18n/language/changed'>('i18n/language/changed');
 
   return {
     name: 'i18n',

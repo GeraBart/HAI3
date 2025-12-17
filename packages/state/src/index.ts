@@ -1,49 +1,51 @@
 /**
- * @hai3/state - Complete Flux Dataflow Pattern
+ * @hai3/state - HAI3 State Management
  *
- * This package provides the unified Flux dataflow pattern:
+ * Provides:
  * - Type-safe event bus for pub/sub communication
- * - Redux store with dynamic slice registration
- * - Effect system types for event-driven state updates
- * - Module augmentation support for custom events and state
+ * - Store with dynamic slice registration
+ * - Effect system for event-driven state updates
  *
  * SDK Layer: L1 (Only peer dependency on @reduxjs/toolkit)
  *
- * NOTE: Actions are NOT provided by this package.
- * Actions are handwritten functions in screensets that emit events.
- * This maintains knowledge separation: components know actions, not events.
+ * TERMINOLOGY:
+ * - "Action" = HAI3 Action (function that emits events)
+ * - "Reducer" = pure function in slice that updates state
+ * - Redux internals are completely hidden
  */
 
-// Re-export all types
+// ============================================================================
+// Type Exports (minimal public API)
+// ============================================================================
+
 export type {
-  // Event types
+  // For reducers
+  ReducerPayload,
+  // For module augmentation
   EventPayloadMap,
-  EventKey,
-  EventHandler,
-  Unsubscribe,
-  Subscription,
-  EventBus,
-  EventName,
-  PayloadOf,
-  VoidPayload,
-  // Store types
   RootState,
+  // For effects
   AppDispatch,
-  ThunkDispatch,
-  SliceObject,
   EffectInitializer,
-  EffectCleanup,
-  EffectInitializerWithCleanup,
+  // For store/slice
   HAI3Store,
-  RegisterSlice,
-  Selector,
-  ParameterizedSelector,
+  SliceObject,
+  // For event subscriptions
+  EventBus,
+  EventHandler,
+  Subscription,
 } from './types';
 
-// Export EventBus singleton and implementation
-export { eventBus, EventBusImpl } from './EventBus';
+// ============================================================================
+// Event Bus
+// ============================================================================
 
-// Export store functions
+export { eventBus } from './EventBus';
+
+// ============================================================================
+// Store
+// ============================================================================
+
 export {
   createStore,
   getStore,
@@ -54,6 +56,8 @@ export {
   resetStore,
 } from './store';
 
-// Re-export Redux Toolkit essentials for convenience
-export { createSlice, combineReducers } from '@reduxjs/toolkit';
-export type { PayloadAction, Reducer } from '@reduxjs/toolkit';
+// ============================================================================
+// Slice
+// ============================================================================
+
+export { createSlice } from './createSlice';

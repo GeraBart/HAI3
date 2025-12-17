@@ -5,7 +5,6 @@
  */
 
 import { eventBus } from '@hai3/state';
-import { createAction } from '../actions';
 import type { HAI3Plugin, ChangeThemePayload } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
@@ -14,6 +13,16 @@ declare module '@hai3/state' {
   interface EventPayloadMap {
     'theme/changed': ChangeThemePayload;
   }
+}
+
+/**
+ * Change theme action.
+ * Emits 'theme/changed' event to trigger theme application.
+ *
+ * @param payload - The theme change payload
+ */
+function changeTheme(payload: ChangeThemePayload): void {
+  eventBus.emit('theme/changed', payload);
 }
 
 /**
@@ -33,7 +42,6 @@ declare module '@hai3/state' {
  */
 export function themes(): HAI3Plugin {
   const themeRegistry = createThemeRegistry();
-  const changeTheme = createAction<'theme/changed'>('theme/changed');
 
   return {
     name: 'themes',

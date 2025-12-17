@@ -1,5 +1,5 @@
 /**
- * @hai3/flux ESLint Configuration
+ * @hai3/state ESLint Configuration
  * Extends SDK layer config - enforces zero @hai3 dependencies and no React
  */
 
@@ -12,14 +12,5 @@ export default [
   // Package-specific ignores
   {
     ignores: ['dist/**', 'node_modules/**'],
-  },
-
-  // Allow 'any' in specific files where Redux typing requires it
-  // replaceReducer has known typing limitations with dynamic reducers
-  {
-    files: ['src/store.ts', 'src/types.ts'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-    },
   },
 ];

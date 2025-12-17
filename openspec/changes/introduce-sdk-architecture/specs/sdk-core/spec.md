@@ -19,16 +19,221 @@ The system SHALL provide 4 flat SDK packages with ZERO @hai3 inter-dependencies,
 #### Scenario: @hai3/state package
 
 - **WHEN** importing from `@hai3/state`
-- **THEN** `EventBus`, `eventBus`, `EventPayloadMap` are available (event system)
-- **AND** `store`, `createStore`, `registerSlice`, `hasSlice`, `createSlice` are available (store)
-- **AND** `RootState`, `AppDispatch`, `EffectInitializer` types are available
+- **THEN** `EventBus`, `eventBus`, `EventPayloadMap`, `EventHandler`, `Subscription` are available (event system)
+- **AND** `createStore`, `getStore`, `registerSlice`, `unregisterSlice`, `hasSlice`, `getRegisteredSlices`, `resetStore` are available (store)
+- **AND** `createSlice` wrapper is available (returns `{ slice, ...reducerFunctions }` without `.actions` property)
+- **AND** `RootState`, `EffectInitializer`, `ReducerPayload`, `AppDispatch` types are available
+- **AND** `HAI3Store`, `SliceObject` types are available (for effects and registration)
 - **AND** the only external dependency is `@reduxjs/toolkit`
-- **AND** it works in Node.js without React
+- **AND** it works in Node.js without React (headless/framework-agnostic)
+- **AND** confusing Redux internals are hidden (`combineReducers`, `Reducer`, `ThunkDispatch`, `UnknownAction`, `.actions`, `Selector`)
+- **AND** `ReducerPayload<T>` is used instead of `PayloadAction<T>` (terminology clarity)
 
 **Why @hai3/state instead of separate events/store packages:**
 - Events and store are tightly coupled in the Flux pattern
 - Neither makes sense standalone - events without handlers, store without events
 - The complete dataflow pattern is the atomic unit of value
+
+### Requirement: @hai3/state Public Interface
+
+The system SHALL preserve the existing `@hai3/uicore` state management API, extracting it to a standalone SDK package. The only change is renaming `PayloadAction` to `ReducerPayload` to avoid terminology confusion with HAI3 Actions.
+
+#### Scenario: Event System Interface
+
+- **WHEN** using the event system
+- **THEN** the following types/exports are available:
+
+```typescript
+// Singleton event bus
+export const eventBus: EventBus;
+
+// Type-safe event bus interface
+export interface EventBus {
+  emit<K extends keyof EventPayloadMap>(event: K, payload: EventPayloadMap[K]): void;
+  on<K extends keyof EventPayloadMap>(event: K, handler: (payload: EventPayloadMap[K]) => void): Subscription;
+  once<K extends keyof EventPayloadMap>(event: K, handler: (payload: EventPayloadMap[K]) => void): Subscription;
+  clear(event: string): void;
+  clearAll(): void;
+}
+
+// Extensible via module augmentation
+export interface EventPayloadMap {
+  // Extended by consumers
+}
+
+export interface Subscription {
+  unsubscribe: () => void;
+}
+```
+
+#### Scenario: Store Interface
+
+- **WHEN** using the store system
+- **THEN** the following types/exports are available:
+
+```typescript
+// Store creation and access
+export function createStore(initialReducers?: Record<string, unknown>): HAI3Store;
+export function getStore(): HAI3Store;
+
+// Dynamic slice registration
+export function registerSlice<TState>(
+  slice: SliceObject<TState>,
+  initEffects?: EffectInitializer
+): void;
+export function unregisterSlice(sliceName: string): void;
+export function hasSlice(sliceName: string): boolean;
+export function getRegisteredSlices(): string[];
+
+// Store interface - exposes dispatch for effects
+export interface HAI3Store<TState = RootState> {
+  getState: () => TState;
+  dispatch: AppDispatch;
+  subscribe: (listener: () => void) => () => void;
+  replaceReducer: (nextReducer: Reducer<TState>) => void;
+}
+
+// Extensible via module augmentation
+export interface RootState {
+  [key: string]: unknown;
+}
+```
+
+- **AND** `HAI3Store` exposes `dispatch` for effects to use
+- **BECAUSE** effects need to dispatch slice actions to update state
+
+#### Scenario: Effect System Interface
+
+- **WHEN** defining effects for a slice
+- **THEN** effects receive `dispatch` function:
+
+```typescript
+// Effect initializer - receives dispatch function
+export type EffectInitializer = (dispatch: AppDispatch) => void;
+
+// Optional: Effect initializer that returns cleanup function
+export type EffectInitializerWithCleanup = (dispatch: AppDispatch) => EffectCleanup;
+
+// Cleanup function
+export type EffectCleanup = () => void;
+```
+
+- **AND** effects call `dispatch(sliceAction(payload))` to update state
+- **BECAUSE** this is the existing uicore pattern that works well
+
+#### Scenario: Effect usage pattern (PRESERVED from uicore)
+
+- **WHEN** implementing an effect
+- **THEN** the pattern is:
+
+```typescript
+import { eventBus } from '@hai3/state';
+import { setMenuItems } from './menuSlice';
+
+// Effect receives store object for dispatch and getState
+export function initMenuEffects(store: HAI3Store): void {
+  eventBus.on(MenuEvents.ItemsChanged, ({ items }) => {
+    store.dispatch(setMenuItems(items));
+  });
+}
+
+// Register slice with effects
+registerSlice(menuSlice, (dispatch) => initMenuEffects({ dispatch, getState }));
+```
+
+- **AND** effects use `store.dispatch(setter(value))` pattern
+- **AND** this is the EXISTING uicore pattern, preserved as-is
+
+#### Scenario: Slice Creation Interface
+
+- **WHEN** creating a slice
+- **THEN** HAI3's `createSlice` wrapper is available:
+
+```typescript
+// HAI3 wrapper around Redux Toolkit's createSlice
+// Returns { slice, ...reducerFunctions } - NO .actions property
+export function createSlice<TState, TReducers, TName>(
+  options: CreateSliceOptions<TState, TReducers, TName>
+): { slice: SliceObject<TState> } & CaseReducerActions<TReducers, TName>;
+
+// HAI3 alias for PayloadAction (avoids confusion with HAI3 Actions)
+export type ReducerPayload<T> = PayloadAction<T>;
+```
+
+- **AND** `ReducerPayload<T>` is the HAI3-specific alias for Redux's `PayloadAction<T>`
+- **AND** the wrapper hides RTK's `.actions` property completely
+- **BECAUSE** "PayloadAction" and ".actions" would confuse users with HAI3 Actions (event emitters)
+
+#### Scenario: Slice definition pattern (HAI3 createSlice wrapper)
+
+- **WHEN** defining a slice
+- **THEN** the pattern is:
+
+```typescript
+import { createSlice, registerSlice, type ReducerPayload } from '@hai3/state';
+
+// createSlice returns { slice, setMenuCollapsed, setMenuItems }
+// NO .actions property - Redux is hidden
+const { slice, setMenuCollapsed, setMenuItems } = createSlice({
+  name: 'uicore/menu',
+  initialState: { collapsed: false, items: [] },
+  reducers: {
+    setMenuCollapsed: (state, payload: ReducerPayload<boolean>) => {
+      state.collapsed = payload.payload;
+    },
+    setMenuItems: (state, payload: ReducerPayload<MenuItem[]>) => {
+      state.items = payload.payload;
+    },
+  },
+});
+
+// Register slice with effects
+registerSlice(slice, initMenuEffects);
+
+// Export reducer functions for effects
+export { setMenuCollapsed, setMenuItems };
+```
+
+- **AND** reducer functions are destructured directly from createSlice return value
+- **AND** `.actions` property is NOT accessible (hidden by wrapper)
+- **AND** `ReducerPayload<T>` replaces Redux's `PayloadAction<T>`
+
+#### Scenario: Redux Internals - Hidden vs Exposed
+
+- **WHEN** checking @hai3/state exports
+- **THEN** the following are HIDDEN (not exported):
+  - `.actions` property - RTK's actions hidden by createSlice wrapper
+  - `combineReducers` - internal to store implementation
+  - `Reducer` type - internal type
+  - `ThunkDispatch` - not used in HAI3 pattern
+  - `UnknownAction` - internal Redux type
+  - `Selector`, `ParameterizedSelector` - use @hai3/react hooks instead
+  - `./types` subpath export - prevents direct type access
+
+- **AND** the following are KEPT (needed by users):
+  - `createSlice` - HAI3 wrapper that returns `{ slice, ...reducerFunctions }`
+  - `ReducerPayload<T>` - alias for PayloadAction, used in reducer signatures
+  - `store.dispatch` - effects use this pattern
+  - `store.getState` - effects need state access
+  - `EventHandler` - needed for typed event subscriptions
+
+- **BECAUSE** Redux is an internal implementation detail, the word "action" is reserved for HAI3 Actions (event emitters)
+
+### Requirement: HAI3 Flux Terminology
+
+The system SHALL use consistent terminology aligned with industry standards (CQRS/Event Sourcing).
+
+| HAI3 Term | Definition | Example |
+|-----------|------------|---------|
+| **Action** | Function that emits an event (command/intent) | `selectThread(threadId)` |
+| **Event** | Message representing something that happened (past-tense) | `'chat/threads/selected'` |
+| **Effect** | Function that subscribes to events and calls reducers | `initThreadsEffects` |
+| **Reducer** | Pure function that updates state | `threadsSlice.reducers.setSelected` |
+| **Slice** | Collection of reducers + initial state for a domain | `threadsSlice` |
+
+- **AND** the term "action creator" is NOT used in HAI3 public API
+- **AND** the term "dispatch" is NOT used in HAI3 public API
+- **BECAUSE** these are Redux implementation details
 
 #### Scenario: @hai3/layout package
 
@@ -526,6 +731,8 @@ The system SHALL keep @hai3/uikit as a standalone npm package, used as the defau
 
 ### Requirement: Separate AI Infrastructure
 
+> **⚠️ ARCHITECTURAL GAP:** See [proposal.md Issue 3](../../proposal.md#issue-3-static-ai-commands-for-plugin-based-framework). The framework is plugin-based but AI commands/guidelines are static. Users who select specific plugins still get ALL guidelines. Phase 13.3 in tasks.md addresses this.
+
 The system SHALL provide two distinct command namespaces: `hai3dev-*` for HAI3 framework development and `hai3-*` for user project development.
 
 #### Scenario: Monorepo commands are internal only
@@ -685,6 +892,8 @@ The system SHALL provide automated testing for AI commands and rules without hum
 - **AND** efficiency score (value/tokens) is calculated
 
 ### Requirement: Layered Protection Architecture
+
+> **⚠️ NEEDS RE-ASSESSMENT:** See [proposal.md Issue 2](../../proposal.md#issue-2-eslintdepcruise-decomposition-misunderstanding). The per-package config scenarios (below) conflate monorepo-level (SDK source code) protection with user-level (shipped to users) protection. Phase 13.2 in tasks.md addresses this. The internal config packages and hierarchy are correct; the per-package scenarios may need revision.
 
 The system SHALL provide layered ESLint and dependency-cruiser configurations following industry best practices (Turborepo, Nx, TanStack patterns).
 
