@@ -1,6 +1,6 @@
-# @hai3/flux
+# @hai3/state
 
-Complete Flux dataflow pattern for HAI3 applications - event bus, store, and effects.
+State management for HAI3 applications - event bus, store, and effects.
 
 ## SDK Layer
 
@@ -13,7 +13,7 @@ This package is part of the **SDK Layer (L1)** - it has zero @hai3 dependencies 
 The `eventBus` singleton provides type-safe event emission and subscription:
 
 ```typescript
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 
 // Subscribe to events
 const unsubscribe = eventBus.on('user/loggedIn', (payload) => {
@@ -32,7 +32,7 @@ unsubscribe();
 Dynamic slice registration and Redux store management:
 
 ```typescript
-import { createStore, registerSlice, getStore } from '@hai3/flux';
+import { createStore, registerSlice, getStore } from '@hai3/state';
 
 // Create store with optional initial reducers
 const store = createStore({
@@ -51,7 +51,7 @@ const store = getStore();
 Extend `EventPayloadMap` and `RootState` to add custom events and state:
 
 ```typescript
-declare module '@hai3/flux' {
+declare module '@hai3/state' {
   interface EventPayloadMap {
     'user/loggedIn': { userId: string };
     'chat/messageReceived': { threadId: string; message: string };
@@ -89,7 +89,7 @@ This package intentionally does NOT export a `createAction` helper:
 
 Example action (in screenset):
 ```typescript
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 
 export function selectThread(threadId: string): void {
   if (!threadId) {

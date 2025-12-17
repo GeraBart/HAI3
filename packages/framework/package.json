@@ -34,13 +34,13 @@
     "typescript": "^5.4.2"
   },
   "peerDependencies": {
-    "@hai3/flux": "*",
+    "@hai3/state": "*",
     "@hai3/layout": "*",
     "@hai3/api": "*",
     "@hai3/i18n": "*"
   },
   "peerDependenciesMeta": {
-    "@hai3/flux": { "optional": false },
+    "@hai3/state": { "optional": false },
     "@hai3/layout": { "optional": false },
     "@hai3/api": { "optional": false },
     "@hai3/i18n": { "optional": false }

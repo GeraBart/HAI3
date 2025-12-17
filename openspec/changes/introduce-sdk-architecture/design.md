@@ -42,14 +42,14 @@ Each package has ONE reason to change:
 
 | Package | Single Responsibility | Changes When |
 |---------|----------------------|--------------|
-| `@hai3/flux` | Complete dataflow pattern (events + store + effects) | Flux architecture changes |
+| `@hai3/state` | Complete dataflow pattern (events + store + effects) | Flux architecture changes |
 | `@hai3/layout` | Layout domain definitions | Domain structure changes |
 | `@hai3/api` | HTTP communication | API patterns change |
 | `@hai3/i18n` | Internationalization | i18n strategy changes |
 | `@hai3/framework` | Plugin-based SDK integration | HAI3 patterns change |
 | `@hai3/react` | React bindings | React-specific needs change |
 
-**Why @hai3/flux instead of separate events/store packages:**
+**Why @hai3/state instead of separate events/store packages:**
 - Events and store are tightly coupled in Flux pattern
 - Neither makes sense standalone - events without handlers, store without events
 - Complete dataflow pattern is the atomic unit of value
@@ -90,7 +90,7 @@ Users import ONLY what they need:
 
 ```typescript
 // User wants flux (events + store)
-import { eventBus, createStore, registerSlice } from '@hai3/flux';
+import { eventBus, createStore, registerSlice } from '@hai3/state';
 
 // User wants just API
 import { RestProtocol } from '@hai3/api';  // No flux, standalone
@@ -119,7 +119,7 @@ RIGHT (proposed):
 Each SDK package exports its types as the primary API:
 
 ```typescript
-// @hai3/flux - Complete dataflow types
+// @hai3/state - Complete dataflow types
 export interface EventBus<TEvents extends EventPayloadMap = EventPayloadMap> {
   emit<K extends keyof TEvents>(event: K, payload: TEvents[K]): void;
   on<K extends keyof TEvents>(event: K, handler: (payload: TEvents[K]) => void): Unsubscribe;
@@ -194,8 +194,8 @@ type ScreenId = string & { readonly __brand: 'ScreenId' };
 // Conditional type for payload extraction
 type PayloadOf<K extends keyof EventPayloadMap> = EventPayloadMap[K];
 
-// Usage - module augmentation extends @hai3/flux
-declare module '@hai3/flux' {
+// Usage - module augmentation extends @hai3/state
+declare module '@hai3/state' {
   interface EventPayloadMap {
     'chat/threads/selected': { threadId: string };
     'chat/messages/received': { message: Message };
@@ -255,12 +255,12 @@ eventBus.emit('chat/threads/selected', { wrong: 'key' });     // ❌ Type error
                      └─────────────────────────────┘
 ```
 
-### @hai3/flux Package Contents
+### @hai3/state Package Contents
 
 The flux package provides the complete dataflow pattern:
 
 ```typescript
-// @hai3/flux exports
+// @hai3/state exports
 export {
   // EventBus
   eventBus,           // Singleton event bus instance
@@ -298,7 +298,7 @@ export {
 
 User code and CLI-generated layout code CAN import from any @hai3 package. This is intentional:
 - Generated `Header.tsx` imports selectors from `@hai3/layout`
-- Screenset actions emit events via `eventBus` from `@hai3/flux`
+- Screenset actions emit events via `eventBus` from `@hai3/state`
 - Components import hooks from `@hai3/react`
 
 Layer rules enforce **package-to-package dependencies**, not user code imports.
@@ -307,8 +307,8 @@ Layer rules enforce **package-to-package dependencies**, not user code imports.
 
 | Registry | Package | Rationale |
 |----------|---------|-----------|
-| `eventBus` | `@hai3/flux` | Core of dataflow pattern |
-| `store` | `@hai3/flux` | Core of dataflow pattern |
+| `eventBus` | `@hai3/state` | Core of dataflow pattern |
+| `store` | `@hai3/state` | Core of dataflow pattern |
 | `apiRegistry` | `@hai3/api` | Registers API services |
 | `i18nRegistry` | `@hai3/i18n` | Registers translation loaders |
 | `screensetRegistry` | `@hai3/framework` | Screensets are HAI3 pattern |
@@ -344,7 +344,7 @@ Actions are defined in the screenset's `actions/` folder. They are real function
 
 ```typescript
 // src/screensets/chat/actions/threads.ts
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 
 /**
  * Action: Select a thread for viewing.
@@ -375,7 +375,7 @@ Framework defines core actions internally (not exposed as SDK primitives):
 
 ```typescript
 // @hai3/framework/src/actions/navigation.ts (INTERNAL)
-import { eventBus } from '@hai3/flux';
+import { eventBus } from '@hai3/state';
 
 export function navigateToScreen(screensetId: string, screenId: string): void {
   eventBus.emit('navigation/screen/navigated', { screensetId, screenId });
@@ -420,7 +420,7 @@ export const ThreadList: React.FC = () => {
 Component calls action function (knows nothing about events)
     ↓
 Action (handwritten function, contains business logic)
-    → emits Event (via eventBus from @hai3/flux)
+    → emits Event (via eventBus from @hai3/state)
         → Effect subscribes (in screenset's effects/ folder)
             → Updates Slice (via dispatch)
                 → Component re-renders (via selector)
@@ -524,18 +524,18 @@ export const screensets = (config?: ScreensetsConfig): HAI3Plugin => ({
   },
 });
 
-// layout plugin - provides all layout domains (uses @hai3/flux for events)
+// layout plugin - provides all layout domains (uses @hai3/state for events)
 export const layout = (): HAI3Plugin => ({
   name: 'layout',
   dependencies: ['screensets'],  // Needs screensets for screen domain
 
   provides: {
     slices: [headerSlice, footerSlice, menuSlice, sidebarSlice, popupSlice, overlaySlice],
-    effects: [initLayoutEffects],  // Effects subscribe to events from @hai3/flux
+    effects: [initLayoutEffects],  // Effects subscribe to events from @hai3/state
   },
 
   onInit(app) {
-    // Set up event subscriptions via eventBus from @hai3/flux
+    // Set up event subscriptions via eventBus from @hai3/state
     eventBus.on('layout/popup/requested', (payload) => {
       app.store.dispatch(popupActions.open(payload));
     });
@@ -552,7 +552,7 @@ export const themes = (): HAI3Plugin => ({
   },
 
   onInit(app) {
-    // Subscribe to theme change events from @hai3/flux
+    // Subscribe to theme change events from @hai3/state
     eventBus.on('theme/changed', (payload) => {
       app.themeRegistry.apply(payload.themeId);
     });
@@ -569,7 +569,7 @@ export const navigation = (): HAI3Plugin => ({
   },
 
   onInit(app) {
-    // Subscribe to navigation events from @hai3/flux
+    // Subscribe to navigation events from @hai3/state
     eventBus.on('navigation/screen/navigated', (payload) => {
       app.store.dispatch(screenActions.setCurrentScreen(payload));
     });
@@ -996,7 +996,7 @@ HAI3 Monorepo:
 .ai/
 ├── rules/                    # Source of truth for rules
 │   ├── core.md              # Core patterns (all projects)
-│   ├── flux.md              # @hai3/flux patterns (events + store)
+│   ├── flux.md              # @hai3/state patterns (events + store)
 │   ├── layout.md            # @hai3/layout patterns
 │   ├── framework.md         # @hai3/framework patterns
 │   ├── react.md             # @hai3/react patterns
@@ -1118,7 +1118,7 @@ Commands are tested using [Promptfoo](https://www.promptfoo.dev/):
 Each package also generates `llms.txt` following the [llms.txt standard](https://llmstxt.org/):
 
 ```markdown
-# @hai3/flux
+# @hai3/state
 
 > Complete Flux dataflow pattern for HAI3 SDK - event bus, store, and effects.
 
@@ -1229,7 +1229,7 @@ export const reactConfig = [
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
-          { group: ['@hai3/flux', '@hai3/layout', '@hai3/api', '@hai3/i18n'],
+          { group: ['@hai3/state', '@hai3/layout', '@hai3/api', '@hai3/i18n'],
             message: 'React package imports SDK via framework re-exports' },
           { group: ['@hai3/uikit-contracts'], message: 'uikit-contracts is deprecated' },
         ],
@@ -1368,7 +1368,7 @@ module.exports = {
 Each package's CLAUDE.md references its protection constraints:
 
 ```markdown
-# @hai3/flux
+# @hai3/state
 
 ## Protection Layer: SDK (L1)
 
@@ -1385,8 +1385,8 @@ This package is at the SDK layer with strict constraints:
 
 **Verify with:**
 \`\`\`bash
-npm run lint --workspace=@hai3/flux
-npm run arch:deps --workspace=@hai3/flux
+npm run lint --workspace=@hai3/state
+npm run arch:deps --workspace=@hai3/state
 \`\`\`
 ```
 
@@ -1394,8 +1394,8 @@ npm run arch:deps --workspace=@hai3/flux
 
 ```bash
 # Verify single package
-npm run lint --workspace=@hai3/flux
-npm run arch:deps --workspace=@hai3/flux
+npm run lint --workspace=@hai3/state
+npm run arch:deps --workspace=@hai3/state
 
 # Verify layer (all SDK packages)
 npm run lint:sdk      # Runs lint on flux, layout, api, i18n
@@ -1476,7 +1476,7 @@ npm run arch:check    # Full architecture validation
 3. Set up module augmentation patterns
 
 ### Phase 3: SDK Packages
-1. Create @hai3/flux (complete dataflow pattern: events + store + effects)
+1. Create @hai3/state (complete dataflow pattern: events + store + effects)
 2. Create @hai3/layout (domain types and slices)
 3. Create @hai3/api (standalone)
 4. Create @hai3/i18n (standalone)

@@ -1,16 +1,16 @@
 <!-- @standalone -->
-# @hai3/flux Store Guidelines (Canonical)
+# @hai3/state Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)
 1) Summarize 3-6 rules from this file before making changes.
 2) STOP if you add direct reducer configuration or bypass registerSlice.
 
 ## SCOPE
-- Package: `packages/flux/` (part of the unified Flux dataflow pattern)
+- Package: `packages/state/` (part of the unified Flux dataflow pattern)
 - Layer: L1 SDK (zero @hai3 dependencies)
 - Peer dependency: `@reduxjs/toolkit`
 
-> **Note:** @hai3/flux consolidates the former @hai3/events and @hai3/store packages into a single unified Flux dataflow package.
+> **Note:** @hai3/state consolidates the former @hai3/events and @hai3/store packages into a single unified Flux dataflow package.
 
 ## CRITICAL RULES
 - Dynamic slice registration via `registerSlice()` (not manual configureStore).
@@ -39,7 +39,7 @@ configureStore({ reducer: { threads: threadsSlice.reducer } }); // FORBIDDEN
 ## MODULE AUGMENTATION
 ```typescript
 // REQUIRED: Type-safe state access
-declare module '@hai3/flux' {
+declare module '@hai3/state' {
   interface RootState {
     [SLICE_KEY]: ThreadsState;
   }

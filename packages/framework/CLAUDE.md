@@ -4,7 +4,7 @@ Plugin-based application framework for HAI3 applications. Orchestrates SDK packa
 
 ## Framework Layer
 
-This package is part of the **Framework Layer (L2)** - it depends on all SDK packages (@hai3/flux, @hai3/layout, @hai3/api, @hai3/i18n) and provides the plugin architecture.
+This package is part of the **Framework Layer (L2)** - it depends on all SDK packages (@hai3/state, @hai3/layout, @hai3/api, @hai3/i18n) and provides the plugin architecture.
 
 ## Core Concepts
 
@@ -121,7 +121,7 @@ export function myPlugin(): HAI3Plugin {
 
 For convenience, this package re-exports from SDK packages:
 
-- From @hai3/flux: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`
+- From @hai3/state: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`
 - From @hai3/layout: All domain slices, actions, and selectors
 - From @hai3/api: `apiRegistry`, `BaseApiService`, `RestProtocol`, `MockPlugin`
 - From @hai3/i18n: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, `getLanguageMetadata`

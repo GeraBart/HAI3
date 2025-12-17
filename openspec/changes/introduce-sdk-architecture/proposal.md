@@ -18,12 +18,12 @@ Industry leaders (TanStack, shadcn/ui) solve this with:
 
 ```
 LAYER 1: SDK (Flat NPM packages, ZERO @hai3 inter-dependencies)
-┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-│  events  │  │  store   │  │  layout  │  │   api    │  │   i18n   │
-│          │  │          │  │          │  │          │  │          │
-│ Zero     │  │ Redux    │  │ Domain   │  │ Axios    │  │ Zero     │
-│ deps     │  │ internal │  │ slices   │  │ internal │  │ deps     │
-└──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘
+┌──────────────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+│      state       │  │  layout  │  │   api    │  │   i18n   │
+│                  │  │          │  │          │  │          │
+│ EventBus + Store │  │ Domain   │  │ Axios    │  │ Zero     │
+│ Redux internal   │  │ slices   │  │ internal │  │ deps     │
+└──────────────────┘  └──────────┘  └──────────┘  └──────────┘
 
 LAYER 2: Framework (Headless, NO uikit-contracts)
 ┌─────────────────────────────────────────────────────────────────┐
@@ -58,11 +58,16 @@ LAYER 4: CLI-Generated Layout (IN USER'S PROJECT, not npm)
 
 | Package | Responsibility | Internal Deps | @hai3 Deps |
 |---------|---------------|---------------|------------|
-| `@hai3/events` | Event bus, pub/sub | None | **None** |
-| `@hai3/store` | Redux store, registerSlice | redux-toolkit | **None** |
+| `@hai3/state` | Event bus, store, state management | redux-toolkit | **None** |
 | `@hai3/layout` | Domain types, slices, actions | redux-toolkit | **None** |
 | `@hai3/api` | HTTP services, protocols | axios | **None** |
 | `@hai3/i18n` | Translation system | None | **None** |
+
+> **Note:** Originally planned as 5 separate packages (`@hai3/events`, `@hai3/store`, `@hai3/layout`, `@hai3/api`, `@hai3/i18n`), the events and store packages were consolidated into `@hai3/state` because:
+> - Events and store are tightly coupled in the Flux pattern
+> - Neither makes sense standalone - events without handlers, store without events
+> - The complete dataflow pattern (EventBus → Effects → Store) is the atomic unit of value
+> - Following industry naming conventions (Zustand, Jotai = "state" in German/Japanese)
 
 **Layer 2: Framework**
 
@@ -196,6 +201,6 @@ hai3 scaffold layout --ui-kit=custom  # Generates layout without @hai3/uikit imp
   - `packages/cli/` → New scaffold commands, AI sync
   - `.ai/` → All guidelines updated, hai3dev-* vs hai3-* separation
 - **Breaking changes**: None for existing apps (uicore re-exports maintained)
-- **New packages**: events, store, layout, api, i18n, framework, react (7 public packages)
+- **New packages**: state, layout, api, i18n, framework, react (6 public packages)
 - **Internal packages**: @hai3/eslint-config, @hai3/depcruise-config (private, not published)
 - **SOLID compliance**: Full alignment with all 5 principles
