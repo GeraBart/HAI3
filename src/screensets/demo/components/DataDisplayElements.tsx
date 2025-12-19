@@ -140,7 +140,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('avatar_heading')}
           </h2>
         </TextLoader>
-        <div className="flex items-center justify-center p-6 border border-border rounded-lg bg-background">
+        <div className="flex items-center justify-center p-6 border border-border rounded-lg bg-background overflow-hidden">
           <div className="flex flex-row flex-wrap items-center gap-12">
             <Avatar>
               <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
@@ -250,7 +250,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('chart_heading')}
           </h2>
         </TextLoader>
-        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background">
+        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background overflow-hidden">
 
           {/* Line Chart */}
           <div className="flex flex-col gap-2">
@@ -355,7 +355,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('item_heading')}
           </h2>
         </TextLoader>
-        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background">
+        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background overflow-hidden">
           {/* Outline Item Example */}
           <div className="flex flex-col gap-2">
             <TextLoader skeletonClassName="h-4 w-48" inheritColor>
@@ -495,7 +495,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('kbd_heading')}
           </h2>
         </TextLoader>
-        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background">
+        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background overflow-hidden">
           {/* Basic Kbd */}
           <div className="flex flex-col gap-2">
             <TextLoader skeletonClassName="h-4 w-32" inheritColor>
@@ -639,7 +639,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('table_heading')}
           </h2>
         </TextLoader>
-        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background">
+        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background overflow-hidden">
           <Table>
             <TableCaption>
               <TextLoader skeletonClassName="h-4 w-48" inheritColor>
@@ -724,7 +724,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('data_table_heading')}
           </h2>
         </TextLoader>
-        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background">
+        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background overflow-hidden">
           <PaymentsDataTable tk={tk} />
         </div>
       </div>
@@ -736,7 +736,7 @@ export const DataDisplayElements: React.FC = () => {
             {tk('typography_heading')}
           </h2>
         </TextLoader>
-        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background">
+        <div className="flex flex-col gap-6 p-6 border border-border rounded-lg bg-background overflow-hidden">
           {/* Headings */}
           <div className="flex flex-col gap-2">
             <TextLoader skeletonClassName="h-4 w-32" inheritColor>

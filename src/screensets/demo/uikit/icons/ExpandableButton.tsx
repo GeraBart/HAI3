@@ -60,6 +60,7 @@ export const ExpandableButton: React.FC<ExpandableButtonProps> = ({
 
   return (
     <button
+      type="button"
       className={`${baseStyles} ${stateStyles} ${disabledStyles} ${className}`.trim()}
       disabled={disabled}
       {...props}
