@@ -25,8 +25,7 @@
     "commands"
   ],
   "scripts": {
-    "build": "tsup && npm run copy-dts",
-    "copy-dts": "cp src/index.d.ts.template dist/index.d.ts && cp src/index.d.ts.template dist/index.d.cts",
+    "build": "tsup",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {},

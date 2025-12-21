@@ -7,7 +7,15 @@
  * State access: Components use `useAppSelector` hook from @hai3/react.
  */
 
-import { combineReducers } from '@reduxjs/toolkit';
+import { combineReducers, type Reducer } from '@reduxjs/toolkit';
+import type {
+  HeaderState,
+  FooterState,
+  MenuState,
+  SidebarState,
+  ScreenState,
+  OverlayState,
+} from '../layoutTypes';
 
 // Import slice reducers
 import headerReducer, { headerSlice, headerActions, setUser, setLoading as setHeaderLoading, clearUser } from './headerSlice';
@@ -76,7 +84,18 @@ export const TENANT_SLICE_NAME = 'app/tenant' as const;
 // Combined Layout Reducer
 // ============================================================================
 
-export const layoutDomainReducers = {
+/** Explicit type for layout domain reducers to avoid incorrect dts generation */
+export interface LayoutDomainReducersType {
+  header: Reducer<HeaderState>;
+  footer: Reducer<FooterState>;
+  menu: Reducer<MenuState>;
+  sidebar: Reducer<SidebarState>;
+  screen: Reducer<ScreenState>;
+  popup: Reducer<PopupSliceState>;
+  overlay: Reducer<OverlayState>;
+}
+
+export const layoutDomainReducers: LayoutDomainReducersType = {
   header: headerReducer,
   footer: footerReducer,
   menu: menuReducer,
