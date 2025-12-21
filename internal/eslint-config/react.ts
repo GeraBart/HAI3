@@ -57,5 +57,3 @@ export const reactConfig: ConfigArray = [
     },
   },
 ];
-
-export default reactConfig;

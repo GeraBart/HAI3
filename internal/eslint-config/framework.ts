@@ -43,5 +43,3 @@ export const frameworkConfig: ConfigArray = [
     },
   },
 ];
-
-export default frameworkConfig;

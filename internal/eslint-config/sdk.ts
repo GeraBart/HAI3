@@ -35,5 +35,3 @@ export const sdkConfig: ConfigArray = [
     },
   },
 ];
-
-export default sdkConfig;

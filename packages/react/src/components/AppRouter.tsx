@@ -106,5 +106,3 @@ export const AppRouter: React.FC<AppRouterProps> = ({
     </Suspense>
   );
 };
-
-export default AppRouter;

@@ -7,7 +7,10 @@
       "ignore": ["src/screensets/**"]
     },
     "packages/cli": {
-      "ignore": ["templates/**"]
+      "ignore": ["templates/**", "template-sources/**"]
+    },
+    "packages/uikit": {
+      "ignoreDependencies": ["@hookform/resolvers"]
     }
   },
   "ignore": [
@@ -16,6 +19,7 @@
     "**/dist/**",
     "**/node_modules/**",
     "**/templates/**",
+    "**/template-sources/**",
     "presets/**",
     "eslint-plugin-local/**",
     "**/*.config.{ts,js,cjs,mjs}",
@@ -24,13 +28,8 @@
   ],
   "ignoreDependencies": [
     "@types/*",
-    "@eslint/js",
-    "eslint-plugin-react-hooks",
-    "eslint-plugin-unused-imports",
-    "globals",
-    "typescript-eslint",
-    "lodash",
-    "lucide-react"
+    "lucide-react",
+    "@hai3/depcruise-config/*"
   ],
   "ignoreBinaries": [
     "dot"

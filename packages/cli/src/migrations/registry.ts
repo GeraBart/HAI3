@@ -27,24 +27,3 @@ const migrations: Migration[] = [
 export function getMigrations(): Migration[] {
   return [...migrations];
 }
-
-/**
- * Get a specific migration by ID
- */
-export function getMigrationById(id: string): Migration | undefined {
-  return migrations.find((m) => m.id === id);
-}
-
-/**
- * Get migrations for a specific version
- */
-export function getMigrationsByVersion(version: string): Migration[] {
-  return migrations.filter((m) => m.version === version);
-}
-
-/**
- * Get migrations up to and including a target version
- */
-export function getMigrationsUpTo(targetVersion: string): Migration[] {
-  return migrations.filter((m) => m.version <= targetVersion);
-}

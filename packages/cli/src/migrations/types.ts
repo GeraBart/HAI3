@@ -5,7 +5,7 @@
  * Uses ts-morph for TypeScript-native AST manipulation.
  */
 
-import type { Project, SourceFile } from 'ts-morph';
+import type { SourceFile } from 'ts-morph';
 
 /**
  * A single code transformation within a migration
@@ -204,20 +204,6 @@ export interface MigrationStatus {
   pending: Migration[];
   /** Current detected project version (from package.json) */
   currentVersion?: string;
-}
-
-/**
- * Context provided to migrations
- */
-export interface MigrationContext {
-  /** ts-morph Project instance */
-  project: Project;
-  /** Target directory being migrated */
-  targetPath: string;
-  /** Logger for output */
-  logger: MigrationLogger;
-  /** Whether this is a dry-run */
-  dryRun: boolean;
 }
 
 /**

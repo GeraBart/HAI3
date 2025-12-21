@@ -48,12 +48,3 @@ export enum UserRole {
 export interface GetCurrentUserResponse {
   user: ApiUser;
 }
-
-/**
- * API error response (shared across all domains)
- */
-export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, string | number | boolean | null>;
-}

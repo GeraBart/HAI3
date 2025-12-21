@@ -372,28 +372,6 @@ export async function runMigrations(
 }
 
 /**
- * Format a migration preview for display
- */
-export function formatPreview(preview: MigrationPreview): string {
-  const lines: string[] = [];
-  lines.push(`Migration: ${preview.migrationId}`);
-  lines.push(`Files affected: ${preview.totalFilesAffected}`);
-  lines.push(`Total changes: ${preview.totalChanges}`);
-  lines.push('');
-
-  for (const file of preview.files) {
-    lines.push(`  ${file.path}`);
-    for (const change of file.changes) {
-      lines.push(`    Line ${change.line}: ${change.description}`);
-      lines.push(`      - ${change.before}`);
-      lines.push(`      + ${change.after}`);
-    }
-  }
-
-  return lines.join('\n');
-}
-
-/**
  * Format a migration result for display
  */
 export function formatResult(result: MigrationResult): string {

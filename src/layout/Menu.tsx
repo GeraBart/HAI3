@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { useAppSelector, useNavigation, useTranslation, uikitRegistry, UiKitIcon, type MenuState, type MenuItem } from '@hai3/react';
+import { useAppSelector, useAppDispatch, useNavigation, useTranslation, uikitRegistry, UiKitIcon, type MenuState, type MenuItem } from '@hai3/react';
 import {
   Sidebar,
   SidebarContent,
@@ -17,14 +17,13 @@ import {
   SidebarHeader,
 } from '@hai3/uikit';
 import { menuActions } from '@hai3/framework';
-import { useDispatch } from 'react-redux';
 
 export interface MenuProps {
   children?: React.ReactNode;
 }
 
 export const Menu: React.FC<MenuProps> = ({ children }) => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const { currentScreen, navigateToScreen, currentScreenset } = useNavigation();
   const { t } = useTranslation();

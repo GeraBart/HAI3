@@ -68,5 +68,3 @@ export const HAI3Provider: React.FC<HAI3ProviderProps> = ({
     </HAI3Context.Provider>
   );
 };
-
-export default HAI3Provider;

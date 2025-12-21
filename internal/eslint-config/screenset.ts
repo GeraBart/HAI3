@@ -339,5 +339,3 @@ export function createScreensetConfig(options: ScreensetConfigOptions = {}): Con
 
 // Default export without local plugin (for packages that don't need it)
 export const screensetConfig = createScreensetConfig();
-
-export default screensetConfig;

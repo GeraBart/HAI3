@@ -4,4 +4,4 @@
  */
 
 export { AccountsApiService, ACCOUNTS_DOMAIN } from './AccountsApiService';
-export { UserRole, type ApiUser, type UserExtra, type GetCurrentUserResponse, type ApiError } from './types';
+export { UserRole, type ApiUser, type UserExtra, type GetCurrentUserResponse } from './types';

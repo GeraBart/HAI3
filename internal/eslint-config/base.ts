@@ -10,7 +10,7 @@ import tseslint, { type ConfigArray } from 'typescript-eslint';
 import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 
-export const baseConfig: ConfigArray = [
+const baseConfig: ConfigArray = [
   // Global ignores
   {
     ignores: [
@@ -98,4 +98,4 @@ export const baseConfig: ConfigArray = [
   },
 ];
 
-export default baseConfig;
+export { baseConfig };

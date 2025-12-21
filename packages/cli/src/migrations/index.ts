@@ -5,12 +5,7 @@
  */
 
 // Re-export registry functions
-export {
-  getMigrations,
-  getMigrationById,
-  getMigrationsByVersion,
-  getMigrationsUpTo,
-} from './registry.js';
+export { getMigrations } from './registry.js';
 
 // Re-export types
 export type {
@@ -23,7 +18,6 @@ export type {
   MigrationStatus,
   MigrationTracker,
   MigrationOptions,
-  MigrationContext,
   MigrationLogger,
   FilePreview,
   FileResult,
@@ -36,6 +30,5 @@ export {
   previewMigration,
   applyMigration,
   runMigrations,
-  formatPreview,
   formatResult,
 } from './runner.js';

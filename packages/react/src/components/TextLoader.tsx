@@ -65,5 +65,3 @@ export const TextLoader: React.FC<TextLoaderProps> = ({
 
   return <>{children}</>;
 };
-
-export default TextLoader;
