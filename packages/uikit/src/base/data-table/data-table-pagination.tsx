@@ -7,7 +7,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react"
-import { ButtonVariant, ButtonSize } from "@hai3/uikit-contracts"
+import { ButtonVariant, ButtonSize } from "../../types"
 
 import { Button } from "../button"
 import {

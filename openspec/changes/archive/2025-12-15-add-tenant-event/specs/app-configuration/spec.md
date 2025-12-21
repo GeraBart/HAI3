@@ -29,8 +29,8 @@ The system SHALL provide a tenant change event that allows consuming application
 ```typescript
 import { eventBus } from '@hai3/uicore';
 
-eventBus.emit('uicore/tenant/changed', { 
-  tenant: { id: '123' } 
+eventBus.emit('uicore/tenant/changed', {
+  tenant: { id: '123' }
 });
 ```
 

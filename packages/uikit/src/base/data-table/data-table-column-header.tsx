@@ -2,7 +2,7 @@
 
 import { type Column } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from "lucide-react"
-import { ButtonVariant, ButtonSize } from "@hai3/uikit-contracts"
+import { ButtonVariant, ButtonSize } from "../../types"
 
 import { cn } from "../../lib/utils"
 import { Button } from "../button"

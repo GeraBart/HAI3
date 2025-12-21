@@ -22,6 +22,29 @@ export type { ScreensetTranslationLoader as TranslationLoaderFn } from '@hai3/sc
 export type { ScreensetDefinition as ScreensetConfig } from '@hai3/screensets';
 
 // ============================================================================
+// App State Types (owned by @hai3/framework)
+// ============================================================================
+
+/** Tenant entity */
+export interface Tenant {
+  id: string;
+}
+
+/** Tenant state */
+export interface TenantState {
+  tenant: Tenant | null;
+  loading: boolean;
+}
+
+/** Payload for tenant changed event */
+export interface TenantChangedPayload {
+  tenant: Tenant;
+}
+
+/** Payload for tenant cleared event */
+export interface TenantClearedPayload {}
+
+// ============================================================================
 // Layout State Types (owned by @hai3/framework)
 // ============================================================================
 
@@ -262,6 +285,36 @@ export declare const setOverlayVisible: (payload: boolean) => unknown;
 export interface PopupSliceState {
   stack: PopupState[];
 }
+
+// ============================================================================
+// Tenant Slice (app-level, not layout)
+// ============================================================================
+
+export declare const TENANT_SLICE_NAME: 'app/tenant';
+export declare const tenantSlice: unknown;
+export declare const tenantActions: {
+  setTenant: (payload: Tenant | null) => unknown;
+  setTenantLoading: (payload: boolean) => unknown;
+  clearTenant: () => unknown;
+};
+export declare const tenantReducer: unknown;
+
+// Individual reducer functions - tenant
+export declare const setTenant: (payload: Tenant | null) => unknown;
+export declare const setTenantLoading: (payload: boolean) => unknown;
+export declare const clearTenant: () => unknown;
+
+// Tenant events
+export declare const TenantEvents: {
+  readonly Changed: 'app/tenant/changed';
+  readonly Cleared: 'app/tenant/cleared';
+};
+
+// Tenant effects
+export declare const initTenantEffects: () => () => void;
+export declare const changeTenant: (tenant: Tenant) => void;
+export declare const clearTenantAction: () => void;
+export declare const setTenantLoadingState: (loading: boolean) => void;
 
 // NOTE: Named selectors removed. Use useAppSelector hook from @hai3/react:
 // const menu = useAppSelector((state: RootState) => state.layout.menu);

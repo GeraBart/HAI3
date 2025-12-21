@@ -167,6 +167,21 @@ export {
   hideOverlay,
   setOverlayVisible,
 
+  // Tenant (app-level, not layout)
+  TENANT_SLICE_NAME,
+  tenantSlice,
+  tenantActions,
+  tenantReducer,
+  setTenant,
+  setTenantLoading,
+  clearTenant,
+  // Tenant effects and events
+  initTenantEffects,
+  changeTenant,
+  clearTenantAction,
+  setTenantLoadingState,
+  TenantEvents,
+
   // API
   apiRegistry,
   BaseApiService,
@@ -251,6 +266,12 @@ export type {
   LayoutState,
   RootStateWithLayout,
   LayoutDomainReducers,
+
+  // Tenant types
+  Tenant,
+  TenantState,
+  TenantChangedPayload,
+  TenantClearedPayload,
 
   // API
   ApiService,

@@ -122,6 +122,14 @@ export {
   layoutReducer,
   layoutDomainReducers,
   LAYOUT_SLICE_NAME,
+  // Tenant slice (app-level, not layout)
+  TENANT_SLICE_NAME,
+  tenantSlice,
+  tenantActions,
+  tenantReducer,
+  setTenant,
+  setTenantLoading,
+  clearTenant,
   // Domain slices
   headerSlice,
   footerSlice,
@@ -176,6 +184,10 @@ export type { PopupSliceState } from './slices';
 
 // Layout state types (defined locally to avoid circular deps with uicore/react)
 export type {
+  // App-level types
+  Tenant,
+  TenantState,
+  // Layout domain types
   HeaderUser,
   HeaderState,
   HeaderConfig,
@@ -195,6 +207,16 @@ export type {
   RootStateWithLayout,
   LayoutDomainReducers,
 } from './layoutTypes';
+
+// Tenant effects and events
+export {
+  initTenantEffects,
+  changeTenant,
+  clearTenantAction,
+  setTenantLoadingState,
+  TenantEvents,
+} from './effects';
+export type { TenantChangedPayload, TenantClearedPayload } from './effects';
 
 // From @hai3/api
 export { apiRegistry, BaseApiService, RestProtocol, SseProtocol, MockPlugin } from '@hai3/api';

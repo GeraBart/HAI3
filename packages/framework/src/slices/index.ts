@@ -57,12 +57,20 @@ import overlayReducer, {
   hideOverlay,
   setOverlayVisible,
 } from './overlaySlice';
+import tenantReducer, {
+  tenantSlice,
+  tenantActions,
+  setTenant,
+  setTenantLoading,
+  clearTenant,
+} from './tenantSlice';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 export const LAYOUT_SLICE_NAME = 'layout' as const;
+export const TENANT_SLICE_NAME = 'app/tenant' as const;
 
 // ============================================================================
 // Combined Layout Reducer
@@ -137,6 +145,14 @@ export {
   showOverlay,
   hideOverlay,
   setOverlayVisible,
+  // Tenant slice (app-level, not layout)
+  tenantSlice,
+  tenantActions,
+  tenantReducer,
+  // Individual actions - tenant
+  setTenant,
+  setTenantLoading,
+  clearTenant,
 };
 
 // Type exports

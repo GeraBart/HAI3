@@ -2,7 +2,7 @@
 
 import { type Table } from "@tanstack/react-table"
 import { Settings2 } from "lucide-react"
-import { ButtonVariant, ButtonSize } from "@hai3/uikit-contracts"
+import { ButtonVariant, ButtonSize } from "../../types"
 
 import { Button } from "../button"
 import {

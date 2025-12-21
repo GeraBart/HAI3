@@ -1,0 +1,43 @@
+import { createSlice, type ReducerPayload } from '@hai3/state';
+import type { TenantState, Tenant } from '../layoutTypes';
+
+/**
+ * Tenant slice for managing tenant state
+ *
+ * This slice is NOT part of the layout domain. It lives at the app level
+ * as a separate top-level slice: state['app/tenant']
+ *
+ * Event-driven: Listen for 'app/tenant/changed' to update tenant
+ */
+
+const SLICE_KEY = 'app/tenant' as const;
+
+const initialState: TenantState = {
+  tenant: null,
+  loading: false,
+};
+
+const { slice, setTenant, setTenantLoading, clearTenant } = createSlice({
+  name: SLICE_KEY,
+  initialState,
+  reducers: {
+    setTenant: (state, action: ReducerPayload<Tenant | null>) => {
+      state.tenant = action.payload;
+      state.loading = false;
+    },
+    setTenantLoading: (state, action: ReducerPayload<boolean>) => {
+      state.loading = action.payload;
+    },
+    clearTenant: (state) => {
+      state.tenant = null;
+      state.loading = false;
+    },
+  },
+});
+
+export const tenantSlice = slice;
+export const tenantActions = { setTenant, setTenantLoading, clearTenant };
+
+export { setTenant, setTenantLoading, clearTenant };
+
+export default slice.reducer;
