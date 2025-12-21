@@ -209,21 +209,24 @@ export function navigation(): HAI3Plugin {
         const path = window.location.pathname;
         const parts = path.split('/').filter(Boolean);
 
+        // Check if autoNavigate is enabled (default: true)
+        const autoNavigate = app.config.autoNavigate !== false;
+
         if (parts.length >= 1) {
           // URL has screen - find its screenset and navigate
           const screenId = parts[0];
           const screensetId = app.routeRegistry?.getScreensetForScreen(screenId);
           if (screensetId) {
             navigateToScreen({ screensetId, screenId });
-          } else {
-            // Screen not found - navigate to first available screenset
+          } else if (autoNavigate) {
+            // Screen not found - navigate to first available screenset (only if autoNavigate)
             const screensets = app.screensetRegistry.getAll();
             if (screensets.length > 0) {
               navigateToScreenset({ screensetId: screensets[0].id });
             }
           }
-        } else {
-          // No URL path - navigate to first available screenset
+        } else if (autoNavigate) {
+          // No URL path - navigate to first available screenset (only if autoNavigate)
           const screensets = app.screensetRegistry.getAll();
           if (screensets.length > 0) {
             navigateToScreenset({ screensetId: screensets[0].id });

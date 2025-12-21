@@ -68,7 +68,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [dispatch]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Top row: Menu + Header + Content + Sidebar */}
       <div className="flex flex-1 overflow-hidden">
         {/* Menu - full height on left */}

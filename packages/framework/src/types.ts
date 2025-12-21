@@ -44,6 +44,12 @@ export interface HAI3Config {
   devMode?: boolean;
   /** Enable strict mode (throws on errors) */
   strictMode?: boolean;
+  /**
+   * Auto-navigate to first screenset on mount.
+   * When false, stays on "/" until navigateToScreen/navigateToScreenset is called.
+   * @default true
+   */
+  autoNavigate?: boolean;
 }
 
 // ============================================================================
