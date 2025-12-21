@@ -754,9 +754,9 @@ The system SHALL keep @hai3/uikit as a standalone npm package, used as the defau
 
 ### Requirement: Separate AI Infrastructure
 
-> **⚠️ ARCHITECTURAL GAP:** See [proposal.md Issue 3](../../proposal.md#issue-3-static-ai-commands-for-plugin-based-framework). The framework is plugin-based but AI commands/guidelines are static. Users who select specific plugins still get ALL guidelines. Phase 13.3 in tasks.md addresses this.
-
 The system SHALL provide two distinct command namespaces: `hai3dev-*` for HAI3 framework development and `hai3-*` for user project development.
+
+> **⚠️ ARCHITECTURAL GAP:** See [proposal.md Issue 3](../../proposal.md#issue-3-static-ai-commands-for-plugin-based-framework). The framework is plugin-based but AI commands/guidelines are static. Users who select specific plugins still get ALL guidelines. Phase 13.3 in tasks.md addresses this.
 
 #### Scenario: Monorepo commands are internal only
 
@@ -916,9 +916,9 @@ The system SHALL provide automated testing for AI commands and rules without hum
 
 ### Requirement: Layered Protection Architecture
 
-> **⚠️ NEEDS RE-ASSESSMENT:** See [proposal.md Issue 2](../../proposal.md#issue-2-eslintdepcruise-decomposition-misunderstanding). The per-package config scenarios (below) conflate monorepo-level (SDK source code) protection with user-level (shipped to users) protection. Phase 13.2 in tasks.md addresses this. The internal config packages and hierarchy are correct; the per-package scenarios may need revision.
-
 The system SHALL provide layered ESLint and dependency-cruiser configurations following industry best practices (Turborepo, Nx, TanStack patterns).
+
+> **⚠️ NEEDS RE-ASSESSMENT:** See [proposal.md Issue 2](../../proposal.md#issue-2-eslintdepcruise-decomposition-misunderstanding). The per-package config scenarios (below) conflate monorepo-level (SDK source code) protection with user-level (shipped to users) protection. Phase 13.2 in tasks.md addresses this. The internal config packages and hierarchy are correct; the per-package scenarios may need revision.
 
 #### Scenario: Internal config packages exist
 
