@@ -47,12 +47,12 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@hai3/uikit';
-import { ButtonVariant } from '@hai3/uikit-contracts';
+import { ButtonVariant } from '@hai3/uikit';
 import { Copy, RefreshCw, CornerDownLeft } from 'lucide-react';
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from 'input-otp';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import { useTranslation, TextLoader } from '@hai3/uicore';
+import { useTranslation, TextLoader } from '@hai3/react';
 import { DEMO_SCREENSET_ID } from "../ids";
 import { UI_KIT_ELEMENTS_SCREEN_ID } from "../ids";
 import { ProfileForm } from "../uikit/forms/ProfileForm";

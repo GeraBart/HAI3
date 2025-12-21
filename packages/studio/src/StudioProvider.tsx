@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { I18nRegistry, Language, i18nRegistry } from '@hai3/uicore';
+import { I18nRegistry, Language, i18nRegistry } from '@hai3/react';
 import { saveStudioState, loadStudioState } from './utils/persistence';
 import { STORAGE_KEYS } from './types';
 import { initPersistenceEffects } from './effects/persistenceEffects';

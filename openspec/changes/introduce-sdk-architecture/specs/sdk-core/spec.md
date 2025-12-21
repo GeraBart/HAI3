@@ -12,7 +12,7 @@ The system SHALL provide 4 flat SDK packages with ZERO @hai3 inter-dependencies,
 
 #### Scenario: SDK packages have no @hai3 dependencies
 
-- **WHEN** checking any SDK package's `package.json` (flux, layout, api, i18n)
+- **WHEN** checking any SDK package's `package.json` (state, screensets, api, i18n)
 - **THEN** no `@hai3/*` packages appear in dependencies or peerDependencies
 - **AND** the package can be used standalone without other HAI3 packages
 
@@ -26,7 +26,7 @@ The system SHALL provide 4 flat SDK packages with ZERO @hai3 inter-dependencies,
 - **AND** `HAI3Store`, `SliceObject` types are available (for effects and registration)
 - **AND** the only external dependency is `@reduxjs/toolkit`
 - **AND** it works in Node.js without React (headless/framework-agnostic)
-- **AND** confusing Redux internals are hidden (`combineReducers`, `Reducer`, `ThunkDispatch`, `UnknownAction`, `.actions`, `Selector`)
+- **AND** confusing Redux internals are hidden (`combineReducers`, `Reducer`, `ThunkDispatch`, `UnknownAction`, `.actions`)
 - **AND** `ReducerPayload<T>` is used instead of `PayloadAction<T>` (terminology clarity)
 
 **Why @hai3/state instead of separate events/store packages:**
@@ -207,7 +207,7 @@ export { setMenuCollapsed, setMenuItems };
   - `Reducer` type - internal type
   - `ThunkDispatch` - not used in HAI3 pattern
   - `UnknownAction` - internal Redux type
-  - `Selector`, `ParameterizedSelector` - use @hai3/react hooks instead
+  - Redux selector utilities - state access via @hai3/react hooks (useAppSelector)
   - `./types` subpath export - prevents direct type access
 
 - **AND** the following are KEPT (needed by users):
@@ -235,13 +235,26 @@ The system SHALL use consistent terminology aligned with industry standards (CQR
 - **AND** the term "dispatch" is NOT used in HAI3 public API
 - **BECAUSE** these are Redux implementation details
 
-#### Scenario: @hai3/layout package
+#### Scenario: @hai3/screensets package
 
-- **WHEN** importing from `@hai3/layout`
-- **THEN** domain slices, types, and selectors are available (header, footer, menu, sidebar, screen, popup, overlay)
-- **AND** `LayoutDomain`, `ScreensetDefinition`, `MenuItemConfig` types are available
-- **AND** the only external dependency is `@reduxjs/toolkit`
+- **WHEN** importing from `@hai3/screensets`
+- **THEN** screenset contracts are available: `ScreensetDefinition`, `ScreensetCategory`, `MenuItemConfig`, `ScreenLoader`, `MenuScreenItem`
+- **AND** `LayoutDomain` enum is available (header, footer, menu, sidebar, screen, popup, overlay)
+- **AND** `ScreensetTranslationLoader` type is available (renamed from TranslationLoaderFn)
+- **AND** `screensetRegistry` singleton is available (pure storage, no side effects, ~20 lines Map wrapper)
+- **AND** branded types `ScreensetId`, `ScreenId` are available
+- **AND** the package has ZERO external dependencies (pure TypeScript)
 - **AND** it has ZERO @hai3 dependencies
+- **AND** it does NOT contain state shapes (HeaderState, MenuState, etc.) - those are in @hai3/framework
+- **AND** it does NOT contain Redux slices - those are in @hai3/framework
+
+**Why renamed from @hai3/layout:**
+- The package is 90% about screenset contracts, not layout state
+- Screensets are HAI3's first-class citizen (vertical slices consisting of screens, menus, popups, etc.)
+- Layout domain state management is in @hai3/framework (which owns layout slices)
+- This enables future micro-frontend architecture where screensets can be injected into non-HAI3 apps
+
+> **Note:** @hai3/uicore is deprecated. All layout slices are in @hai3/framework. Components access state via `useAppSelector` hook from @hai3/react.
 
 #### Scenario: @hai3/api package
 
@@ -259,19 +272,29 @@ The system SHALL use consistent terminology aligned with industry standards (CQR
 
 ### Requirement: Framework Layer
 
-The system SHALL provide a `@hai3/framework` package that wires SDK packages together without React dependencies.
+The system SHALL provide a `@hai3/framework` package that wires SDK packages together, provides layout state management, and works without React dependencies.
 
 #### Scenario: Framework depends only on SDK packages
 
 - **WHEN** checking `@hai3/framework` package.json
-- **THEN** only SDK packages appear as @hai3 dependencies: flux, layout, api, i18n
+- **THEN** only SDK packages appear as @hai3 dependencies: state, screensets, api, i18n
 - **AND** NO React or react-dom dependency exists
 - **AND** NO @hai3/uikit-contracts dependency exists
+
+#### Scenario: Framework provides layout domain state
+
+- **WHEN** importing from `@hai3/framework`
+- **THEN** layout domain state types are available: `HeaderState`, `FooterState`, `MenuState`, `SidebarState`, `ScreenState`, `PopupState`, `OverlayState`
+- **AND** layout domain Redux slices are available (defined in @hai3/framework)
+- **BECAUSE** @hai3/framework owns layout state management
+
+> **State Access:** Components use `useAppSelector` hook from @hai3/react to access state. The term "selector" is avoided as it's Redux-specific terminology.
 
 #### Scenario: Framework provides registries
 
 - **WHEN** importing from `@hai3/framework`
-- **THEN** `screensetRegistry`, `themeRegistry`, `routeRegistry` are available
+- **THEN** `themeRegistry`, `routeRegistry` are available (framework-owned)
+- **AND** screensetRegistry from `@hai3/screensets` is re-exported with i18n wiring
 - **AND** registries use event bus for notifications
 - **AND** registries are type-safe with module augmentation
 
@@ -307,7 +330,7 @@ The system SHALL enforce that actions are **handwritten pure functions** that em
 
 #### Scenario: No createAction helper in SDK
 
-- **WHEN** checking SDK package exports (`@hai3/state`, `@hai3/layout`, etc.)
+- **WHEN** checking SDK package exports (`@hai3/state`, `@hai3/screensets`, etc.)
 - **THEN** NO `createAction` helper function is exported
 - **AND** actions are defined as handwritten functions in screensets
 - **BECAUSE** a factory pattern would:
@@ -422,7 +445,7 @@ The system SHALL provide CLI commands to scaffold layout components into the use
 - **THEN** generated components import from `@hai3/uikit`
 - **AND** `@hai3/uikit` is added to package.json dependencies if not present
 - **AND** generated components import hooks from `@hai3/react`
-- **AND** generated components import types/selectors from `@hai3/layout`
+- **AND** generated components import types from `@hai3/screensets` and slices from `@hai3/framework`
 
 #### Scenario: Custom UI kit option (no bundled uikit)
 
@@ -521,9 +544,9 @@ The system SHALL enforce strict layer dependencies via ESLint and dependency-cru
 #### Scenario: User code can import any package
 
 - **WHEN** user code (screensets, generated layout) imports from @hai3 packages
-- **THEN** it CAN import from any layer: `@hai3/state`, `@hai3/layout`, `@hai3/react`
+- **THEN** it CAN import from any layer: `@hai3/state`, `@hai3/screensets`, `@hai3/framework`, `@hai3/react`
 - **AND** layer rules do NOT apply to user's src/ directory
-- **AND** this allows generated layout to import selectors from `@hai3/layout`
+- **AND** this allows generated layout to import types from `@hai3/screensets` and slices from `@hai3/framework`
 
 ### Requirement: Build Order
 
@@ -532,7 +555,7 @@ The system SHALL build packages in layer order with SDK packages parallelizable.
 #### Scenario: SDK packages build in parallel
 
 - **WHEN** running `npm run build:packages`
-- **THEN** SDK packages (flux, layout, api, i18n) can build in parallel
+- **THEN** SDK packages (state, screensets, api, i18n) can build in parallel
 - **AND** they have no build-time dependencies on each other
 
 #### Scenario: Framework builds after SDK
@@ -963,3 +986,44 @@ The system SHALL provide layered ESLint and dependency-cruiser configurations fo
 - **AND** dependency-cruiser rule count is equal or greater
 - **AND** pre-commit hook count is equal or greater
 - **AND** NO existing rule is removed (only enhanced)
+
+### Requirement: Consolidated Templates Structure
+
+The system SHALL organize CLI template sources in a single `templates/` directory with manifest-driven assembly.
+
+#### Scenario: Templates directory structure
+
+- **WHEN** checking the repository structure
+- **THEN** `templates/` directory exists at repo root
+- **AND** `templates/standalone/` contains project scaffold files (configs, eslint-plugin, scripts)
+- **AND** `templates/layout/` contains layout variants
+- **AND** `templates/ai-overrides/` contains simplified AI docs for standalone projects
+- **AND** `templates/manifest.yaml` documents the assembly configuration
+
+#### Scenario: Layout variants share base
+
+- **WHEN** checking `templates/layout/`
+- **THEN** `_base/` directory contains shared layout files (Layout.tsx, Screen.tsx, Popup.tsx, Overlay.tsx)
+- **AND** variant directories (`hai3-uikit/`, `custom/`) contain only variant-specific files (Header.tsx, Footer.tsx, Menu.tsx, Sidebar.tsx)
+- **AND** duplication between variants is eliminated (~60% reduction)
+
+#### Scenario: Manifest-driven assembly
+
+- **WHEN** `npm run build:packages:cli` runs
+- **THEN** `copy-templates.ts` reads `templates/manifest.yaml`
+- **AND** template sources are documented in manifest
+- **AND** assembly rules are declarative (not hardcoded in script)
+
+#### Scenario: Dual-purpose src/ preserved
+
+- **WHEN** checking HAI3 dev workflow
+- **THEN** `src/themes/`, `src/uikit/`, `src/icons/`, `src/screensets/` remain unchanged
+- **AND** these files serve dual purposes: monorepo development AND template sources
+- **AND** `npm run dev` continues to work for HAI3 development
+
+#### Scenario: Old directories removed
+
+- **WHEN** checking the repository after migration
+- **THEN** `presets/standalone/` no longer exists (moved to `templates/standalone/`)
+- **AND** `packages/cli/templates-source/` no longer exists (moved to `templates/layout/`)
+- **AND** `.ai/standalone-overrides/` no longer exists (moved to `templates/ai-overrides/`)

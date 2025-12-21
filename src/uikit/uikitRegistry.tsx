@@ -4,7 +4,7 @@
  * Self-registers on import, similar to themeRegistry
  */
 
-import { uikitRegistry, UiKitIcon } from '@hai3/uicore';
+import { uikitRegistry, UiKitIcon } from '@hai3/react';
 import {
   Button,
   IconButton,
@@ -41,12 +41,12 @@ export { CLOSE_ICON_ID, APP_LOGO_ICON_ID, APP_LOGO_TEXT_ICON_ID };
 // Register all HAI3 UI Kit components
 uikitRegistry.registerComponents({
   // Basic components
-  Button: Button as import('@hai3/uikit-contracts').ButtonComponent, // Type assertion to bridge contract/implementation mismatch
-  IconButton: IconButton as import('@hai3/uikit-contracts').IconButtonComponent,
-  DropdownButton: DropdownButton as import('@hai3/uikit-contracts').DropdownButtonComponent,
-  Switch: Switch as import('@hai3/uikit-contracts').SwitchComponent,
-  Skeleton: Skeleton as import('@hai3/uikit-contracts').SkeletonComponent,
-  Spinner: Spinner as import('@hai3/uikit-contracts').SpinnerComponent,
+  Button: Button as import('@hai3/uikit').ButtonComponent, // Type assertion to bridge contract/implementation mismatch
+  IconButton: IconButton as import('@hai3/uikit').IconButtonComponent,
+  DropdownButton: DropdownButton as import('@hai3/uikit').DropdownButtonComponent,
+  Switch: Switch as import('@hai3/uikit').SwitchComponent,
+  Skeleton: Skeleton as import('@hai3/uikit').SkeletonComponent,
+  Spinner: Spinner as import('@hai3/uikit').SpinnerComponent,
 
   // Layout components
   Header,
@@ -54,10 +54,10 @@ uikitRegistry.registerComponents({
   SidebarContent,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuItem: SidebarMenuItem as import('@hai3/uikit-contracts').SidebarMenuItemComponent,
-  SidebarMenuButton: SidebarMenuButton as import('@hai3/uikit-contracts').SidebarMenuButtonComponent,
-  SidebarMenuIcon: SidebarMenuIcon as import('@hai3/uikit-contracts').SidebarMenuIconComponent,
-  SidebarMenuLabel: SidebarMenuLabel as import('@hai3/uikit-contracts').SidebarMenuLabelComponent,
+  SidebarMenuItem: SidebarMenuItem as import('@hai3/uikit').SidebarMenuItemComponent,
+  SidebarMenuButton: SidebarMenuButton as import('@hai3/uikit').SidebarMenuButtonComponent,
+  SidebarMenuIcon: SidebarMenuIcon as import('@hai3/uikit').SidebarMenuIconComponent,
+  SidebarMenuLabel: SidebarMenuLabel as import('@hai3/uikit').SidebarMenuLabelComponent,
 
   // Domain components
   UserInfo,
@@ -66,7 +66,7 @@ uikitRegistry.registerComponents({
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem: DropdownMenuItem as import('@hai3/uikit-contracts').DropdownMenuItemComponent,
+  DropdownMenuItem: DropdownMenuItem as import('@hai3/uikit').DropdownMenuItemComponent,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,

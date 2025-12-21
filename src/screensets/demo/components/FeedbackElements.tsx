@@ -29,7 +29,7 @@ import {
   Spinner,
   useToast,
 } from '@hai3/uikit';
-import { useTranslation, TextLoader } from '@hai3/uicore';
+import { useTranslation, TextLoader } from '@hai3/react';
 import { AlertCircleIcon, BellIcon, CheckCircle2Icon, CloudIcon, PopcornIcon, RefreshCcwIcon } from 'lucide-react';
 import { LoaderIcon } from '../uikit/icons/LoaderIcon';
 import { DEMO_SCREENSET_ID } from "../ids";

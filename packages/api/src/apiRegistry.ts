@@ -9,7 +9,6 @@
 
 import type {
   ApiRegistry as IApiRegistry,
-  ApiService,
   ApiServicesMap,
   ApiServicesConfig,
   MockMap,
@@ -49,7 +48,7 @@ class ApiRegistryImpl implements IApiRegistry {
   private serviceClasses: Map<string, ServiceConstructor> = new Map();
 
   /** Service instances */
-  private services: Map<string, ApiService> = new Map();
+  private services: Map<string, BaseApiService> = new Map();
 
   /** Mock data maps by domain */
   private mockMaps: Map<string, Readonly<MockMap>> = new Map();

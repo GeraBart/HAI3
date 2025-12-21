@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation, TextLoader } from '@hai3/uicore';
+import { useTranslation, TextLoader } from '@hai3/react';
 import { UIKIT_CATEGORIES, IMPLEMENTED_ELEMENTS, getElementId } from './uikitCategories';
 import { ExpandableButton } from '../../uikit/icons/ExpandableButton';
 import { MenuItemButton } from '../../uikit/icons/MenuItemButton';

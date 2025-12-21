@@ -18,12 +18,12 @@ Industry leaders (TanStack, shadcn/ui) solve this with:
 
 ```
 LAYER 1: SDK (Flat NPM packages, ZERO @hai3 inter-dependencies)
-┌──────────────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-│      state       │  │  layout  │  │   api    │  │   i18n   │
-│                  │  │          │  │          │  │          │
-│ EventBus + Store │  │ Domain   │  │ Axios    │  │ Zero     │
-│ Redux internal   │  │ slices   │  │ internal │  │ deps     │
-└──────────────────┘  └──────────┘  └──────────┘  └──────────┘
+┌──────────────────┐  ┌────────────┐  ┌──────────┐  ┌──────────┐
+│      state       │  │ screensets │  │   api    │  │   i18n   │
+│                  │  │            │  │          │  │          │
+│ EventBus + Store │  │ Contracts  │  │ Axios    │  │ Zero     │
+│ Redux internal   │  │ + Registry │  │ internal │  │ deps     │
+└──────────────────┘  └────────────┘  └──────────┘  └──────────┘
 
 LAYER 2: Framework (Headless, NO uikit-contracts)
 ┌─────────────────────────────────────────────────────────────────┐
@@ -54,26 +54,41 @@ LAYER 4: CLI-Generated Layout (IN USER'S PROJECT, not npm)
 
 ### Package Breakdown
 
-**Layer 1: SDK (Flat, zero @hai3 inter-dependencies)**
+**Layer 1: SDK (Flat, zero @hai3 inter-dependencies, zero runtime dependencies)**
 
-| Package | Responsibility | Internal Deps | @hai3 Deps |
+| Package | Responsibility | External Deps | @hai3 Deps |
 |---------|---------------|---------------|------------|
-| `@hai3/state` | Event bus, store, state management | redux-toolkit | **None** |
-| `@hai3/layout` | Domain types, slices, actions | redux-toolkit | **None** |
-| `@hai3/api` | HTTP services, protocols | axios | **None** |
-| `@hai3/i18n` | Translation system | None | **None** |
+| `@hai3/state` | Event bus, store, createSlice | redux-toolkit (peer) | **None** |
+| `@hai3/screensets` | Screenset contracts + registry | **None** | **None** |
+| `@hai3/api` | HTTP services, protocols | axios (peer) | **None** |
+| `@hai3/i18n` | Translation system | **None** | **None** |
 
-> **Note:** Originally planned as 5 separate packages (`@hai3/events`, `@hai3/store`, `@hai3/layout`, `@hai3/api`, `@hai3/i18n`), the events and store packages were consolidated into `@hai3/state` because:
+> **Note on @hai3/state:** Originally planned as 2 separate packages (`@hai3/events`, `@hai3/store`), consolidated because:
 > - Events and store are tightly coupled in the Flux pattern
-> - Neither makes sense standalone - events without handlers, store without events
 > - The complete dataflow pattern (EventBus → Effects → Store) is the atomic unit of value
 > - Following industry naming conventions (Zustand, Jotai = "state" in German/Japanese)
+
+> **Note on @hai3/screensets (formerly @hai3/layout):** Renamed because:
+> - The package is 90% about screenset contracts, not layout state
+> - Screensets are HAI3's first-class citizen (vertical slices)
+> - Layout state shapes moved to @hai3/framework (where state is managed)
+> - The package contains: ScreensetDefinition, ScreensetCategory, LayoutDomain enum, MenuItemConfig, ScreensetRegistry implementation
+> - The package does NOT contain: HeaderState, MenuState, Redux slices (those are framework concerns)
 
 **Layer 2: Framework**
 
 | Package | Responsibility | Dependencies |
 |---------|---------------|--------------|
-| `@hai3/framework` | Wires SDK, patterns, registries | All SDK packages |
+| `@hai3/framework` | Wires SDK, layout state, registries, plugins | All SDK packages |
+
+> **@hai3/framework owns:**
+> - Layout domain state shapes (HeaderState, MenuState, SidebarState, ScreenState, PopupState, OverlayState)
+> - Layout domain Redux slices (header, footer, menu, sidebar, screen, popup, overlay)
+> - ThemeRegistry, RouteRegistry implementations
+> - i18n wiring (registers translations when screensets register)
+> - Plugin system for composable features
+>
+> **State access:** Components access state via hooks from @hai3/react (e.g., `useAppSelector`). The term "selector" is avoided as it's Redux-specific terminology. @hai3/state provides the store, effects dispatch to slice reducers.
 
 **Layer 3: React Adapter**
 
@@ -96,6 +111,44 @@ LAYER 4: CLI-Generated Layout (IN USER'S PROJECT, not npm)
 4. **Types-first design** - All interfaces defined before implementation
 5. **TDD approach** - ESLint rules, dependency-cruiser updated BEFORE implementation
 6. **Plugin architecture** - Framework uses composable plugins for maximum flexibility
+7. **Application logic in templates, not framework** - Business-specific functionality belongs in CLI templates
+
+### User Info / Header User Architecture (Architectural Clarification)
+
+**Principle:** The framework provides the **state contract and reducers**, but **application-specific logic** (like fetching current user) belongs in CLI-generated templates, not the framework.
+
+**What belongs in `@hai3/framework`:**
+- `HeaderState` interface with `user: HeaderUser | null` and `loading: boolean` fields
+- `HeaderUser` type definition (`displayName`, `email`, `avatarUrl`)
+- Header slice reducers: `setUser`, `setLoading`, `clearUser`
+- The slice is part of the `layout()` plugin
+
+**What belongs in CLI templates (`src/layout/` via `hai3 scaffold layout`):**
+- `AccountsApiService` class (or equivalent user fetching service)
+- User fetching logic in `Layout.tsx` `useEffect`
+- Conversion function (`toHeaderUser`) from API response to `HeaderUser`
+- Registration of `AccountsApiService` with `apiRegistry` in `main.tsx`
+
+**Why this separation:**
+1. **Framework is generic** - Not all applications have "accounts" or "users"
+2. **API shapes vary** - Different backends have different user endpoint responses
+3. **User owns the logic** - Can customize fetching, caching, error handling
+4. **Optional feature** - Applications without users skip this entirely
+5. **SOLID compliance** - Framework provides extension points, templates provide implementation
+
+**Template behavior:**
+- CLI templates include `AccountsApiService` as example/starter code
+- `Layout.tsx` checks if accounts service is registered before fetching
+- If no accounts service registered, user fetching is gracefully skipped
+
+**State access pattern:**
+```typescript
+// In Header.tsx (CLI-generated template)
+import { useAppSelector } from '@hai3/react';
+import type { RootStateWithLayout } from '@hai3/framework';
+
+const { user, loading } = useAppSelector((state: RootStateWithLayout) => state.layout.header);
+```
 
 ### Plugin Architecture (Framework Layer)
 
@@ -107,9 +160,9 @@ The `@hai3/framework` package uses a **plugin-based architecture** inspired by [
 @hai3/framework
 ├── createHAI3()              ← Minimal core with plugin system
 ├── plugins/
-│   ├── screensets()          ← Screenset registry + screen slice
+│   ├── screensets()          ← Uses @hai3/screensets registry + wires i18n
 │   ├── themes()              ← Theme registry + changeTheme
-│   ├── layout()              ← Layout domains (header, menu, footer, etc.)
+│   ├── layout()              ← Layout domain slices (header, menu, footer, etc.)
 │   ├── routing()             ← Route registry + URL sync
 │   ├── effects()             ← Core effect coordination system
 │   ├── navigation()          ← Navigation actions (navigateToScreen, etc.)
@@ -153,11 +206,21 @@ const app = createHAI3()
 
 | Current | Fate |
 |---------|------|
-| `@hai3/uicore` | **DEPRECATED** - Re-exports for backward compat |
+| `@hai3/uicore` | **DELETED** - Package removed entirely. Migrate to @hai3/framework + @hai3/react. |
 | `@hai3/uikit` | **KEPT AS PACKAGE** - Default UI kit, maintained by UX designers, NOT part of SDK layers |
-| `@hai3/uikit-contracts` | **REMOVED** - Not needed with CLI-generated layout |
+| `@hai3/uikit-contracts` | **DELETED** - Package removed entirely. Types moved to @hai3/uikit. |
 | `@hai3/studio` | **UNCHANGED** - Dev overlay, optional |
 | `@hai3/cli` | **ENHANCED** - New scaffold commands |
+
+> **CRITICAL: Package Removal**
+> - `@hai3/uicore` and `@hai3/uikit-contracts` directories will be physically deleted
+> - All functionality migrated to SDK packages:
+>   - EventBus, Store → `@hai3/state`
+>   - Slices, registries, plugins → `@hai3/framework`
+>   - Hooks, Provider, components → `@hai3/react`
+>   - UI component types → `@hai3/uikit` (no contracts package needed)
+> - AI guidelines (.ai/targets/UICORE.md, UIKIT_CONTRACTS.md) removed
+> - Dependency cruiser rules for these packages removed
 
 ### Why @hai3/uikit Stays as npm Package (Not CLI Template)
 
@@ -228,7 +291,7 @@ export function changeTheme(payload: { themeId: string }): void {
 
 The current implementation created per-package ESLint/depcruise configs in each SDK package:
 - `packages/state/eslint.config.js` extending `sdk.js`
-- `packages/layout/eslint.config.js` extending `sdk.js`
+- `packages/screensets/eslint.config.js` extending `sdk.js`
 - etc.
 
 **Problem:** This conflates two different purposes:
@@ -362,7 +425,9 @@ export function initMenuEffects(dispatch: AppDispatch): void {
 | `combineReducers` | Internal store implementation |
 | `Reducer` type | Internal type |
 | `ThunkDispatch` | Not used in HAI3 pattern |
-| `Selector`, `ParameterizedSelector` | Use @hai3/react hooks instead |
+| Redux selector utilities | State access via @hai3/react hooks (useAppSelector) |
+
+> **Note on "Selectors":** The term "selector" is Redux-specific terminology. HAI3 avoids this term. Components access state via `useAppSelector` hook from @hai3/react, which uses the store from @hai3/state internally.
 
 **Headless / Framework-Agnostic:**
 
@@ -371,6 +436,125 @@ export function initMenuEffects(dispatch: AppDispatch): void {
 - NO React hooks
 - Works in Node.js
 - React bindings are in `@hai3/react` package
+
+### Issue 5: URL Routing Should Use Screen ID Only, Not Screenset ID
+
+**Status:** MUST FIX
+
+The current navigation plugin incorrectly includes the screenset ID in URLs. Before the SDK migration, routes only contained the screen ID.
+
+**Current (Wrong):**
+```
+URL: /demo/helloworld
+URL: /chat/chat
+URL: /machine-monitoring/machines-list
+```
+
+**Correct (Pre-migration behavior):**
+```
+URL: /helloworld
+URL: /chat
+URL: /machines-list
+```
+
+**Problem:** The SDK migration changed the URL format from `/{screenId}` to `/{screensetId}/{screenId}`. This is a regression that breaks existing bookmarks and the URL design principle that screen IDs are globally unique.
+
+**Why Screen-Only URLs:**
+1. **Global uniqueness**: Screen IDs are globally unique across all screensets (enforced by route registry)
+2. **Cleaner URLs**: Shorter, more user-friendly URLs
+3. **Backward compatibility**: Existing bookmarks and links continue to work
+4. **Screenset context**: The active screenset is derived from the screen, not from the URL
+
+**How It Works:**
+- Route registry maps `screenId → screensetId` (lookup)
+- Navigation to `/helloworld` finds which screenset owns it
+- Screen state + menu state updated accordingly
+- URL never contains screenset ID
+
+**Action Required:**
+1. Update `packages/framework/src/plugins/navigation.ts`:
+   - Change URL format from `/${screensetId}/${screenId}` to `/${screenId}`
+   - Add reverse lookup: given screenId, find screensetId
+   - Update popstate handler to use single-segment paths
+2. Update `packages/framework/src/registries/routeRegistry.ts`:
+   - Add `getScreensetForScreen(screenId)` method
+   - Ensure screen ID uniqueness validation
+3. Update all navigation-related types and actions
+4. Fix any broken tests
+
+### Issue 6: Chat Screenset Duplicate Rendering Bug
+
+**Status:** FIXED
+
+During SDK migration, the Chat screenset developed a bug where user actions trigger duplicate state updates.
+
+**Symptoms:**
+- Sending a message renders 3 times
+- Creating a new thread adds 3 entries
+- Deleting a thread removes multiple times
+
+**Root Cause Analysis:**
+
+The bug is caused by effect initializers being called multiple times without proper cleanup:
+
+1. **`registerSlice` lacks cleanup tracking**: When `registerSlice` is called multiple times (e.g., during HMR or re-renders), effects are re-initialized without cleaning up previous subscriptions.
+
+2. **Effect initializers don't return cleanup functions**: Current pattern only initializes, doesn't provide cleanup:
+   ```typescript
+   // Current (buggy) pattern:
+   export function initThreadsEffects(dispatch: AppDispatch): void {
+     eventBus.on('chat/threads/selected', ...);  // Creates subscription
+     // No cleanup returned - subscription persists!
+   }
+   ```
+
+3. **EventBus subscriptions accumulate**: Each re-initialization adds new subscriptions, causing the same event to trigger multiple handlers.
+
+**Required Fix:**
+
+1. **Effect initializers MUST return cleanup functions:**
+   ```typescript
+   export function initThreadsEffects(dispatch: AppDispatch): () => void {
+     const sub1 = eventBus.on('chat/threads/selected', ...);
+     const sub2 = eventBus.on('chat/threads/created', ...);
+
+     // Return cleanup function
+     return () => {
+       sub1.unsubscribe();
+       sub2.unsubscribe();
+     };
+   }
+   ```
+
+2. **`registerSlice` MUST cleanup before re-initializing:**
+   ```typescript
+   export function registerSlice(slice, initEffects) {
+     // Cleanup previous effects if any
+     const previousCleanup = effectCleanups.get(slice.name);
+     if (previousCleanup) {
+       previousCleanup();
+     }
+
+     // ... register slice ...
+
+     if (initEffects) {
+       const cleanup = initEffects(dispatch);
+       if (cleanup) {
+         effectCleanups.set(slice.name, cleanup);
+       }
+     }
+   }
+   ```
+
+3. **Update type: `EffectInitializer` should return optional cleanup:**
+   ```typescript
+   export type EffectInitializer = (dispatch: AppDispatch) => void | (() => void);
+   ```
+
+**Verification:**
+- Manual testing: send message → appears exactly once
+- Manual testing: create thread → appears exactly once
+- Hot reload test: no duplicate handlers after code change
 
 ---
 
@@ -384,6 +568,6 @@ export function initMenuEffects(dispatch: AppDispatch): void {
   - `packages/cli/` → New scaffold commands, AI sync
   - `.ai/` → All guidelines updated, hai3dev-* vs hai3-* separation
 - **Breaking changes**: None for existing apps (uicore re-exports maintained)
-- **New packages**: state, layout, api, i18n, framework, react (6 public packages)
+- **New packages**: state, screensets, api, i18n, framework, react (6 public packages)
 - **Internal packages**: @hai3/eslint-config, @hai3/depcruise-config (private, not published)
 - **SOLID compliance**: Full alignment with all 5 principles

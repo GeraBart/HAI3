@@ -36,6 +36,9 @@ export {
 
 export { TextLoader, AppRouter } from './components';
 
+// UI Kit Registry
+export { uikitRegistry } from './uikitRegistry';
+
 // ============================================================================
 // Type Exports
 // ============================================================================
@@ -75,6 +78,19 @@ export {
   createHAI3App,
   presets,
 
+  // Backward compatibility singletons
+  screensetRegistry,
+  themeRegistry,
+  routeRegistry,
+
+  // Backward compatibility actions and constants
+  navigateToScreen,
+  fetchCurrentUser,
+  ACCOUNTS_DOMAIN,
+
+  // I18nRegistry class (capital I for backward compat)
+  I18nRegistry,
+
   // Plugins
   screensets,
   themes,
@@ -99,37 +115,6 @@ export {
   hasSlice,
   createSlice,
 
-  // Layout selectors
-  selectLayout,
-  selectHeader,
-  selectHeaderVisible,
-  selectHeaderUser,
-  selectHeaderConfig,
-  selectFooter,
-  selectFooterVisible,
-  selectFooterConfig,
-  selectMenu,
-  selectMenuCollapsed,
-  selectMenuVisible,
-  selectMenuItems,
-  selectMenuItemById,
-  selectSidebar,
-  selectSidebarVisible,
-  selectSidebarCollapsed,
-  selectSidebarWidth,
-  selectScreen,
-  selectActiveScreen,
-  selectScreenLoading,
-  selectPopup,
-  selectActivePopup,
-  selectPopupStack,
-  selectHasPopup,
-  selectOverlay,
-  selectActiveOverlay,
-  selectOverlayStack,
-  selectHasOverlay,
-  selectHasModalContent,
-
   // Layout domain exports
   LayoutDomain,
   ScreensetCategory,
@@ -150,21 +135,60 @@ export {
   screenActions,
   popupActions,
   overlayActions,
+  // Individual reducer functions - header
+  setUser,
+  setHeaderLoading,
+  clearUser,
+  // Individual reducer functions - footer
+  setFooterVisible,
+  setFooterConfig,
+  toggleMenu,
+  setMenuCollapsed,
+  setMenuItems,
+  setMenuVisible,
+  setMenuConfig,
+  toggleSidebar,
+  setSidebarCollapsed,
+  setSidebarPosition,
+  setSidebarTitle,
+  setSidebarContent,
+  setSidebarVisible,
+  setSidebarWidth,
+  setSidebarConfig,
+  setActiveScreen,
+  setScreenLoading,
+  navigateTo,
+  clearActiveScreen,
+  openPopup,
+  closePopup,
+  closeTopPopup,
+  closeAllPopups,
+  showOverlay,
+  hideOverlay,
+  setOverlayVisible,
 
   // API
   apiRegistry,
   BaseApiService,
   RestProtocol,
+  SseProtocol,
   MockPlugin,
 
   // I18n
   i18nRegistry,
   I18nRegistryImpl,
   createI18nRegistry,
-  Language,
   SUPPORTED_LANGUAGES,
   getLanguageMetadata,
 } from '@hai3/framework';
+
+// Re-export Language enum and related types directly from @hai3/i18n to avoid isolatedModules issue
+// with re-exporting enum values through intermediary packages
+export { Language, TextDirection, LanguageDisplayMode } from '@hai3/i18n';
+
+// Re-export UIKit enums and types from @hai3/uikit
+export { UiKitComponent, UiKitIcon } from '@hai3/uikit';
+export type { UiKitComponentMap, ComponentName } from '@hai3/uikit';
 
 // Re-export types from @hai3/framework
 export type {
@@ -207,18 +231,21 @@ export type {
   ScreenLoader,
   ScreenConfig,
   MenuScreenItem,
-  TranslationLoaderFn,
   ScreensetDefinition,
   LayoutDomainState,
+  HeaderUser,
   HeaderConfig,
   HeaderState,
   FooterConfig,
   FooterState,
+  MenuItem,
   MenuState,
+  SidebarPosition,
   SidebarState,
   ScreenState,
   PopupConfig,
   PopupState,
+  PopupSliceState,
   OverlayConfig,
   OverlayState,
   LayoutState,
@@ -230,10 +257,25 @@ export type {
   ApiServicesMap,
   MockMap,
   ApiServiceConfig,
+  JsonValue,
+  JsonObject,
+  JsonPrimitive,
+  JsonCompatible,
+  ApiProtocol,
+  SseProtocolConfig,
+  RestProtocolConfig,
+
+  // Backward compatibility type aliases
+  ScreensetConfig,
+
+  // Theme types
+  ThemeApplyFn,
+  LegacyTheme,
 
   // I18n
   I18nConfig,
   TranslationLoader,
+  TranslationMap,
   TranslationDictionary,
   LanguageMetadata,
   I18nRegistryType,

@@ -9,7 +9,6 @@
 
 import type {
   EventPayloadMap,
-  EventKey,
   EventHandler,
   Subscription,
   EventBus as IEventBus,
@@ -43,7 +42,7 @@ class EventBusImpl implements IEventBus<EventPayloadMap> {
    * Type-safe: payload must match event type in EventPayloadMap.
    * Payload is optional for void events.
    */
-  emit<K extends EventKey>(
+  emit<K extends keyof EventPayloadMap>(
     eventType: K,
     ...args: EventPayloadMap[K] extends void ? [] : [EventPayloadMap[K]]
   ): void {
@@ -59,7 +58,7 @@ class EventBusImpl implements IEventBus<EventPayloadMap> {
    * Type-safe: handler receives correct payload type for event.
    * Returns subscription object with unsubscribe method.
    */
-  on<K extends EventKey>(
+  on<K extends keyof EventPayloadMap>(
     eventType: K,
     handler: EventHandler<EventPayloadMap[K]>
   ): Subscription {
@@ -88,7 +87,7 @@ class EventBusImpl implements IEventBus<EventPayloadMap> {
    * Subscribe to event, but only fire once then auto-unsubscribe.
    * Type-safe: handler receives correct payload type for event.
    */
-  once<K extends EventKey>(
+  once<K extends keyof EventPayloadMap>(
     eventType: K,
     handler: EventHandler<EventPayloadMap[K]>
   ): Subscription {

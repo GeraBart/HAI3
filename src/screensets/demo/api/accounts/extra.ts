@@ -3,9 +3,9 @@
  * Platform-specific user fields via module augmentation
  */
 
-import '@hai3/uicore';
+import '@/api';
 
-declare module '@hai3/uicore' {
+declare module '@/api' {
   interface UserExtra {
     department: string;
   }

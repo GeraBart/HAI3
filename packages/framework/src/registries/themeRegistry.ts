@@ -4,14 +4,29 @@
  * Framework Layer: L2
  */
 
-import type { ThemeRegistry, ThemeConfig } from '../types';
+import type { ThemeRegistry, ThemeConfig, ThemeApplyFn, LegacyTheme } from '../types';
 
 /**
  * Create a new theme registry instance.
  */
 export function createThemeRegistry(): ThemeRegistry {
   const themes = new Map<string, ThemeConfig>();
+  // Store legacy themes for use with custom apply function
+  const legacyThemes = new Map<string, LegacyTheme>();
   let currentThemeId: string | null = null;
+  let customApplyFn: ThemeApplyFn | null = null;
+
+  // Subscription support for React
+  const subscribers = new Set<() => void>();
+  let version = 0;
+
+  /**
+   * Notify subscribers of theme change
+   */
+  function notifySubscribers(): void {
+    version++;
+    subscribers.forEach((callback) => callback());
+  }
 
   /**
    * Apply CSS custom properties from theme to :root
@@ -31,8 +46,47 @@ export function createThemeRegistry(): ThemeRegistry {
   return {
     /**
      * Register a theme.
+     * Supports both new API (config only) and legacy API (id + theme).
      */
-    register(config: ThemeConfig): void {
+    register(configOrId: ThemeConfig | string, legacyTheme?: LegacyTheme): void {
+      // Handle legacy API: register(id, theme)
+      if (typeof configOrId === 'string') {
+        const id = configOrId;
+        if (!legacyTheme) {
+          console.warn(`register() called with ID "${id}" but no theme object. Skipping.`);
+          return;
+        }
+
+        if (themes.has(id)) {
+          console.warn(`Theme "${id}" is already registered. Skipping.`);
+          return;
+        }
+
+        // Store legacy theme for apply
+        legacyThemes.set(id, legacyTheme);
+
+        // Create a minimal ThemeConfig for the new API
+        // Try to extract name from legacy theme if it's an object
+        let themeName = id;
+        if (legacyTheme && typeof legacyTheme === 'object' && 'name' in legacyTheme) {
+          const nameValue = (legacyTheme as { name?: unknown }).name;
+          if (typeof nameValue === 'string') {
+            themeName = nameValue;
+          }
+        }
+        const config: ThemeConfig = {
+          id,
+          name: themeName,
+          variables: {}, // Legacy themes use custom apply function
+        };
+
+        themes.set(id, config);
+        return;
+      }
+
+      // New API: register(config)
+      const config = configOrId;
+
       if (themes.has(config.id)) {
         console.warn(`Theme "${config.id}" is already registered. Skipping.`);
         return;
@@ -44,6 +98,13 @@ export function createThemeRegistry(): ThemeRegistry {
       if (config.default && currentThemeId === null) {
         this.apply(config.id);
       }
+    },
+
+    /**
+     * Set the apply function (legacy API).
+     */
+    setApplyFunction(applyFn: ThemeApplyFn): void {
+      customApplyFn = applyFn;
     },
 
     /**
@@ -71,8 +132,19 @@ export function createThemeRegistry(): ThemeRegistry {
         return;
       }
 
-      applyCSSVariables(config);
+      // Check if we have a legacy theme and custom apply function
+      const legacyTheme = legacyThemes.get(id);
+      if (legacyTheme && customApplyFn) {
+        customApplyFn(legacyTheme, id);
+      } else if (config.variables && Object.keys(config.variables).length > 0) {
+        // Use built-in CSS variables approach
+        applyCSSVariables(config);
+      }
+
       currentThemeId = id;
+
+      // Notify React subscribers of theme change
+      notifySubscribers();
     },
 
     /**
@@ -80,6 +152,25 @@ export function createThemeRegistry(): ThemeRegistry {
      */
     getCurrent(): ThemeConfig | undefined {
       return currentThemeId ? themes.get(currentThemeId) : undefined;
+    },
+
+    /**
+     * Subscribe to theme changes.
+     * Returns unsubscribe function.
+     */
+    subscribe(callback: () => void): () => void {
+      subscribers.add(callback);
+      return () => {
+        subscribers.delete(callback);
+      };
+    },
+
+    /**
+     * Get current version number.
+     * Used by React for re-rendering.
+     */
+    getVersion(): number {
+      return version;
     },
   };
 }

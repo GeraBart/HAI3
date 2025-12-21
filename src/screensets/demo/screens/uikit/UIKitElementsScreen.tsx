@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { useTranslation, TextLoader, useScreenTranslations, I18nRegistry, Language } from '@hai3/uicore';
+import { useTranslation, TextLoader, useScreenTranslations, I18nRegistry, Language } from '@hai3/react';
 import { CategoryMenu } from './CategoryMenu';
 import { UI_KIT_ELEMENTS_SCREEN_ID } from "../../ids";
 import { DEMO_SCREENSET_ID } from "../../ids";

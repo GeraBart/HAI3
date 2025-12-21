@@ -12,7 +12,7 @@ import {
   FormMessage,
   Input,
 } from '@hai3/uikit';
-import { ButtonVariant } from '@hai3/uikit-contracts';
+import { ButtonVariant } from '@hai3/uikit';
 
 // Form validation schema
 const profileFormSchema = z.object({

@@ -2,7 +2,7 @@
  * Light theme for HAI3
  */
 
-import type { Theme } from '@hai3/uikit-contracts';
+import type { Theme } from '@hai3/uikit';
 import colors from './tailwindColors';
 
 /**

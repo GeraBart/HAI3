@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
   AccordionContent
 } from '@hai3/uikit';
-import { useTranslation, TextLoader } from '@hai3/uicore';
+import { useTranslation, TextLoader } from '@hai3/react';
 import { ChevronDown } from 'lucide-react';
 import { ExpandableButton } from '../uikit/icons/ExpandableButton';
 import { DEMO_SCREENSET_ID } from "../ids";

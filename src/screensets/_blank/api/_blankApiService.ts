@@ -3,7 +3,7 @@
  * Domain-specific API service for this screenset
  */
 
-import { BaseApiService, RestProtocol, apiRegistry, type MockMap } from '@hai3/uicore';
+import { BaseApiService, RestProtocol, apiRegistry, type MockMap } from '@hai3/react';
 import { _BLANK_SCREENSET_ID } from '../ids';
 
 export const _BLANK_DOMAIN = `${_BLANK_SCREENSET_ID}:api` as const;
@@ -46,7 +46,7 @@ export class _blankApiService extends BaseApiService {
 apiRegistry.register(_BLANK_DOMAIN, _blankApiService);
 
 // Module augmentation - extends uicore ApiServicesMap
-declare module '@hai3/uicore' {
+declare module '@hai3/react' {
   interface ApiServicesMap {
     [_BLANK_DOMAIN]: _blankApiService;
   }

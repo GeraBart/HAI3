@@ -3,7 +3,7 @@
  * Mock data for development and testing
  */
 
-import type { MockMap } from '@hai3/uicore';
+import type { MockMap } from '@hai3/react';
 
 /**
  * Mock map for _blank API service

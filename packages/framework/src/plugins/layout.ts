@@ -2,25 +2,43 @@
  * Layout Plugin - Provides all layout domain slices and effects
  *
  * Framework Layer: L2
+ *
+ * NOTE: Layout slices are owned by @hai3/framework (not @hai3/uicore which is deprecated)
  */
 
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
-import {
-  headerSlice,
-  footerSlice,
-  menuSlice,
-  sidebarSlice,
-  popupSlice,
-  overlaySlice,
-  headerActions,
-  footerActions,
-  menuActions,
-  sidebarActions,
-  popupActions,
-  overlayActions,
-} from '@hai3/layout';
 import { eventBus } from '@hai3/state';
-import type { HAI3Plugin, ShowPopupPayload } from '../types';
+import type { HAI3Plugin, ShowPopupPayload, RegisterableSlice } from '../types';
+import {
+  headerSlice as headerSliceImport,
+  footerSlice as footerSliceImport,
+  menuSlice as menuSliceImport,
+  sidebarSlice as sidebarSliceImport,
+  popupSlice as popupSliceImport,
+  overlaySlice as overlaySliceImport,
+  headerActions as headerActionsImport,
+  footerActions as footerActionsImport,
+  menuActions as menuActionsImport,
+  sidebarActions as sidebarActionsImport,
+  popupActions as popupActionsImport,
+  overlayActions as overlayActionsImport,
+} from '../slices';
+
+// Type assertions for slice imports (needed for plugin system compatibility)
+const headerSlice = headerSliceImport as unknown as RegisterableSlice;
+const footerSlice = footerSliceImport as unknown as RegisterableSlice;
+const menuSlice = menuSliceImport as unknown as RegisterableSlice;
+const sidebarSlice = sidebarSliceImport as unknown as RegisterableSlice;
+const popupSlice = popupSliceImport as unknown as RegisterableSlice;
+const overlaySlice = overlaySliceImport as unknown as RegisterableSlice;
+
+type ActionCreators = Record<string, (payload?: unknown) => UnknownAction>;
+const headerActions = headerActionsImport as unknown as ActionCreators;
+const footerActions = footerActionsImport as unknown as ActionCreators;
+const menuActions = menuActionsImport as unknown as ActionCreators;
+const sidebarActions = sidebarActionsImport as unknown as ActionCreators;
+const popupActions = popupActionsImport as unknown as ActionCreators;
+const overlayActions = overlayActionsImport as unknown as ActionCreators;
 
 // Define layout events for module augmentation
 declare module '@hai3/state' {

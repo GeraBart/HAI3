@@ -25,7 +25,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@hai3/uikit';
-import { useTranslation, TextLoader } from '@hai3/uicore';
+import { useTranslation, TextLoader } from '@hai3/react';
 import { StarIcon } from '../uikit/icons/StarIcon';
 import {
   PlusIcon,

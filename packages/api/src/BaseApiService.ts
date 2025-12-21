@@ -8,7 +8,6 @@
  */
 
 import type {
-  ApiService,
   ApiServiceConfig,
   ApiProtocol,
   ApiPlugin,
@@ -37,7 +36,7 @@ import type {
  * }
  * ```
  */
-export abstract class BaseApiService implements ApiService {
+export abstract class BaseApiService {
   /** Base configuration for all requests */
   protected readonly config: Readonly<ApiServiceConfig>;
 
@@ -152,7 +151,7 @@ export abstract class BaseApiService implements ApiService {
    * @throws Error if protocol not registered
    */
   protected protocol<T extends ApiProtocol>(
-    type: new (...args: unknown[]) => T
+    type: new (...args: never[]) => T
   ): T {
     const protocol = this.protocols.get(type.name);
 
@@ -200,38 +199,4 @@ export abstract class BaseApiService implements ApiService {
     });
     this.plugins = [];
   }
-
-  // ============================================================================
-  // ApiService Interface (Abstract - must be implemented by protocols)
-  // ============================================================================
-
-  /**
-   * Perform GET request.
-   * Must be implemented by subclass using a protocol.
-   */
-  abstract get<T>(url: string, params?: Record<string, string>): Promise<T>;
-
-  /**
-   * Perform POST request.
-   * Must be implemented by subclass using a protocol.
-   */
-  abstract post<T>(url: string, data?: unknown): Promise<T>;
-
-  /**
-   * Perform PUT request.
-   * Must be implemented by subclass using a protocol.
-   */
-  abstract put<T>(url: string, data?: unknown): Promise<T>;
-
-  /**
-   * Perform PATCH request.
-   * Must be implemented by subclass using a protocol.
-   */
-  abstract patch<T>(url: string, data?: unknown): Promise<T>;
-
-  /**
-   * Perform DELETE request.
-   * Must be implemented by subclass using a protocol.
-   */
-  abstract delete<T>(url: string): Promise<T>;
 }

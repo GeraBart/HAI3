@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownButton,
 } from '@hai3/uikit';
-import { useTranslation } from '@hai3/uicore';
+import { useTranslation } from '@hai3/react';
 import { useStudioContext } from '../StudioProvider';
 
 /**
@@ -39,7 +39,7 @@ export const ScreensetSelector: React.FC<ScreensetSelectorProps> = ({
   className = '',
 }) => {
   const { portalContainer } = useStudioContext();
-  const { t, direction } = useTranslation();
+  const { t, isRTL } = useTranslation();
 
   // Format names
   const formatName = (name: string): string => {
@@ -67,7 +67,7 @@ export const ScreensetSelector: React.FC<ScreensetSelectorProps> = ({
       <label className="text-sm text-muted-foreground whitespace-nowrap">
         {t('studio:controls.screenset')}
       </label>
-      <DropdownMenu dir={direction}>
+      <DropdownMenu dir={isRTL ? 'rtl' : 'ltr'}>
         <DropdownMenuTrigger asChild>
           <DropdownButton variant={ButtonVariant.Outline}>
             {formatName(getCurrentDisplay())}

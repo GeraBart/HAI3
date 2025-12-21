@@ -5,6 +5,8 @@
  * Supports REST, SSE, and mock protocols.
  */
 
+import type { BaseApiService } from './BaseApiService';
+
 // ============================================================================
 // JSON Types
 // ============================================================================
@@ -128,6 +130,8 @@ export interface RestProtocolConfig {
   withCredentials?: boolean;
   /** Content type header */
   contentType?: string;
+  /** Request timeout in milliseconds */
+  timeout?: number;
 }
 
 /**
@@ -135,10 +139,10 @@ export interface RestProtocolConfig {
  * Configuration options for Server-Sent Events protocol.
  */
 export interface SseProtocolConfig {
-  /** Retry interval on connection loss (ms) */
-  retryInterval?: number;
-  /** Maximum retry attempts */
-  maxRetries?: number;
+  /** Whether to include credentials */
+  withCredentials?: boolean;
+  /** Number of reconnect attempts */
+  reconnectAttempts?: number;
 }
 
 // ============================================================================
@@ -319,14 +323,15 @@ export interface ApiService {
  */
 export interface ApiServicesMap {
   // Services add their types via module augmentation
-  [key: string]: ApiService;
+  // No index signature - allows specific service types via augmentation
 }
 
 /**
  * Service Constructor Type
  * Constructor for API service classes.
+ * All services must extend BaseApiService.
  */
-export type ServiceConstructor<T extends ApiService = ApiService> = new () => T;
+export type ServiceConstructor<T = BaseApiService> = new () => T;
 
 /**
  * API Registry Interface

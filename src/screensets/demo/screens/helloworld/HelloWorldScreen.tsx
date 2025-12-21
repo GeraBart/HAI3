@@ -1,5 +1,5 @@
 import React from 'react';
-import { navigateToScreen, useTranslation, uikitRegistry, UiKitComponent, TextLoader, useScreenTranslations, I18nRegistry, Language } from '@hai3/uicore';
+import { navigateToScreen, useTranslation, uikitRegistry, UiKitComponent, TextLoader, useScreenTranslations, I18nRegistry, Language } from '@hai3/react';
 import { Card, CardContent } from '@hai3/uikit';
 import { HELLO_WORLD_SCREEN_ID, CURRENT_THEME_SCREEN_ID } from "../../ids";
 import { DEMO_SCREENSET_ID } from "../../ids";

@@ -15,9 +15,8 @@
 ## ROUTING
 
 ### SDK Layer (L1) - Zero @hai3 dependencies
-- packages/events -> .ai/targets/EVENTS.md
-- packages/store -> .ai/targets/STORE.md
-- packages/layout -> .ai/targets/LAYOUT.md
+- packages/state -> .ai/targets/STORE.md
+- packages/screensets -> .ai/targets/LAYOUT.md
 - packages/api -> .ai/targets/API.md
 - packages/i18n -> .ai/targets/I18N.md
 
@@ -27,10 +26,8 @@
 ### React Layer (L3) - Depends on Framework
 - packages/react -> .ai/targets/REACT.md
 
-### Legacy/Compatibility Packages
-- packages/uicore -> .ai/targets/UICORE.md
+### UI and Dev Packages
 - packages/uikit -> .ai/targets/UIKIT.md
-- packages/uikit-contracts -> .ai/targets/UIKIT_CONTRACTS.md
 - packages/studio -> .ai/targets/STUDIO.md
 
 ### Other
@@ -45,7 +42,7 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @hai3/react (or @hai3/uicore for legacy), @hai3/uikit, react, react-dom.
+- App-level deps limited to: @hai3/react, @hai3/uikit, react, react-dom.
 - Cross-domain communication only via events.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.
@@ -54,7 +51,7 @@
 ## IMPORT RULES
 - Inside same package: relative paths.
 - Cross-branch in app: @/ alias.
-- Cross-package: @hai3/uicore, @hai3/uikit.
+- Cross-package: @hai3/framework, @hai3/react, @hai3/uikit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).
 
@@ -67,7 +64,6 @@
 ## STOP CONDITIONS
 - Editing /core/runtime or /sdk.
 - Modifying registry root files.
-- Changing contracts in @hai3/uikit-contracts.
 - Adding new top-level dependencies.
 - Bypassing rules in EVENTS.md.
 - Killing MCP server processes (see MCP_TROUBLESHOOTING.md).

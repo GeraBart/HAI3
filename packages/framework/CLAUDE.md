@@ -4,7 +4,9 @@ Plugin-based application framework for HAI3 applications. Orchestrates SDK packa
 
 ## Framework Layer
 
-This package is part of the **Framework Layer (L2)** - it depends on all SDK packages (@hai3/state, @hai3/layout, @hai3/api, @hai3/i18n) and provides the plugin architecture.
+This package is part of the **Framework Layer (L2)** - it depends on SDK packages (@hai3/state, @hai3/screensets, @hai3/api, @hai3/i18n). It provides the plugin architecture and **owns the layout slices** (header, footer, menu, sidebar, screen, popup, overlay).
+
+> **NOTE:** @hai3/uicore is deprecated. Layout slices are defined in @hai3/framework.
 
 ## Core Concepts
 
@@ -122,11 +124,22 @@ export function myPlugin(): HAI3Plugin {
 For convenience, this package re-exports from SDK packages:
 
 - From @hai3/state: `eventBus`, `createStore`, `getStore`, `registerSlice`, `hasSlice`, `createSlice`
-- From @hai3/layout: All domain slices, actions, and selectors
+- From @hai3/screensets: `LayoutDomain`, `ScreensetCategory`, `screensetRegistry`, contracts/types
 - From @hai3/api: `apiRegistry`, `BaseApiService`, `RestProtocol`, `MockPlugin`
 - From @hai3/i18n: `i18nRegistry`, `Language`, `SUPPORTED_LANGUAGES`, `getLanguageMetadata`
 
+**Layout Slices (owned by @hai3/framework):**
+- `layoutReducer`, `layoutDomainReducers`, `LAYOUT_SLICE_NAME`
+- Domain slices: `headerSlice`, `footerSlice`, `menuSlice`, `sidebarSlice`, `screenSlice`, `popupSlice`, `overlaySlice`
+- Domain actions: `headerActions`, `footerActions`, `menuActions`, `sidebarActions`, `screenActions`, `popupActions`, `overlayActions`
+- Individual reducer functions: `setMenuCollapsed`, `toggleSidebar`, `setActiveScreen`, etc.
+
 **NOTE:** `createAction` is NOT exported to consumers. Actions should be handwritten functions in screensets that contain business logic and emit events via `eventBus.emit()`.
+
+**NOTE:** "Selector" is Redux terminology and is not used in HAI3. Access state via `useAppSelector` hook from @hai3/react:
+```typescript
+const menu = useAppSelector((state: RootStateWithLayout) => state.layout.menu);
+```
 
 ## Exports
 

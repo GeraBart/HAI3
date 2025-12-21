@@ -40,14 +40,14 @@ const selectedScreen = state.uicore.layout.selectedScreen;
 const popupStack = state.uicore.popup.stack;
 ```
 
-## New State Structure (@hai3/layout + @hai3/framework)
+## New State Structure (@hai3/framework)
 
-The new architecture uses flat, domain-based keys:
+The new architecture uses flat, domain-based keys. All layout state management is in `@hai3/framework`:
 
 ```typescript
 // New: Flat domain-based keys
 RootState = {
-  // @hai3/layout domain slices (from layout() plugin)
+  // @hai3/framework domain slices (from layout() plugin)
   'layout/header': HeaderState;
   'layout/footer': FooterState;
   'layout/menu': MenuState;
@@ -68,13 +68,13 @@ RootState = {
 ### New Access Patterns
 
 ```typescript
-// Using exported selectors from @hai3/layout
+// Using exported selectors from @hai3/framework
 import {
   selectHeaderState,
   selectMenuState,
   selectScreenState,
   selectPopupStack
-} from '@hai3/layout';
+} from '@hai3/framework';
 
 // Or direct access with flat keys
 const menuState = state['layout/menu'];
@@ -89,14 +89,14 @@ const screenState = state['layout/screen'];
 | `state.uicore.layout` | Split into domains | @hai3/framework |
 | `state.uicore.layout.theme` | Managed by themes plugin | @hai3/framework |
 | `state.uicore.layout.currentScreenset` | `state.app.currentScreenset` | @hai3/framework |
-| `state.uicore.layout.selectedScreen` | `state['layout/screen'].activeScreen` | @hai3/layout |
-| `state.uicore.header` | `state['layout/header']` | @hai3/layout |
-| `state.uicore.footer` | `state['layout/footer']` | @hai3/layout |
-| `state.uicore.menu` | `state['layout/menu']` | @hai3/layout |
-| `state.uicore.sidebar` | `state['layout/sidebar']` | @hai3/layout |
-| `state.uicore.screen` | `state['layout/screen']` | @hai3/layout |
-| `state.uicore.popup` | `state['layout/popup']` | @hai3/layout |
-| `state.uicore.overlay` | `state['layout/overlay']` | @hai3/layout |
+| `state.uicore.layout.selectedScreen` | `state['layout/screen'].activeScreen` | @hai3/framework |
+| `state.uicore.header` | `state['layout/header']` | @hai3/framework |
+| `state.uicore.footer` | `state['layout/footer']` | @hai3/framework |
+| `state.uicore.menu` | `state['layout/menu']` | @hai3/framework |
+| `state.uicore.sidebar` | `state['layout/sidebar']` | @hai3/framework |
+| `state.uicore.screen` | `state['layout/screen']` | @hai3/framework |
+| `state.uicore.popup` | `state['layout/popup']` | @hai3/framework |
+| `state.uicore.overlay` | `state['layout/overlay']` | @hai3/framework |
 
 ## Slice Name Changes
 
@@ -126,7 +126,7 @@ export const selectUicoreApp = (state: RootState) => {
 };
 
 export const selectUicoreMenu = (state: RootState) => {
-  console.warn('[DEPRECATED] selectUicoreMenu: Use selectMenuState from @hai3/layout');
+  console.warn('[DEPRECATED] selectUicoreMenu: Use selectMenuState from @hai3/framework');
   return state['layout/menu'];
 };
 ```
@@ -142,7 +142,7 @@ import { createLegacySelector } from '@hai3/uicore';
 const legacyMenuSelector = createLegacySelector(
   (state) => state.uicore.menu.collapsed,
   (state) => state['layout/menu'].collapsed,
-  'Use selectMenuCollapsed from @hai3/layout'
+  'Use selectMenuCollapsed from @hai3/framework'
 );
 ```
 
@@ -175,7 +175,7 @@ if (process.env.NODE_ENV === 'development') {
 npm update @hai3/uicore @hai3/cli
 
 # Or install new packages directly
-npm install @hai3/framework @hai3/react @hai3/layout
+npm install @hai3/framework @hai3/react
 ```
 
 ### Step 2: Run AI Sync
@@ -194,7 +194,7 @@ const menuCollapsed = useAppSelector(state => state.uicore.menu.collapsed);
 
 // After (recommended)
 import { useAppSelector, useAppDispatch } from '@hai3/react';
-import { selectMenuCollapsed } from '@hai3/layout';
+import { selectMenuCollapsed } from '@hai3/framework';
 const menuCollapsed = useAppSelector(selectMenuCollapsed);
 ```
 
@@ -237,17 +237,17 @@ import { selectCurrentScreenset } from '@hai3/framework';
 // Selected Screen
 // Before: state.uicore.layout.selectedScreen
 // After:  state['layout/screen'].activeScreen
-import { selectActiveScreen } from '@hai3/layout';
+import { selectActiveScreen } from '@hai3/framework';
 
 // Menu State
 // Before: state.uicore.menu
 // After:  state['layout/menu']
-import { selectMenuState, selectMenuCollapsed, selectMenuItems } from '@hai3/layout';
+import { selectMenuState, selectMenuCollapsed, selectMenuItems } from '@hai3/framework';
 
 // Popup Stack
 // Before: state.uicore.popup.stack
 // After:  state['layout/popup'].stack
-import { selectPopupStack } from '@hai3/layout';
+import { selectPopupStack } from '@hai3/framework';
 ```
 
 ## Timeline

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { useTranslation } from '@hai3/uicore';
+import { useTranslation } from '@hai3/react';
 import { useDraggable } from './hooks/useDraggable';
 import { BUTTON_SIZE, STORAGE_KEYS } from './types';
 import { GlassmorphicButton } from './uikit/composite/GlassmorphicButton';

@@ -9,8 +9,6 @@ import { getTemplatesDir } from '../core/templates.js';
 export interface ProjectGeneratorInput {
   /** Project name (npm package name format) */
   projectName: string;
-  /** Use HAI3 UIKit or custom */
-  uikit: 'hai3' | 'custom';
   /** Include studio */
   studio: boolean;
 }
@@ -52,7 +50,7 @@ async function readDirRecursive(
 export async function generateProject(
   input: ProjectGeneratorInput
 ): Promise<GeneratedFile[]> {
-  const { projectName, uikit, studio } = input;
+  const { projectName, studio } = input;
   const templatesDir = getTemplatesDir();
   const files: GeneratedFile[] = [];
 
@@ -71,35 +69,13 @@ export async function generateProject(
   const directories = manifest.stage1b?.directories || manifest.directories || [];
   const screensets = manifest.stage1b?.screensets || manifest.screensets || [];
 
-  // 2. Copy root template files (with minimal transformations where needed)
+  // 2. Copy root template files
   for (const file of rootFiles) {
     const filePath = path.join(templatesDir, file);
     if (await fs.pathExists(filePath)) {
-      let content = await fs.readFile(filePath, 'utf-8');
-
-      // Transform src/main.tsx for uikit='custom':
-      // - Remove @hai3/uikit/styles import (custom projects provide their own styles)
-      // - Add ./index.css import (for Tailwind directives)
-      if (file === 'src/main.tsx' && uikit === 'custom') {
-        content = content.replace(
-          /import '@hai3\/uikit\/styles';.*\n/g,
-          "import './index.css';\n"
-        );
-      }
-
+      const content = await fs.readFile(filePath, 'utf-8');
       files.push({ path: file, content });
     }
-  }
-
-  // 2.1 Generate index.css for custom uikit (hai3 uikit includes Tailwind via @hai3/uikit/styles)
-  if (uikit === 'custom') {
-    files.push({
-      path: 'src/index.css',
-      content: `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-`,
-    });
   }
 
   // 3. Copy template directories (src/themes, src/uikit, src/icons)
@@ -109,9 +85,8 @@ export async function generateProject(
     files.push(...dirFiles);
   }
 
-  // 3.0 Copy layout templates based on uikit option
-  const layoutUiKit = uikit === 'hai3' ? 'hai3-uikit' : 'custom';
-  const layoutDir = path.join(templatesDir, 'layout', layoutUiKit);
+  // 3.0 Copy layout templates (HAI3 UIKit layout)
+  const layoutDir = path.join(templatesDir, 'layout', 'hai3-uikit');
   if (await fs.pathExists(layoutDir)) {
     const layoutFiles = await readDirRecursive(layoutDir, 'src/layout');
     files.push(...layoutFiles);
@@ -148,6 +123,7 @@ export async function generateProject(
     'eslint.config.js',
     'tsconfig.json',
     '.dependency-cruiser.cjs',
+    '.pre-commit-config.yaml',
   ];
   for (const file of rootConfigFiles) {
     const filePath = path.join(templatesDir, file);
@@ -182,7 +158,8 @@ export async function generateProject(
   // Use 'alpha' tag for @hai3 packages during alpha phase
   // This resolves to the latest alpha version from npm
   const dependencies: Record<string, string> = {
-    '@hai3/uicore': 'alpha',
+    '@hai3/react': 'alpha',
+    '@hai3/framework': 'alpha',
     '@hai3/uikit': 'alpha',
     '@reduxjs/toolkit': '2.2.1',
     lodash: '4.17.21',
@@ -253,38 +230,6 @@ export async function generateProject(
   files.push({
     path: 'package.json',
     content: JSON.stringify(packageJson, null, 2) + '\n',
-  });
-
-  // 5.3 .pre-commit-config.yaml (prek configuration)
-  const preCommitConfig = `# prek configuration - https://github.com/j178/prek
-# Run: npm run prek:install (to install git hooks)
-# Run: npm run prek:run (to run all hooks)
-
-repos:
-  # Built-in hooks (fast, Rust-native)
-  - repo: builtin
-    hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
-      - id: check-yaml
-      - id: check-json
-        exclude: tsconfig\\.json$
-      - id: check-toml
-      - id: check-added-large-files
-        args: ['--maxkb=500']
-
-  # Local hooks for project-specific checks
-  - repo: local
-    hooks:
-      - id: arch-check
-        name: Architecture check
-        entry: npm run arch:check
-        language: system
-        pass_filenames: false
-`;
-  files.push({
-    path: '.pre-commit-config.yaml',
-    content: preCommitConfig,
   });
 
   return files;

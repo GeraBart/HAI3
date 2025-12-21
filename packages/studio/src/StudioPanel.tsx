@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from '@hai3/uicore';
+import { useTranslation } from '@hai3/react';
 import { Card } from '@hai3/uikit';
 import { Button, ButtonVariant, ButtonSize } from '@hai3/uikit';
 import { useDraggable } from './hooks/useDraggable';

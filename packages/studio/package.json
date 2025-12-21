@@ -53,7 +53,7 @@
     "lodash": "^4.17.21"
   },
   "peerDependencies": {
-    "@hai3/uicore": "*",
+    "@hai3/react": "*",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },

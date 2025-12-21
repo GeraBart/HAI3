@@ -7,9 +7,8 @@
  * Framework Layer: L2 (Depends on SDK packages)
  */
 
-import { createStore } from '@hai3/state';
+import { getStore, registerSlice } from '@hai3/state';
 import type { EffectInitializer } from '@hai3/state';
-import type { Reducer } from '@reduxjs/toolkit';
 import type {
   HAI3Config,
   HAI3Plugin,
@@ -242,16 +241,27 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
 
   /**
    * Create store with all aggregated slices.
+   *
+   * IMPORTANT: This method supports the screenset self-registration pattern.
+   * Screensets call registerSlice() as module side effects when imported,
+   * which may auto-create a store before createHAI3App() is called.
+   *
+   * This method:
+   * 1. Uses the existing store if one was auto-created by screensets
+   * 2. Registers framework slices to the existing store
+   * 3. Returns the unified store for HAI3App
    */
   private createStoreWithSlices(slices: RegisterableSlice[]): HAI3Store {
-    // Create initial reducers map
-    const initialReducers: Record<string, Reducer> = {};
+    // Get existing store (may have been created by screenset registerSlice calls)
+    // getStore() auto-creates if none exists
+    const store = getStore();
+
+    // Register framework slices using registerSlice (merges with dynamic slices)
     slices.forEach((slice) => {
-      initialReducers[slice.name] = slice.reducer;
+      registerSlice(slice);
     });
 
-    // Create store with initial reducers
-    return createStore(initialReducers);
+    return store;
   }
 
   /**

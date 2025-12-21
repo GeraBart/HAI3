@@ -1,4 +1,4 @@
-import { useTranslation, LanguageDisplayMode, TextDirection } from '@hai3/uicore';
+import { useTranslation, LanguageDisplayMode, TextDirection, SUPPORTED_LANGUAGES, getLanguageMetadata, type Language } from '@hai3/react';
 import { ButtonVariant } from '@hai3/uikit';
 import {
   DropdownMenu,
@@ -33,11 +33,10 @@ export interface LanguageSelectorProps {
 export function LanguageSelector({
   displayMode = LanguageDisplayMode.Native
 }: LanguageSelectorProps = {}) {
-  const { t, language, changeLanguage, getSupportedLanguages } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
   const { portalContainer } = useStudioContext();
 
-  const languages = getSupportedLanguages();
-  const currentLanguage = languages.find(lang => lang.code === language);
+  const currentLanguage = language ? getLanguageMetadata(language) : null;
 
   return (
     <div className="flex items-center justify-between">
@@ -54,10 +53,10 @@ export function LanguageSelector({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" container={portalContainer} className="z-[99999] pointer-events-auto">
-          {languages.map((lang) => (
+          {SUPPORTED_LANGUAGES.map((lang) => (
             <DropdownMenuItem
               key={lang.code}
-              onClick={() => changeLanguage(lang.code)}
+              onClick={() => setLanguage(lang.code as Language)}
             >
               {displayMode === LanguageDisplayMode.Native ? lang.name : lang.englishName}
               {lang.direction === TextDirection.RightToLeft && RTL_INDICATOR_SUFFIX}

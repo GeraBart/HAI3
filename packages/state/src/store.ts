@@ -28,8 +28,12 @@ let staticReducers: Record<string, Reducer> = {};
 /** Dynamic reducers registered by screensets */
 const dynamicReducers: Record<string, Reducer> = {};
 
-/** The Redux store instance - typed for RootState for replaceReducer compatibility */
-let storeInstance: EnhancedStore<RootState, UnknownAction> | null = null;
+/**
+ * The Redux store instance.
+ * Type uses indexed signature to allow dynamic slice registration.
+ * RootState is extended via module augmentation by screensets.
+ */
+let storeInstance: EnhancedStore<Record<string, unknown>, UnknownAction> | null = null;
 
 /** Effect cleanup functions */
 const effectCleanups: Map<string, () => void> = new Map();
@@ -59,18 +63,18 @@ export function createStore(
 
   const rootReducer = Object.keys(staticReducers).length > 0
     ? combineReducers(staticReducers)
-    : (state: RootState | undefined) => state ?? ({} as RootState);
+    : (state: Record<string, unknown> | undefined) => state ?? {};
 
   storeInstance = configureStore({
     reducer: rootReducer,
   });
 
-  // Create typed wrapper
+  // Create typed wrapper - RootState is extended via module augmentation
   const store: HAI3Store<RootState> = {
     getState: () => storeInstance!.getState() as RootState,
-    dispatch: storeInstance.dispatch,
-    subscribe: storeInstance.subscribe,
-    replaceReducer: storeInstance.replaceReducer as HAI3Store<RootState>['replaceReducer'],
+    dispatch: storeInstance!.dispatch as AppDispatch,
+    subscribe: storeInstance!.subscribe,
+    replaceReducer: storeInstance!.replaceReducer as HAI3Store<RootState>['replaceReducer'],
   };
 
   return store;
@@ -131,18 +135,30 @@ export function registerSlice<TState>(
   slice: SliceObject<TState>,
   initEffects?: EffectInitializer
 ): void {
+  // Auto-create store if it doesn't exist (for module-level side effect registration)
   if (!storeInstance) {
-    throw new Error(
-      'Store has not been created. Call createStore() before registerSlice().'
-    );
+    createStore();
   }
 
   const sliceName = slice.name;
   const reducer = slice.reducer;
 
-  // Prevent duplicate registration
+  // Cleanup previous effects BEFORE checking for duplicates
+  // This handles HMR where the module is re-executed but slice is already registered
+  const previousCleanup = effectCleanups.get(sliceName);
+  if (previousCleanup) {
+    previousCleanup();
+    effectCleanups.delete(sliceName);
+  }
+
+  // If slice is already registered, re-initialize effects only (for HMR support)
   if (dynamicReducers[sliceName]) {
-    console.warn(`Slice "${sliceName}" is already registered. Skipping.`);
+    if (initEffects) {
+      const cleanup = initEffects(storeInstance!.dispatch as AppDispatch);
+      if (cleanup) {
+        effectCleanups.set(sliceName, cleanup);
+      }
+    }
     return;
   }
 
@@ -177,12 +193,16 @@ export function registerSlice<TState>(
   });
 
   // Type assertion needed: combineReducers returns inferred type, but RootState is extensible
-  // via module augmentation. The cast is to the expected type, not an escape hatch.
-  storeInstance.replaceReducer(rootReducer as Reducer<RootState>);
+  // via module augmentation. The cast allows dynamic slice registration.
+  // Non-null assertion is safe here because we either had a store or just created one above
+  storeInstance!.replaceReducer(rootReducer as Reducer<Record<string, unknown>>);
 
-  // Initialize effects if provided
+  // Initialize effects if provided and store cleanup function
   if (initEffects) {
-    initEffects(storeInstance.dispatch as AppDispatch);
+    const cleanup = initEffects(storeInstance!.dispatch as AppDispatch);
+    if (cleanup) {
+      effectCleanups.set(sliceName, cleanup);
+    }
   }
 }
 
@@ -216,10 +236,10 @@ export function unregisterSlice(sliceName: string): void {
   const allReducers = { ...staticReducers, ...dynamicReducers };
   const rootReducer = Object.keys(allReducers).length > 0
     ? combineReducers(allReducers)
-    : (state: RootState | undefined) => state ?? ({} as RootState);
+    : (state: Record<string, unknown> | undefined) => state ?? {};
 
   // Type assertion: RootState is extensible via module augmentation
-  storeInstance.replaceReducer(rootReducer as Reducer<RootState>);
+  storeInstance.replaceReducer(rootReducer as Reducer<Record<string, unknown>>);
 }
 
 /**

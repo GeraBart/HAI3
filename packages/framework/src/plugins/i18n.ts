@@ -5,7 +5,7 @@
  */
 
 import { eventBus } from '@hai3/state';
-import { createI18nRegistry, Language } from '@hai3/i18n';
+import { i18nRegistry as singletonI18nRegistry, Language } from '@hai3/i18n';
 import type { HAI3Plugin, SetLanguagePayload } from '../types';
 
 // Define i18n events for module augmentation
@@ -40,10 +40,8 @@ function setLanguage(payload: SetLanguagePayload): void {
  * ```
  */
 export function i18n(): HAI3Plugin {
-  const i18nRegistry = createI18nRegistry({
-    defaultLanguage: Language.English,
-    fallbackLanguage: Language.English,
-  });
+  // Use the singleton i18n registry - user translations register to this
+  const i18nRegistry = singletonI18nRegistry;
 
   return {
     name: 'i18n',
@@ -62,6 +60,12 @@ export function i18n(): HAI3Plugin {
       // Language change effect
       eventBus.on('i18n/language/changed', async (payload: SetLanguagePayload) => {
         await i18nRegistry.setLanguage(payload.language as Language);
+      });
+
+      // Bootstrap: Set initial language to trigger translation loading
+      // Run async without blocking - translations load in background
+      i18nRegistry.setLanguage(Language.English).catch((err) => {
+        console.warn('[HAI3] Failed to load initial translations:', err);
       });
     },
   };

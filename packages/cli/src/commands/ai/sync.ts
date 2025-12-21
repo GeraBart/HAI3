@@ -326,7 +326,7 @@ async function scanPackageCommands(
  * Generate command adapters for an IDE
  */
 async function generateCommandAdapters(
-  projectRoot: string,
+  _projectRoot: string,
   commandsDir: string,
   targetDir: string,
   packageCommands: { package: string; commandPath: string; name: string }[] = []
@@ -419,7 +419,7 @@ export const aiSyncCommand: CommandDefinition<AiSyncArgs, AiSyncResult> = {
     },
   ],
 
-  validate(args, ctx) {
+  validate(_args, ctx) {
     if (!ctx.projectRoot) {
       return validationError(
         'NOT_IN_PROJECT',

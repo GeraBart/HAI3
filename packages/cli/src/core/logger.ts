@@ -79,4 +79,13 @@ export class Logger {
       console.log(chalk.cyan(`[${current}/${total}]`), message);
     }
   }
+
+  /**
+   * Debug message (dimmed, only shown in verbose mode)
+   */
+  debug(message: string): void {
+    if (!this.silent) {
+      console.log(chalk.dim('debug'), chalk.dim(message));
+    }
+  }
 }

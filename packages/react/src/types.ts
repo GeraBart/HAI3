@@ -246,8 +246,23 @@ export interface AppRouterProps {
 export interface TextLoaderProps {
   /** Child content to render when translations are loaded */
   children: ReactNode;
-  /** Fallback while loading */
+  /** Fallback while loading (alternative to skeleton) */
   fallback?: ReactNode;
+  /**
+   * Optional className for the skeleton loader
+   * Use this to match the expected size of the text
+   * @example "h-8 w-48" for a heading
+   * @example "h-4 w-32" for a button label
+   */
+  skeletonClassName?: string;
+  /** Optional className for the wrapper div */
+  className?: string;
+  /**
+   * If true, skeleton inherits the text color instead of using bg-muted
+   * Use this for buttons, menu items, and colored text
+   * @default false
+   */
+  inheritColor?: boolean;
 }
 
 // ============================================================================

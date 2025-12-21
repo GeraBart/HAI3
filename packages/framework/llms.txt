@@ -2,7 +2,7 @@
 
 > Plugin-based application framework for HAI3 SDK. Orchestrates SDK packages into cohesive applications.
 
-Part of the HAI3 Framework Layer (L2) - depends on all SDK packages (@hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n).
+Part of the HAI3 Framework Layer (L2) - depends on all SDK packages (@hai3/state, @hai3/screensets, @hai3/api, @hai3/i18n) and @hai3/uicore for layout state management.
 
 ## Core API
 

@@ -8,7 +8,7 @@
 ## SCOPE
 - Package: `packages/framework/`
 - Layer: L2 Framework (depends on all L1 SDK packages)
-- Peer dependencies: `@hai3/state`, `@hai3/layout`, `@hai3/api`, `@hai3/i18n`
+- Peer dependencies: `@hai3/state`, `@hai3/screensets`, `@hai3/api`, `@hai3/i18n`
 
 ## CRITICAL RULES
 - Applications built by composing plugins via `createHAI3().use()`.

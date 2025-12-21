@@ -133,6 +133,7 @@ export interface TranslationDictionary {
 /**
  * Translation Loader Function
  * Returns translations for a given language using dynamic import.
+ * Accepts both Language enum and string for compatibility with @hai3/layout.
  *
  * @example
  * ```typescript
@@ -142,7 +143,7 @@ export interface TranslationDictionary {
  * };
  * ```
  */
-export type TranslationLoader = (language: Language) => Promise<TranslationDictionary>;
+export type TranslationLoader = (language: Language | string) => Promise<TranslationDictionary>;
 
 /**
  * Translation Map
@@ -309,6 +310,23 @@ export interface I18nRegistry {
    * @param languages - Languages to preload
    */
   preloadLanguages(languages: Language[]): Promise<void>;
+
+  /**
+   * Subscribe to translation changes.
+   * Called when new translations are registered.
+   *
+   * @param callback - Function to call on changes
+   * @returns Unsubscribe function
+   */
+  subscribe(callback: () => void): () => void;
+
+  /**
+   * Get the current version number.
+   * Increments when translations change. Used by React for re-rendering.
+   *
+   * @returns Current version number
+   */
+  getVersion(): number;
 }
 
 // ============================================================================

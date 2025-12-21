@@ -4,7 +4,7 @@
  * React Layer: L3
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useHAI3 } from '../HAI3Context';
 import type { UseThemeReturn } from '../types';
 
@@ -35,11 +35,26 @@ export function useTheme(): UseThemeReturn {
   const app = useHAI3();
   const { themeRegistry } = app;
 
-  // Get current theme
+  // Subscribe to theme changes using useSyncExternalStore
+  // Uses version counter to trigger re-renders when theme changes
+  const version = useSyncExternalStore(
+    useCallback(
+      (callback: () => void) => {
+        return themeRegistry.subscribe(callback);
+      },
+      [themeRegistry]
+    ),
+    () => themeRegistry.getVersion(),
+    () => themeRegistry.getVersion()
+  );
+
+  // Get current theme (memoized, recalculates on version change)
   const currentTheme = useMemo(() => {
+    // Reference version to trigger recalculation on theme change
+    void version;
     const theme = themeRegistry.getCurrent();
     return theme?.id;
-  }, [themeRegistry]);
+  }, [themeRegistry, version]);
 
   // Get all themes
   const themes = useMemo(() => {

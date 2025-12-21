@@ -19,6 +19,15 @@ function getLayerDependencies(layer: LayerType): {
   peerDependencies: Record<string, string>;
   devDependencies: Record<string, string>;
 } {
+  // Common ESLint dev dependencies for self-contained configs
+  const eslintDevDeps: Record<string, string> = {
+    '@eslint/js': '^9.0.0',
+    'typescript-eslint': '^8.0.0',
+    'eslint-plugin-unused-imports': '^4.0.0',
+    globals: '^15.0.0',
+    eslint: '^9.0.0',
+  };
+
   switch (layer) {
     case 'sdk':
       // SDK layer has no HAI3 dependencies
@@ -26,10 +35,9 @@ function getLayerDependencies(layer: LayerType): {
         dependencies: {},
         peerDependencies: {},
         devDependencies: {
-          '@hai3/eslint-config': 'alpha',
+          ...eslintDevDeps,
           typescript: '^5.4.0',
           tsup: '^8.0.0',
-          eslint: '^9.0.0',
         },
       };
 
@@ -42,12 +50,11 @@ function getLayerDependencies(layer: LayerType): {
           '@hai3/store': 'alpha',
         },
         devDependencies: {
-          '@hai3/eslint-config': 'alpha',
+          ...eslintDevDeps,
           '@hai3/events': 'alpha',
           '@hai3/store': 'alpha',
           typescript: '^5.4.0',
           tsup: '^8.0.0',
-          eslint: '^9.0.0',
         },
       };
 
@@ -61,7 +68,8 @@ function getLayerDependencies(layer: LayerType): {
           'react-dom': '^18.0.0',
         },
         devDependencies: {
-          '@hai3/eslint-config': 'alpha',
+          ...eslintDevDeps,
+          'eslint-plugin-react-hooks': '^5.0.0',
           '@hai3/framework': 'alpha',
           '@types/react': '^18.0.0',
           '@types/react-dom': '^18.0.0',
@@ -69,7 +77,6 @@ function getLayerDependencies(layer: LayerType): {
           'react-dom': '^18.3.0',
           typescript: '^5.4.0',
           tsup: '^8.0.0',
-          eslint: '^9.0.0',
         },
       };
 
@@ -84,24 +91,169 @@ function getLayerDependencies(layer: LayerType): {
 
 /**
  * Get ESLint config content for a layer
+ * Generates self-contained configs that don't depend on @hai3/eslint-config
  */
 function getEslintConfig(layer: LayerType): string {
-  const configMap: Record<string, string> = {
-    sdk: 'sdkConfig',
-    framework: 'frameworkConfig',
-    react: 'reactConfig',
-  };
+  const baseConfig = `import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import unusedImports from 'eslint-plugin-unused-imports';
+import globals from 'globals';
 
-  const config = configMap[layer] || 'baseConfig';
-
-  return `import { ${config} } from '@hai3/eslint-config';
-
+/** @type {import('eslint').Linter.Config[]} */
 export default [
-  ...${config},
+  // Global ignores
   {
-    ignores: ['dist/**', 'node_modules/**'],
+    ignores: ['dist/**', 'node_modules/**', '*.config.*'],
+  },
+
+  // Base JS config
+  js.configs.recommended,
+
+  // TypeScript config
+  ...tseslint.configs.recommended,
+
+  // Main configuration
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.es2020,
+        ...globals.node,
+      },
+    },
+    plugins: {
+      'unused-imports': unusedImports,
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+        },
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
+      'prefer-const': 'error',
+    },
+  },
+`;
+
+  if (layer === 'sdk') {
+    // SDK layer: base config with no-react restriction
+    return `${baseConfig}
+  // SDK layer: No React imports allowed
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['react', 'react-dom', 'react/*', 'react-dom/*'],
+              message: 'SDK layer cannot import React. This is a framework-agnostic layer.',
+            },
+          ],
+        },
+      ],
+    },
   },
 ];
+`;
+  }
+
+  if (layer === 'framework') {
+    // Framework layer: base config with no-react restriction
+    return `${baseConfig}
+  // Framework layer: No React imports allowed
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['react', 'react-dom', 'react/*', 'react-dom/*'],
+              message: 'Framework layer cannot import React directly. Use @hai3/react for React bindings.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
+`;
+  }
+
+  if (layer === 'react') {
+    // React layer: base config + react-hooks
+    return `import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import unusedImports from 'eslint-plugin-unused-imports';
+import reactHooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
+
+/** @type {import('eslint').Linter.Config[]} */
+export default [
+  // Global ignores
+  {
+    ignores: ['dist/**', 'node_modules/**', '*.config.*'],
+  },
+
+  // Base JS config
+  js.configs.recommended,
+
+  // TypeScript config
+  ...tseslint.configs.recommended,
+
+  // Main configuration
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.es2020,
+        ...globals.node,
+      },
+    },
+    plugins: {
+      'unused-imports': unusedImports,
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+        },
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
+      'prefer-const': 'error',
+      ...reactHooks.configs.recommended.rules,
+      'react-hooks/exhaustive-deps': 'error',
+    },
+  },
+];
+`;
+  }
+
+  // Default fallback
+  return `${baseConfig}];
 `;
 }
 

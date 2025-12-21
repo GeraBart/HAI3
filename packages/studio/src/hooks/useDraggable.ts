@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { clamp } from 'lodash';
-import { eventBus } from '@hai3/uicore';
+import { eventBus } from '@hai3/react';
 import type { Position, Size } from '../types';
 import { loadStudioState } from '../utils/persistence';
 import { STORAGE_KEYS } from '../types';

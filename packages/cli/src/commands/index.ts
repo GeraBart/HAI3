@@ -31,7 +31,6 @@ export { scaffoldLayoutCommand } from './scaffold/layout.js';
 export type {
   ScaffoldLayoutArgs,
   ScaffoldLayoutResult,
-  UiKitOption,
 } from './scaffold/layout.js';
 
 export { aiSyncCommand } from './ai/sync.js';
@@ -46,3 +45,9 @@ export type {
   UpdateLayoutArgs,
   UpdateLayoutResult,
 } from './update/layout.js';
+
+export { migrateCommand } from './migrate/index.js';
+export type {
+  MigrateCommandArgs,
+  MigrateCommandResult,
+} from './migrate/index.js';

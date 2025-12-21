@@ -1,8 +1,7 @@
 /**
  * Layout Generator from Template
  *
- * Generates layout components in the user's project from templates.
- * Supports different UI kit options: hai3-uikit (default) and custom.
+ * Generates layout components in the user's project from HAI3 UIKit templates.
  */
 
 import path from 'path';
@@ -11,16 +10,9 @@ import type { GeneratedFile } from '../core/types.js';
 import { getTemplatesDir } from '../core/templates.js';
 
 /**
- * UI Kit options for layout generation
- */
-export type LayoutUiKit = 'hai3-uikit' | 'custom';
-
-/**
  * Input for layout generation from template
  */
 export interface LayoutFromTemplateInput {
-  /** UI kit to use for components */
-  uiKit: LayoutUiKit;
   /** Project root directory */
   projectRoot: string;
   /** Whether to overwrite existing files */
@@ -59,19 +51,19 @@ async function readTemplateFiles(
 
 /**
  * Generate layout files from template
- * Copies the layout templates for the specified UI kit
+ * Copies the HAI3 UIKit layout templates
  */
 export async function copyLayoutTemplates(
   input: LayoutFromTemplateInput
 ): Promise<GeneratedFile[]> {
-  const { uiKit, projectRoot, force = false } = input;
+  const { projectRoot, force = false } = input;
   const templatesDir = getTemplatesDir();
-  const templatePath = path.join(templatesDir, 'layout', uiKit);
+  const templatePath = path.join(templatesDir, 'layout', 'hai3-uikit');
 
   // Check template exists
   if (!(await fs.pathExists(templatePath))) {
     throw new Error(
-      `Layout template '${uiKit}' not found at ${templatePath}. ` +
+      `Layout template not found at ${templatePath}. ` +
         'Run `npm run build` in packages/cli first.'
     );
   }
@@ -80,7 +72,7 @@ export async function copyLayoutTemplates(
   const templateFiles = await readTemplateFiles(templatePath);
 
   if (templateFiles.length === 0) {
-    throw new Error(`No files found in layout template '${uiKit}'.`);
+    throw new Error('No files found in layout template.');
   }
 
   // Check for existing files if not forcing

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from '@hai3/uikit';
 
-export interface LinkTextInputProps extends Omit<React.ComponentProps<typeof Input>, 'type'> {}
+export type LinkTextInputProps = Omit<React.ComponentProps<typeof Input>, 'type'>;
 
 /**
  * LinkTextInput Component

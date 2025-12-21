@@ -43,10 +43,10 @@ Each package has ONE reason to change:
 | Package | Single Responsibility | Changes When |
 |---------|----------------------|--------------|
 | `@hai3/state` | Complete dataflow pattern (events + store + effects) | Flux architecture changes |
-| `@hai3/layout` | Layout domain definitions | Domain structure changes |
+| `@hai3/screensets` | Screenset contracts + registry | Screenset contract changes |
 | `@hai3/api` | HTTP communication | API patterns change |
 | `@hai3/i18n` | Internationalization | i18n strategy changes |
-| `@hai3/framework` | Plugin-based SDK integration | HAI3 patterns change |
+| `@hai3/framework` | Plugin-based SDK integration + layout state | HAI3 patterns change |
 | `@hai3/react` | React bindings | React-specific needs change |
 
 **Why @hai3/state instead of separate events/store packages:**
@@ -137,12 +137,7 @@ export interface RootState {
 export type AppDispatch = Dispatch<UnknownAction>;
 export type EffectInitializer = (dispatch: AppDispatch, getState: () => RootState) => void;
 
-// @hai3/layout - Types first
-export interface LayoutDomainState<TConfig = unknown> {
-  visible: boolean;
-  config: TConfig;
-}
-
+// @hai3/screensets - Contracts (pure TypeScript, zero deps)
 export interface ScreenConfig {
   id: string;
   loader: () => Promise<{ default: unknown }>;
@@ -162,6 +157,12 @@ export interface ScreensetDefinition {
   defaultScreen: string;
   screens: ScreenConfig[];
   menu: MenuItemConfig[];
+}
+
+// @hai3/framework - Layout state shapes (framework owns state)
+export interface LayoutDomainState<TConfig = unknown> {
+  visible: boolean;
+  config: TConfig;
 }
 ```
 
@@ -212,12 +213,12 @@ eventBus.emit('chat/threads/selected', { wrong: 'key' });     // ❌ Type error
 ```
                      LAYER 1: SDK (Flat, zero @hai3 deps)
 
-┌─────────────────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐
-│        flux         │  │  layout   │  │    api    │  │   i18n    │
-│                     │  │           │  │           │  │           │
-│ EventBus, Store,    │  │ Domain    │  │ Rest/SSE  │  │ Registry  │
-│ Effects, Types      │  │ Slices    │  │ Protocols │  │ Loaders   │
-└─────────────────────┘  └───────────┘  └───────────┘  └───────────┘
+┌─────────────────────┐  ┌────────────┐  ┌───────────┐  ┌───────────┐
+│        state        │  │ screensets │  │    api    │  │   i18n    │
+│                     │  │            │  │           │  │           │
+│ EventBus, Store,    │  │ Contracts  │  │ Rest/SSE  │  │ Registry  │
+│ Effects, Types      │  │ + Registry │  │ Protocols │  │ Loaders   │
+└─────────────────────┘  └────────────┘  └───────────┘  └───────────┘
            │                   │              │              │
            └───────────────────┴──────────────┴──────────────┘
                                     │
@@ -297,9 +298,10 @@ export {
 | **User code** (src/, generated layout) | ANY @hai3 package | Not enforced |
 
 User code and CLI-generated layout code CAN import from any @hai3 package. This is intentional:
-- Generated `Header.tsx` imports selectors from `@hai3/layout`
+- Generated `Header.tsx` imports slices from `@hai3/framework` (owns layout state)
+- Generated `Header.tsx` imports types from `@hai3/screensets` (owns contracts)
 - Screenset actions emit events via `eventBus` from `@hai3/state`
-- Components import hooks from `@hai3/react`
+- Components use `useAppSelector` hook from `@hai3/react` for state access
 
 Layer rules enforce **package-to-package dependencies**, not user code imports.
 
@@ -311,8 +313,8 @@ Layer rules enforce **package-to-package dependencies**, not user code imports.
 | `store` | `@hai3/state` | Core of dataflow pattern |
 | `apiRegistry` | `@hai3/api` | Registers API services |
 | `i18nRegistry` | `@hai3/i18n` | Registers translation loaders |
-| `screensetRegistry` | `@hai3/framework` | Screensets are HAI3 pattern |
-| `themeRegistry` | `@hai3/framework` | Themes are HAI3 pattern |
+| `screensetRegistry` | `@hai3/screensets` | Singleton in SDK, re-exported by framework with i18n wiring |
+| `themeRegistry` | `@hai3/framework` | Themes are HAI3 pattern (GLOBAL, not per-screenset) |
 | `routeRegistry` | `@hai3/framework` | Routing is HAI3 pattern |
 
 ## Action Pattern
@@ -423,14 +425,14 @@ Action (handwritten function, contains business logic)
     → emits Event (via eventBus from @hai3/state)
         → Effect subscribes (in screenset's effects/ folder)
             → Updates Slice (via dispatch)
-                → Component re-renders (via selector)
+                → Component re-renders (via useAppSelector hook)
 ```
 
 ### Knowledge Separation Benefits
 
 | Layer | Knows About | Does NOT Know About |
 |-------|-------------|---------------------|
-| Component | Action functions, selectors, hooks | Events, eventBus, dispatch |
+| Component | Action functions, useAppSelector hook | Events, eventBus, dispatch |
 | Action | Events, eventBus | Effects, slices, store |
 | Effect | Events, slices, dispatch | Components, actions |
 | Slice | State shape, reducers | Events, components |
@@ -804,8 +806,30 @@ src/layout/
 ├── Screen.tsx           # Screen domain (lazy loading)
 ├── Popup.tsx            # Popup domain
 ├── Overlay.tsx          # Overlay domain
+├── api/                 # Application-specific API services (optional)
+│   ├── AccountsApiService.ts  # User info fetching (example)
+│   └── types.ts         # API response types
 └── index.ts             # Barrel export
 ```
+
+### Framework vs Template Boundary (Architectural Clarification)
+
+**Principle:** The framework provides the **state contract and reducers**. Application-specific logic belongs in CLI templates.
+
+| Component | Location | Rationale |
+|-----------|----------|-----------|
+| `HeaderState`, `HeaderUser` types | `@hai3/framework` | State contracts are framework concerns |
+| `setUser`, `setLoading`, `clearUser` reducers | `@hai3/framework` | State management is framework concern |
+| `AccountsApiService` class | CLI templates | Application-specific - not all apps have users |
+| User fetching `useEffect` in Layout.tsx | CLI templates | Application logic - backends vary |
+| API response types | CLI templates | API shapes vary between backends |
+
+**Why this separation:**
+1. **Framework is generic** - Not all applications have "accounts" or "users"
+2. **API shapes vary** - Different backends have different user endpoint responses
+3. **User owns the logic** - Can customize fetching, caching, error handling
+4. **Optional feature** - Applications without users skip this entirely
+5. **SOLID compliance** - Framework provides extension points, templates provide implementation
 
 ### Generated Code Example
 
@@ -813,10 +837,11 @@ src/layout/
 // Generated Header.tsx (default with @hai3/uikit)
 import { Button, Avatar } from '@hai3/uikit';
 import { useAppSelector } from '@hai3/react';
-import { selectHeaderState } from '@hai3/layout';
+import type { RootState } from '@hai3/state';
 
 export const Header: React.FC = () => {
-  const headerState = useAppSelector(selectHeaderState);
+  // State access via useAppSelector hook (no named selector functions)
+  const headerState = useAppSelector((state: RootState) => state.layout.header);
 
   return (
     <header className="flex items-center justify-between p-4">
@@ -998,11 +1023,11 @@ HAI3 Monorepo:
 .ai/
 ├── rules/                    # Source of truth for rules
 │   ├── core.md              # Core patterns (all projects)
-│   ├── flux.md              # @hai3/state patterns (events + store)
-│   ├── layout.md            # @hai3/layout patterns
-│   ├── framework.md         # @hai3/framework patterns
+│   ├── state.md             # @hai3/state patterns (events + store)
+│   ├── screensets.md        # @hai3/screensets patterns (contracts + registry)
+│   ├── framework.md         # @hai3/framework patterns (plugins, layout state)
 │   ├── react.md             # @hai3/react patterns
-│   └── screensets.md        # Screenset patterns
+│   └── api.md               # @hai3/api patterns
 │
 ├── commands/
 │   ├── internal/            # hai3dev-* (monorepo only)
@@ -1156,11 +1181,9 @@ packages/
 │   ├── react.js                          # L3: React (extends base + only framework dep)
 │   └── screenset.js                      # L4: User code (extends base + flux rules, isolation)
 │
-├── events/
+├── state/
 │   └── eslint.config.js                  # extends sdk.js
-├── store/
-│   └── eslint.config.js                  # extends sdk.js
-├── layout/
+├── screensets/
 │   └── eslint.config.js                  # extends sdk.js
 ├── api/
 │   └── eslint.config.js                  # extends sdk.js
@@ -1233,7 +1256,7 @@ export const reactConfig = [
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
-          { group: ['@hai3/state', '@hai3/layout', '@hai3/api', '@hai3/i18n'],
+          { group: ['@hai3/state', '@hai3/screensets', '@hai3/api', '@hai3/i18n'],
             message: 'React package imports SDK via framework re-exports' },
           { group: ['@hai3/uikit-contracts'], message: 'uikit-contracts is deprecated' },
         ],
@@ -1264,7 +1287,13 @@ packages/
 │   ├── react.cjs                         # L3: React (only framework dep)
 │   └── screenset.cjs                     # L4: User code (screenset isolation, flux)
 │
-├── events/
+├── state/
+│   └── .dependency-cruiser.cjs           # extends sdk.cjs
+├── screensets/
+│   └── .dependency-cruiser.cjs           # extends sdk.cjs
+├── api/
+│   └── .dependency-cruiser.cjs           # extends sdk.cjs
+├── i18n/
 │   └── .dependency-cruiser.cjs           # extends sdk.cjs
 ├── framework/
 │   └── .dependency-cruiser.cjs           # extends framework.cjs
@@ -1295,14 +1324,14 @@ module.exports = {
     {
       name: 'sdk-no-hai3-imports',
       severity: 'error',
-      from: { path: '^packages/(events|store|layout|api|i18n)/src' },
+      from: { path: '^packages/(state|screensets|api|i18n)/src' },
       to: { path: 'node_modules/@hai3/' },
       comment: 'SDK packages must have ZERO @hai3 dependencies',
     },
     {
       name: 'sdk-no-react',
       severity: 'error',
-      from: { path: '^packages/(events|store|layout|api|i18n)/src' },
+      from: { path: '^packages/(state|screensets|api|i18n)/src' },
       to: { path: 'node_modules/react' },
       comment: 'SDK packages cannot import React',
     },
@@ -1340,7 +1369,7 @@ module.exports = {
       name: 'react-only-framework-dep',
       severity: 'error',
       from: { path: '^packages/react/src' },
-      to: { path: 'node_modules/@hai3/(events|store|layout|api|i18n)' },
+      to: { path: 'node_modules/@hai3/(state|screensets|api|i18n)' },
       comment: 'React package imports SDK via framework, not directly',
     },
     {
@@ -1429,8 +1458,8 @@ npm run arch:check    # Full architecture validation
 │ • no React        │   │ • no React        │   │ • isolation       │
 │                   │   │                   │   │ • domain rules    │
 │ Used by:          │   │ Used by:          │   │                   │
-│ events, store,    │   │ framework         │   │ Used by:          │
-│ layout, api, i18n │   │                   │   │ user projects     │
+│ state, screensets │   │ framework         │   │ Used by:          │
+│ api, i18n         │   │                   │   │ user projects     │
 └───────────────────┘   └─────────┬─────────┘   └───────────────────┘
                                   │
                                   ▼
@@ -1481,7 +1510,7 @@ npm run arch:check    # Full architecture validation
 
 ### Phase 3: SDK Packages
 1. Create @hai3/state (complete dataflow pattern: events + store + effects)
-2. Create @hai3/layout (domain types and slices)
+2. Create @hai3/screensets (contracts + registry singleton)
 3. Create @hai3/api (standalone)
 4. Create @hai3/i18n (standalone)
 
@@ -1498,8 +1527,8 @@ npm run arch:check    # Full architecture validation
 
 **6.0 State Structure Migration**
 - Current: `state.uicore.header`, `state.uicore.menu`, etc. (nested under `uicore` key)
-- New: Flat structure managed by `@hai3/layout`
-- Requires: Legacy selectors, migration helpers, deprecation warnings
+- New: `state.layout.header`, etc. - managed by `@hai3/framework` (owns layout slices)
+- Requires: Migration helpers, deprecation warnings (state access via useAppSelector hook)
 
 **6.1 Layout Components Migration**
 - Current: `<Layout>`, `<Header>`, `<Menu>`, etc. in `@hai3/uicore`
@@ -1540,8 +1569,8 @@ npm run arch:check    # Full architecture validation
 - **Mitigation:** @hai3/uicore re-exports maintain 100% backward compat
 
 ### Risk 5: State Structure Migration
-- **Risk:** Selectors using `state.uicore.X` break
-- **Mitigation:** Legacy selector helpers, gradual migration guide
+- **Risk:** Code using `state.uicore.X` path breaks
+- **Mitigation:** Migration helpers to map old paths, gradual migration guide
 
 ### Risk 6: uikit-contracts Migration Scope
 - **Risk:** 30+ files across 4 packages need updates

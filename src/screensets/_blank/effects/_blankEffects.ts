@@ -4,8 +4,8 @@
  * Following Flux: Effects subscribe to events and update their own slice only
  */
 
-import { type AppDispatch } from '@hai3/uicore';
-// import { eventBus } from '@hai3/uicore';
+import { type AppDispatch } from '@hai3/react';
+// import { eventBus } from '@hai3/react';
 // import { _BlankEvents } from '../events/_blankEvents';
 // import { } from '../slices/_blankSlice';
 

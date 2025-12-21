@@ -30,20 +30,26 @@ export function useTranslation(): UseTranslationReturn {
   const app = useHAI3();
   const { i18nRegistry } = app;
 
-  // Subscribe to language changes using useSyncExternalStore
-  const language = useSyncExternalStore(
+  // Subscribe to translation changes using useSyncExternalStore
+  // Uses version counter to trigger re-renders when translations change
+  const version = useSyncExternalStore(
     useCallback(
-      (_callback: () => void) => {
-        // The i18n registry doesn't have a built-in subscription mechanism,
-        // so we poll on re-renders. In a full implementation, this would
-        // use an event subscription.
-        return () => {};
+      (callback: () => void) => {
+        // Subscribe to translation changes (new translations registered)
+        return i18nRegistry.subscribe(callback);
       },
-      []
+      [i18nRegistry]
     ),
-    () => i18nRegistry.getLanguage(),
-    () => i18nRegistry.getLanguage()
+    () => i18nRegistry.getVersion(),
+    () => i18nRegistry.getVersion()
   );
+
+  // Get current language (memoized to avoid unnecessary recalculations)
+  // version is used to trigger recalculation when translations change
+  const language = useMemo(() => {
+    void version; // Trigger recalculation when version changes
+    return i18nRegistry.getLanguage();
+  }, [i18nRegistry, version]);
 
   // Translation function
   const t = useCallback(

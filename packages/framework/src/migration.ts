@@ -2,12 +2,12 @@
  * Migration Helpers - Utilities for migrating from @hai3/uicore
  *
  * These helpers assist users migrating from the deprecated @hai3/uicore package
- * to the new SDK architecture (@hai3/framework, @hai3/layout, @hai3/react).
+ * to the new SDK architecture (@hai3/framework, @hai3/screensets, @hai3/react).
  *
  * Framework Layer: L2
  */
 
-import type { LayoutState, RootStateWithLayout } from '@hai3/layout';
+import type { RootStateWithLayout } from './layoutTypes';
 
 // ============================================================================
 // Types
@@ -70,7 +70,8 @@ export interface LegacyRootState {
 }
 
 /**
- * Selector function type
+ * State accessor function type
+ * Note: "Selector" terminology avoided (Redux-specific). Use useAppSelector hook for state access.
  */
 export type Selector<TState, TResult> = (state: TState) => TResult;
 
@@ -142,7 +143,7 @@ export function isDeprecationWarningsEnabled(): boolean {
  * const selectMenuCollapsedLegacy = createLegacySelector(
  *   'uicore.menu.collapsed',
  *   selectMenuCollapsed,
- *   'Use selectMenuCollapsed from @hai3/layout'
+ *   'Use selectMenuCollapsed from @hai3/framework'
  * );
  *
  * // In component (will show deprecation warning in dev)
@@ -174,13 +175,13 @@ export function createLegacySelector<TState, TResult>(
 // ============================================================================
 
 /**
- * Get layout state from the new structure
+ * Get layout domain state from the new structure
  * Maps to what was previously `state.uicore.header`, `state.uicore.menu`, etc.
  */
-export function getLayoutDomainState<K extends keyof LayoutState>(
+export function getLayoutDomainState<K extends keyof RootStateWithLayout['layout']>(
   state: RootStateWithLayout,
   domain: K
-): LayoutState[K] {
+): RootStateWithLayout['layout'][K] {
   return state.layout[domain];
 }
 
@@ -209,69 +210,17 @@ export function hasNewLayoutState(state: unknown): state is RootStateWithLayout 
 }
 
 // ============================================================================
-// Pre-built Legacy Selectors (for @hai3/uicore to re-export)
+// Legacy State Accessors (DEPRECATED)
 // ============================================================================
 
-// These are imported in the deprecated @hai3/uicore package to maintain
-// backward compatibility while showing deprecation warnings.
-
-import {
-  selectMenu,
-  selectMenuCollapsed,
-  selectMenuVisible,
-  selectMenuItems,
-  selectHeader,
-  selectHeaderVisible,
-  selectFooter,
-  selectFooterVisible,
-  selectSidebar,
-  selectSidebarVisible,
-  selectSidebarCollapsed,
-  selectScreen,
-  selectActiveScreen,
-  selectScreenLoading,
-  selectPopup,
-  selectPopupStack,
-  selectHasPopup,
-  selectOverlay,
-  selectHasOverlay,
-} from '@hai3/layout';
-
 /**
- * Legacy selectors with deprecation warnings
- * These are provided for @hai3/uicore to re-export
+ * Legacy selectors placeholder
+ *
+ * @deprecated Named selectors are removed. Use useAppSelector hook from @hai3/react
+ * with inline state access: `useAppSelector((state) => state.layout.menu)`
+ *
+ * Migration guide:
+ * - Before: `const menu = useSelector(selectMenu);`
+ * - After:  `const menu = useAppSelector((state: RootState) => state.layout.menu);`
  */
-export const legacySelectors = {
-  // Menu
-  selectUicoreMenu: createLegacySelector('uicore.menu', selectMenu, 'Use selectMenu from @hai3/layout'),
-  selectUicoreMenuCollapsed: createLegacySelector('uicore.menu.collapsed', selectMenuCollapsed, 'Use selectMenuCollapsed from @hai3/layout'),
-  selectUicoreMenuVisible: createLegacySelector('uicore.menu.visible', selectMenuVisible, 'Use selectMenuVisible from @hai3/layout'),
-  selectUicoreMenuItems: createLegacySelector('uicore.menu.items', selectMenuItems, 'Use selectMenuItems from @hai3/layout'),
-
-  // Header
-  selectUicoreHeader: createLegacySelector('uicore.header', selectHeader, 'Use selectHeader from @hai3/layout'),
-  selectUicoreHeaderVisible: createLegacySelector('uicore.header.visible', selectHeaderVisible, 'Use selectHeaderVisible from @hai3/layout'),
-
-  // Footer
-  selectUicoreFooter: createLegacySelector('uicore.footer', selectFooter, 'Use selectFooter from @hai3/layout'),
-  selectUicoreFooterVisible: createLegacySelector('uicore.footer.visible', selectFooterVisible, 'Use selectFooterVisible from @hai3/layout'),
-
-  // Sidebar
-  selectUicoreSidebar: createLegacySelector('uicore.sidebar', selectSidebar, 'Use selectSidebar from @hai3/layout'),
-  selectUicoreSidebarVisible: createLegacySelector('uicore.sidebar.visible', selectSidebarVisible, 'Use selectSidebarVisible from @hai3/layout'),
-  selectUicoreSidebarCollapsed: createLegacySelector('uicore.sidebar.collapsed', selectSidebarCollapsed, 'Use selectSidebarCollapsed from @hai3/layout'),
-
-  // Screen
-  selectUicoreScreen: createLegacySelector('uicore.screen', selectScreen, 'Use selectScreen from @hai3/layout'),
-  selectUicoreActiveScreen: createLegacySelector('uicore.layout.selectedScreen', selectActiveScreen, 'Use selectActiveScreen from @hai3/layout'),
-  selectUicoreScreenLoading: createLegacySelector('uicore.screen.loading', selectScreenLoading, 'Use selectScreenLoading from @hai3/layout'),
-
-  // Popup
-  selectUicorePopup: createLegacySelector('uicore.popup', selectPopup, 'Use selectPopup from @hai3/layout'),
-  selectUicorePopupStack: createLegacySelector('uicore.popup.stack', selectPopupStack, 'Use selectPopupStack from @hai3/layout'),
-  selectUicoreHasPopup: createLegacySelector('uicore.popup.stack', selectHasPopup, 'Use selectHasPopup from @hai3/layout'),
-
-  // Overlay
-  selectUicoreOverlay: createLegacySelector('uicore.overlay', selectOverlay, 'Use selectOverlay from @hai3/layout'),
-  selectUicoreHasOverlay: createLegacySelector('uicore.overlay.visible', selectHasOverlay, 'Use selectHasOverlay from @hai3/layout'),
-};
+export const legacySelectors = {} as const;

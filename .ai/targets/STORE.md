@@ -49,7 +49,7 @@ declare module '@hai3/state' {
 ## STOP CONDITIONS
 - Editing `createStore()` implementation.
 - Bypassing `registerSlice()` for manual reducer injection.
-- Creating global slices (except layout domains in @hai3/layout).
+- Creating global slices (except layout domains in @hai3/framework).
 - Hardcoding slice names without screenset ID prefix.
 
 ## PRE-DIFF CHECKLIST

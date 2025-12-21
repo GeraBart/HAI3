@@ -1,0 +1,55 @@
+/**
+ * Accounts Domain - API Service
+ * Service for accounts domain (users, tenants, authentication, permissions)
+ *
+ * Application-specific service (copied from CLI template)
+ */
+
+import { BaseApiService, RestProtocol, apiRegistry } from '@hai3/api';
+import type { MockMap } from '@hai3/api';
+import type { GetCurrentUserResponse } from './types';
+
+/**
+ * Accounts domain identifier
+ */
+export const ACCOUNTS_DOMAIN = 'accounts' as const;
+
+/**
+ * Accounts API Service
+ * Manages accounts domain endpoints:
+ * - User management (current user, profile, preferences)
+ * - Tenant management (current tenant, switching)
+ * - Authentication (login, logout, tokens)
+ * - Permissions and roles
+ */
+export class AccountsApiService extends BaseApiService {
+  constructor() {
+    super(
+      { baseURL: '/api/accounts' },
+      new RestProtocol({
+        timeout: 30000,
+      })
+    );
+  }
+
+  /**
+   * Get mock map from registry
+   */
+  protected getMockMap(): MockMap {
+    return apiRegistry.getMockMap(ACCOUNTS_DOMAIN);
+  }
+
+  /**
+   * Get current authenticated user
+   */
+  async getCurrentUser(): Promise<GetCurrentUserResponse> {
+    return this.protocol(RestProtocol).get<GetCurrentUserResponse>('/user/current');
+  }
+}
+
+// NOTE: Module augmentation for ApiServicesMap is NOT done here because it causes
+// TypeScript conflicts when screensets also augment the same interface from different modules.
+// Applications that use AccountsApiService should manually register it:
+//
+// import { AccountsApiService, ACCOUNTS_DOMAIN, apiRegistry } from '@/api';
+// apiRegistry.register(ACCOUNTS_DOMAIN, AccountsApiService);

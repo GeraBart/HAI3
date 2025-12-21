@@ -46,7 +46,7 @@ import {
   AvatarFallback,
   Input
 } from '@hai3/uikit';
-import { useTranslation, TextLoader } from '@hai3/uicore';
+import { useTranslation, TextLoader } from '@hai3/react';
 import { CalendarDays } from 'lucide-react';
 import { StarIcon } from '../uikit/icons/StarIcon';
 import { DEMO_SCREENSET_ID } from "../ids";

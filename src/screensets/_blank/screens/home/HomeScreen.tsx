@@ -10,7 +10,7 @@ import {
   useScreenTranslations,
   I18nRegistry,
   Language,
-} from '@hai3/uicore';
+} from '@hai3/react';
 import { _BLANK_SCREENSET_ID, HOME_SCREEN_ID } from '../../ids';
 
 /**

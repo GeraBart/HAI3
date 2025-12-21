@@ -8,6 +8,7 @@
  *   hai3 screenset create <name>            Create a new screenset
  *   hai3 screenset copy <source> <target>   Copy an existing screenset
  *   hai3 validate components [path]         Validate component structure
+ *   hai3 migrate [version]                  Apply codemod migrations
  */
 
 import { Command } from 'commander';
@@ -21,6 +22,7 @@ import {
   scaffoldLayoutCommand,
   aiSyncCommand,
   updateLayoutCommand,
+  migrateCommand,
 } from './commands/index.js';
 
 // CLI version
@@ -35,6 +37,7 @@ registry.register(validateComponentsCommand);
 registry.register(scaffoldLayoutCommand);
 registry.register(aiSyncCommand);
 registry.register(updateLayoutCommand);
+registry.register(migrateCommand);
 
 // Create Commander program
 const program = new Command();
@@ -51,7 +54,6 @@ program.option('-q, --quiet', 'Suppress non-essential output');
 program
   .command('create <project-name>')
   .description('Create a new HAI3 project or layer package')
-  .option('--uikit <type>', 'UIKit to use (hai3 or custom)', undefined)
   .option('--studio', 'Include Studio package')
   .option('--no-studio', 'Exclude Studio package')
   .option('--no-git', 'Skip git initialization')
@@ -62,7 +64,6 @@ program
       createCommand,
       {
         projectName,
-        uikit: options.uikit as 'hai3' | 'custom' | undefined,
         studio: options.studio as boolean | undefined,
         git: options.git as boolean,
         install: options.install as boolean,
@@ -110,16 +111,11 @@ updateCmd
 updateCmd
   .command('layout')
   .description('Update layout components from templates')
-  .option(
-    '-u, --ui-kit <type>',
-    'UI kit to use (hai3-uikit or custom)'
-  )
   .option('-f, --force', 'Force update without prompting')
   .action(async (options: Record<string, unknown>) => {
     const result = await executeCommand(
       updateLayoutCommand,
       {
-        uiKit: options.uiKit as 'hai3-uikit' | 'custom' | undefined,
         force: options.force as boolean,
       },
       { interactive: true }
@@ -222,18 +218,12 @@ const scaffoldCmd = program
 // hai3 scaffold layout
 scaffoldCmd
   .command('layout')
-  .description('Generate layout components in your project')
-  .option(
-    '-u, --ui-kit <type>',
-    'UI kit to use (hai3-uikit or custom)',
-    'hai3-uikit'
-  )
+  .description('Generate HAI3 UIKit layout components in your project')
   .option('-f, --force', 'Overwrite existing layout files')
   .action(async (options: Record<string, unknown>) => {
     const result = await executeCommand(
       scaffoldLayoutCommand,
       {
-        uiKit: options.uiKit as 'hai3-uikit' | 'custom',
         force: options.force as boolean,
       },
       { interactive: true }
@@ -267,6 +257,36 @@ aiCmd
         tool: options.tool as 'claude' | 'copilot' | 'cursor' | 'windsurf' | 'all',
         detectPackages: options.detectPackages as boolean,
         diff: options.diff as boolean,
+      },
+      { interactive: true }
+    );
+
+    if (!result.success) {
+      process.exit(1);
+    }
+  });
+
+// hai3 migrate [version]
+program
+  .command('migrate [targetVersion]')
+  .description('Apply codemod migrations to update HAI3 projects')
+  .option('-d, --dry-run', 'Preview changes without applying')
+  .option('-l, --list', 'List available migrations')
+  .option('-s, --status', 'Show migration status')
+  .option('-p, --path <path>', 'Target directory to migrate')
+  .option('--include <patterns>', 'Include glob patterns (comma-separated)')
+  .option('--exclude <patterns>', 'Exclude glob patterns (comma-separated)')
+  .action(async (targetVersion: string | undefined, options: Record<string, unknown>) => {
+    const result = await executeCommand(
+      migrateCommand,
+      {
+        targetVersion,
+        dryRun: options.dryRun as boolean,
+        list: options.list as boolean,
+        status: options.status as boolean,
+        targetPath: options.path as string | undefined,
+        include: options.include as string | undefined,
+        exclude: options.exclude as string | undefined,
       },
       { interactive: true }
     );

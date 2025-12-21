@@ -1,0 +1,288 @@
+/**
+ * @hai3/framework - HAI3 Framework Package
+ *
+ * Core exports from the HAI3 Framework.
+ * See types.d.ts for full type definitions.
+ *
+ * NOTE: Layout slices are owned by @hai3/framework.
+ * @hai3/uicore is deprecated and only provides backward-compatible re-exports.
+ */
+
+// Re-export all types from types module
+export * from './types';
+
+// Re-export types from SDK packages that aren't in types.d.ts
+export type { RootState, AppDispatch, EventPayloadMap, EventHandler, Subscription, SliceObject, EffectInitializer, ReducerPayload } from '@hai3/state';
+export type { Language, LanguageMetadata, TranslationLoader, TranslationMap, TranslationDictionary, I18nConfig, I18nRegistry as I18nRegistryType } from '@hai3/i18n';
+export type { ScreensetId, ScreenId, MenuItemConfig, ScreenLoader, ScreenConfig, MenuScreenItem, ScreensetTranslationLoader, ScreensetDefinition, ScreensetRegistry as ScreensetRegistryContract } from '@hai3/screensets';
+export type { ApiService, ApiServicesMap, MockMap, ApiServiceConfig, JsonValue, JsonObject, JsonPrimitive, JsonCompatible, ApiProtocol, SseProtocolConfig, RestProtocolConfig } from '@hai3/api';
+
+// Deprecated alias
+export type { ScreensetTranslationLoader as TranslationLoaderFn } from '@hai3/screensets';
+export type { ScreensetDefinition as ScreensetConfig } from '@hai3/screensets';
+
+// ============================================================================
+// Layout State Types (owned by @hai3/framework)
+// ============================================================================
+
+/** User info displayed in header */
+export interface HeaderUser {
+  displayName?: string;
+  email?: string;
+  avatarUrl?: string;
+}
+
+/** Header state with user info */
+export interface HeaderState {
+  user: HeaderUser | null;
+  loading: boolean;
+}
+
+/** Header configuration */
+export interface HeaderConfig {
+  user?: HeaderUser;
+}
+
+/** Footer state */
+export interface FooterState {
+  screensetOptions: Array<{ category: string; screensets: Array<{ id: string; name: string }> }>;
+  visible: boolean;
+}
+
+/** Footer configuration */
+export interface FooterConfig {
+  visible?: boolean;
+}
+
+/** Menu item */
+export interface MenuItem {
+  id: string;
+  label: string;
+  icon?: string;
+  path?: string;
+  children?: MenuItem[];
+  disabled?: boolean;
+}
+
+/** Menu state */
+export interface MenuState {
+  collapsed: boolean;
+  items: MenuItem[];
+  visible: boolean;
+}
+
+/** Sidebar position */
+export type SidebarPosition = 'left' | 'right';
+
+/** Sidebar state */
+export interface SidebarState {
+  collapsed: boolean;
+  position: SidebarPosition;
+  title: string | null;
+  content: unknown;
+  visible: boolean;
+  width: number;
+}
+
+/** Screen state */
+export interface ScreenState {
+  activeScreen: string | null;
+  loading: boolean;
+}
+
+/** Popup state (single popup) */
+export interface PopupState {
+  id: string;
+  title: string;
+  component: string;
+  props?: Record<string, unknown>;
+  zIndex: number;
+}
+
+/** Popup configuration */
+export interface PopupConfig {
+  id: string;
+  title?: string;
+  component: string;
+  props?: Record<string, unknown>;
+}
+
+/** Overlay state */
+export interface OverlayState {
+  visible: boolean;
+}
+
+/** Overlay configuration */
+export interface OverlayConfig {
+  visible?: boolean;
+}
+
+/** Combined layout state */
+export interface LayoutState {
+  theme: string;
+  currentScreenset: string;
+  selectedScreen: string | null;
+}
+
+/** Layout domain state union */
+export type LayoutDomainState = HeaderState | FooterState | MenuState | SidebarState | ScreenState | PopupState | OverlayState;
+
+/** Root state with layout */
+export interface RootStateWithLayout {
+  layout: {
+    header: HeaderState;
+    footer: FooterState;
+    menu: MenuState;
+    sidebar: SidebarState;
+    screen: ScreenState;
+    popup: { stack: PopupState[] };
+    overlay: OverlayState;
+  };
+}
+
+/** Layout domain reducers type */
+export type LayoutDomainReducers = Record<string, unknown>;
+
+// NOTE: Account API types (UserRole, ApiUser, UserExtra, GetCurrentUserResponse, ApiError)
+// have been moved to CLI templates. Applications should define these in their own code
+// or import from the generated @/api module.
+
+// Core exports
+export declare const createHAI3: () => import('./types').HAI3AppBuilder;
+export declare const createHAI3App: (config?: import('./types').HAI3Config) => import('./types').HAI3App;
+
+// Plugin exports
+export declare const screensets: (config?: import('./types').ScreensetsConfig) => import('./types').HAI3Plugin;
+export declare const themes: () => import('./types').HAI3Plugin;
+export declare const layout: () => import('./types').HAI3Plugin;
+export declare const navigation: () => import('./types').HAI3Plugin;
+export declare const routing: () => import('./types').HAI3Plugin;
+export declare const i18n: () => import('./types').HAI3Plugin;
+export declare const effects: () => import('./types').HAI3Plugin;
+
+// Preset exports
+export declare const presets: import('./types').Presets;
+export declare const full: import('./types').Preset;
+export declare const minimal: import('./types').Preset;
+export declare const headless: import('./types').Preset;
+
+// Registry factory exports
+export declare const createScreensetRegistry: () => import('./types').ScreensetRegistry;
+export declare const createThemeRegistry: () => import('./types').ThemeRegistry;
+export declare const createRouteRegistry: (screensetRegistry: import('./types').ScreensetRegistry) => import('./types').RouteRegistry;
+
+// Singleton registries (from compat)
+export declare const screensetRegistry: import('./types').ScreensetRegistry;
+export declare const themeRegistry: import('./types').ThemeRegistry;
+export declare const routeRegistry: import('./types').RouteRegistry;
+
+// Store access
+export declare const store: {
+  getState: () => unknown;
+  dispatch: (action: unknown) => unknown;
+  subscribe: (listener: () => void) => () => void;
+};
+
+// Navigation actions
+export declare const navigateToScreen: (screenId: string) => void;
+export declare const fetchCurrentUser: () => (dispatch: unknown) => void;
+
+// Re-exports from @hai3/state
+export { eventBus, createStore, getStore, registerSlice, hasSlice, createSlice } from '@hai3/state';
+
+// Re-exports from @hai3/screensets
+export { LayoutDomain, ScreensetCategory, createScreensetRegistry as createScreensetRegistrySdk } from '@hai3/screensets';
+
+// Re-exports from @hai3/api
+export { apiRegistry, BaseApiService, RestProtocol, SseProtocol, MockPlugin } from '@hai3/api';
+
+// NOTE: AccountsApiService has been moved to CLI templates.
+// Applications should import from their local @/api module.
+
+// Re-exports from @hai3/i18n
+export { i18nRegistry, I18nRegistryImpl, createI18nRegistry, Language, SUPPORTED_LANGUAGES, getLanguageMetadata } from '@hai3/i18n';
+
+// Layout slices (owned by @hai3/framework)
+export declare const layoutReducer: unknown;
+export declare const layoutDomainReducers: unknown;
+export declare const LAYOUT_SLICE_NAME: string;
+
+// Domain slices
+export declare const headerSlice: unknown;
+export declare const footerSlice: unknown;
+export declare const menuSlice: unknown;
+export declare const sidebarSlice: unknown;
+export declare const screenSlice: unknown;
+export declare const popupSlice: unknown;
+export declare const overlaySlice: unknown;
+
+// Domain actions (grouped)
+export declare const headerActions: unknown;
+export declare const footerActions: unknown;
+export declare const menuActions: unknown;
+export declare const sidebarActions: unknown;
+export declare const screenActions: unknown;
+export declare const popupActions: unknown;
+export declare const overlayActions: unknown;
+
+// Individual reducer functions - header
+export declare const setUser: (payload: HeaderUser | null) => unknown;
+export declare const setHeaderLoading: (payload: boolean) => unknown;
+export declare const clearUser: () => unknown;
+
+// Individual reducer functions - footer
+export declare const setFooterVisible: (payload: boolean) => unknown;
+export declare const setFooterConfig: (payload: unknown) => unknown;
+export declare const toggleMenu: () => unknown;
+export declare const setMenuCollapsed: (payload: boolean) => unknown;
+export declare const setMenuItems: (payload: unknown[]) => unknown;
+export declare const setMenuVisible: (payload: boolean) => unknown;
+export declare const setMenuConfig: (payload: unknown) => unknown;
+export declare const toggleSidebar: () => unknown;
+export declare const setSidebarCollapsed: (payload: boolean) => unknown;
+export declare const setSidebarPosition: (payload: string) => unknown;
+export declare const setSidebarTitle: (payload: string | null) => unknown;
+export declare const setSidebarContent: (payload: unknown) => unknown;
+export declare const setSidebarVisible: (payload: boolean) => unknown;
+export declare const setSidebarWidth: (payload: number) => unknown;
+export declare const setSidebarConfig: (payload: unknown) => unknown;
+export declare const setActiveScreen: (payload: string) => unknown;
+export declare const setScreenLoading: (payload: boolean) => unknown;
+export declare const navigateTo: (payload: string) => unknown;
+export declare const clearActiveScreen: () => unknown;
+export declare const openPopup: (payload: unknown) => unknown;
+export declare const closePopup: (payload: string) => unknown;
+export declare const closeTopPopup: () => unknown;
+export declare const closeAllPopups: () => unknown;
+export declare const showOverlay: () => unknown;
+export declare const hideOverlay: () => unknown;
+export declare const setOverlayVisible: (payload: boolean) => unknown;
+
+// PopupSliceState type
+export interface PopupSliceState {
+  stack: PopupState[];
+}
+
+// NOTE: Named selectors removed. Use useAppSelector hook from @hai3/react:
+// const menu = useAppSelector((state: RootState) => state.layout.menu);
+
+// API domain constant (kept for backward compatibility)
+// Applications should define their own domain constants in @/api
+export declare const ACCOUNTS_DOMAIN: 'accounts';
+
+// Backward compatibility aliases
+export { I18nRegistryImpl as I18nRegistry } from '@hai3/i18n';
+
+// Migration helpers
+export declare const createLegacySelector: <TState, TResult>(
+  legacyPath: string,
+  newSelector: (state: TState) => TResult,
+  migrationHint?: string
+) => (state: TState) => TResult;
+export declare const setDeprecationWarnings: (enabled: boolean) => void;
+export declare const isDeprecationWarningsEnabled: () => boolean;
+export declare const getLayoutDomainState: <K extends string>(state: unknown, domain: K) => unknown;
+export declare const hasLegacyUicoreState: (state: unknown) => boolean;
+export declare const hasNewLayoutState: (state: unknown) => boolean;
+export declare const legacySelectors: Record<string, (state: unknown) => unknown>;
+export declare const STATE_PATH_MAPPING: Record<string, string>;

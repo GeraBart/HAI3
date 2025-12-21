@@ -5,7 +5,7 @@
  */
 
 import { createSlice } from '@reduxjs/toolkit';
-import type { RootState } from '@hai3/uicore';
+import type { RootState } from '@hai3/react';
 import { _BLANK_SCREENSET_ID } from '../ids';
 
 const SLICE_KEY = `${_BLANK_SCREENSET_ID}/_blank` as const;
@@ -15,7 +15,8 @@ const SLICE_KEY = `${_BLANK_SCREENSET_ID}/_blank` as const;
  * Add your state properties here
  */
 export interface _BlankState {
-  // Add your state properties here
+  /** Placeholder property - remove when adding real state */
+  _placeholder?: never;
 }
 
 const initialState: _BlankState = {
@@ -41,7 +42,7 @@ export const _blankSlice = createSlice({
 export default _blankSlice;
 
 // Module augmentation - extends uicore RootState
-declare module '@hai3/uicore' {
+declare module '@hai3/react' {
   interface RootState {
     [SLICE_KEY]: _BlankState;
   }

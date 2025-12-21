@@ -37,6 +37,7 @@ export { BaseApiService } from './BaseApiService';
 
 // Export protocols
 export { RestProtocol } from './protocols/RestProtocol';
+export { SseProtocol } from './protocols/SseProtocol';
 
 // Export plugins
 export { MockPlugin } from './plugins/MockPlugin';

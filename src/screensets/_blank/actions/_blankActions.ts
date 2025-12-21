@@ -4,7 +4,7 @@
  * Following Flux: Actions emit events for effects to update Redux, and call APIs
  */
 
-// import { eventBus, apiRegistry } from '@hai3/uicore';
+// import { eventBus, apiRegistry } from '@hai3/react';
 // import { _BlankEvents } from '../events/_blankEvents';
 // import { _BLANK_DOMAIN } from '../api/_blankApiService';
 

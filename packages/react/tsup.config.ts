@@ -10,5 +10,14 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
-  external: ['@hai3/framework', 'react', 'react-dom'],
+  external: [
+    '@hai3/framework',
+    'react',
+    'react-dom',
+    'react/jsx-runtime',
+    'react-redux',
+    'use-sync-external-store',
+    'use-sync-external-store/shim',
+    /^use-sync-external-store/,
+  ],
 });

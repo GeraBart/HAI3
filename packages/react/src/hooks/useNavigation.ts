@@ -7,8 +7,7 @@
 import { useCallback } from 'react';
 import { useHAI3 } from '../HAI3Context';
 import { useAppSelector } from './useAppSelector';
-import { selectActiveScreen } from '@hai3/framework';
-import type { RootState } from '@hai3/framework';
+import type { RootStateWithLayout } from '@hai3/framework';
 import type { UseNavigationReturn } from '../types';
 
 /**
@@ -29,9 +28,19 @@ import type { UseNavigationReturn } from '../types';
  */
 export function useNavigation(): UseNavigationReturn {
   const app = useHAI3();
-  // Cast selector to RootState - the layout slice is registered dynamically
+  // Access state directly via useAppSelector - no selectors needed
+  // Layout slices use flat keys like 'layout/screen', not nested 'layout.screen'
   const currentScreen = useAppSelector(
-    selectActiveScreen as unknown as (state: RootState) => string | null
+    (state) => {
+      // Try flat key first (current SDK architecture)
+      const flatKey = state as Record<string, { activeScreen?: string | null }>;
+      if (flatKey['layout/screen']) {
+        return flatKey['layout/screen'].activeScreen ?? null;
+      }
+      // Fallback to nested structure (for backward compatibility)
+      const nested = state as unknown as RootStateWithLayout;
+      return nested.layout?.screen?.activeScreen ?? null;
+    }
   );
 
   // Navigate to a specific screen
@@ -54,11 +63,16 @@ export function useNavigation(): UseNavigationReturn {
     [app.actions]
   );
 
-  // Get current screenset from URL
-  const getCurrentScreenset = () => {
+  // Get current screenset from URL by looking up screenId
+  // URL format: /{screenId} - screenId is globally unique
+  const getCurrentScreenset = (): string | null => {
     if (typeof window === 'undefined') return null;
     const parts = window.location.pathname.split('/').filter(Boolean);
-    return parts[0] || null;
+    const screenId = parts[0];
+    if (!screenId) return null;
+
+    // Look up which screenset owns this screen
+    return app.routeRegistry?.getScreensetForScreen(screenId) ?? null;
   };
 
   return {

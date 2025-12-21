@@ -49,7 +49,8 @@ export interface ValidateComponentsResult {
 // Note: FC generics may contain nested braces, so we match until `= ` more permissively
 const INLINE_FC_PATTERN = /const\s+(\w+)\s*:\s*(?:React\.)?FC(?:<[\s\S]*?>)?\s*=/g;
 const INLINE_DATA_PATTERN = /const\s+(\w+)\s*(?::\s*\w+(?:\[\])?)?\s*=\s*\[[\s\S]*?\{[\s\S]*?\}/g;
-const UICORE_IMPORT_PATTERN = /import\s+(?:(?!\btype\b)[^;]*)\s+from\s+['"]@hai3\/uicore['"]/;
+// Detect business logic imports (hooks, state, events) from @hai3/react or @hai3/framework
+const BUSINESS_LOGIC_IMPORT_PATTERN = /import\s+(?:(?!\btype\b)[^;]*)\s+from\s+['"]@hai3\/(?:react|framework)['"]/;
 const INLINE_STYLE_PATTERN = /style\s*=\s*\{\{/g;
 const HEX_COLOR_PATTERN = /#[0-9a-fA-F]{3,8}(?=['"`])/g;
 
@@ -152,13 +153,13 @@ async function scanFile(
     }
   }
 
-  // Check for @hai3/uicore imports in uikit files
+  // Check for @hai3/react or @hai3/framework imports in uikit files
   if (isUikitFile) {
-    if (UICORE_IMPORT_PATTERN.test(content)) {
+    if (BUSINESS_LOGIC_IMPORT_PATTERN.test(content)) {
       // Find line number of the import
       let lineNumber = 1;
       for (let i = 0; i < lines.length; i++) {
-        if (UICORE_IMPORT_PATTERN.test(lines[i])) {
+        if (BUSINESS_LOGIC_IMPORT_PATTERN.test(lines[i])) {
           lineNumber = i + 1;
           break;
         }
@@ -168,7 +169,7 @@ async function scanFile(
         file: relativePath,
         line: lineNumber,
         rule: 'uikit-impurity',
-        message: 'UIKit component imports from @hai3/uicore',
+        message: 'UIKit component imports from @hai3/react or @hai3/framework',
         severity: 'error',
         suggestion:
           'UIKit components must be presentational only. Move to components/ if business logic is needed.',
@@ -271,7 +272,7 @@ export const validateComponentsCommand: CommandDefinition<
   ],
   options: [],
 
-  validate(args, ctx) {
+  validate(_args, ctx) {
     // Must be inside a project
     if (!ctx.projectRoot) {
       return validationError(

@@ -3,7 +3,7 @@
  * Based on the classic Dracula color scheme
  */
 
-import type { Theme } from '@hai3/uikit-contracts';
+import type { Theme } from '@hai3/uikit';
 
 /**
  * Dracula theme ID

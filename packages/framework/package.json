@@ -25,7 +25,8 @@
     "commands"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && npm run copy-dts",
+    "copy-dts": "cp src/index.d.ts.template dist/index.d.ts && cp src/index.d.ts.template dist/index.d.cts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {},
@@ -35,13 +36,13 @@
   },
   "peerDependencies": {
     "@hai3/state": "*",
-    "@hai3/layout": "*",
+    "@hai3/screensets": "*",
     "@hai3/api": "*",
     "@hai3/i18n": "*"
   },
   "peerDependenciesMeta": {
     "@hai3/state": { "optional": false },
-    "@hai3/layout": { "optional": false },
+    "@hai3/screensets": { "optional": false },
     "@hai3/api": { "optional": false },
     "@hai3/i18n": { "optional": false }
   },

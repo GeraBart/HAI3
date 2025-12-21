@@ -1,22 +1,34 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "_comment": [
-    "HAI3 TypeScript Configuration (Root)",
-    "",
-    "This file extends the monorepo preset which extends standalone.",
-    "Architecture: presets/standalone/configs/tsconfig.json -> presets/monorepo/configs/tsconfig.json -> tsconfig.json (this file)",
-    "",
-    "NOTE: Unlike JS configs, tsconfig paths are relative to file location.",
-    "So 'include' and 'references' must be duplicated at each level.",
-    "",
-    "DO NOT add compilerOptions here - add them to:",
-    "- presets/standalone/configs/tsconfig.json for options that apply to standalone HAI3 projects",
-    "- presets/monorepo/configs/tsconfig.json for monorepo-specific options"
-  ],
-  "extends": "./presets/monorepo/configs/tsconfig.json",
+  "extends": "./packages/cli/template-sources/project/configs/tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/screensets/*": ["./src/screensets/*"],
+      "@/themes/*": ["./src/themes/*"],
+      "@/components/*": ["./src/components/*"],
+      "@hai3/state": ["./packages/state/src/index.ts"],
+      "@hai3/state/*": ["./packages/state/src/*"],
+      "@hai3/layout": ["./packages/layout/src/index.ts"],
+      "@hai3/layout/*": ["./packages/layout/src/*"],
+      "@hai3/api": ["./packages/api/src/index.ts"],
+      "@hai3/api/*": ["./packages/api/src/*"],
+      "@hai3/i18n": ["./packages/i18n/src/index.ts"],
+      "@hai3/i18n/*": ["./packages/i18n/src/*"],
+      "@hai3/framework": ["./packages/framework/src/index.ts"],
+      "@hai3/framework/*": ["./packages/framework/src/*"],
+      "@hai3/react": ["./packages/react/src/index.ts"],
+      "@hai3/react/*": ["./packages/react/src/*"],
+      "@hai3/uikit": ["./packages/uikit/src/index.ts"],
+      "@hai3/uikit/*": ["./packages/uikit/src/*"],
+      "@hai3/studio": ["./packages/studio/src/index.ts"],
+      "@hai3/studio/*": ["./packages/studio/src/*"],
+      "@hai3/cli": ["./packages/cli/src/index.ts"],
+      "@hai3/cli/*": ["./packages/cli/src/*"]
+    }
   },
-  "include": ["src"],
+  "include": ["src", "packages/*/src"],
+  "exclude": ["packages/*/dist"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

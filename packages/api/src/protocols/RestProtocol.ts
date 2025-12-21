@@ -80,7 +80,7 @@ export class RestProtocol implements ApiProtocol {
         'Content-Type': this.restConfig.contentType,
         ...config.headers,
       },
-      timeout: config.timeout,
+      timeout: this.restConfig.timeout ?? config.timeout,
       withCredentials: this.restConfig.withCredentials,
     });
   }
@@ -99,37 +99,45 @@ export class RestProtocol implements ApiProtocol {
 
   /**
    * Perform GET request.
+   * @template TResponse - Response type
    */
-  async get<T>(url: string, params?: Record<string, string>): Promise<T> {
-    return this.request<T>('GET', url, undefined, params);
+  async get<TResponse>(url: string, params?: Record<string, string>): Promise<TResponse> {
+    return this.request<TResponse>('GET', url, undefined, params);
   }
 
   /**
    * Perform POST request.
+   * @template TResponse - Response type
+   * @template TRequest - Request body type (optional, for type-safe requests)
    */
-  async post<T>(url: string, data?: unknown): Promise<T> {
-    return this.request<T>('POST', url, data);
+  async post<TResponse, TRequest = unknown>(url: string, data?: TRequest): Promise<TResponse> {
+    return this.request<TResponse>('POST', url, data);
   }
 
   /**
    * Perform PUT request.
+   * @template TResponse - Response type
+   * @template TRequest - Request body type (optional, for type-safe requests)
    */
-  async put<T>(url: string, data?: unknown): Promise<T> {
-    return this.request<T>('PUT', url, data);
+  async put<TResponse, TRequest = unknown>(url: string, data?: TRequest): Promise<TResponse> {
+    return this.request<TResponse>('PUT', url, data);
   }
 
   /**
    * Perform PATCH request.
+   * @template TResponse - Response type
+   * @template TRequest - Request body type (optional, for type-safe requests)
    */
-  async patch<T>(url: string, data?: unknown): Promise<T> {
-    return this.request<T>('PATCH', url, data);
+  async patch<TResponse, TRequest = unknown>(url: string, data?: TRequest): Promise<TResponse> {
+    return this.request<TResponse>('PATCH', url, data);
   }
 
   /**
    * Perform DELETE request.
+   * @template TResponse - Response type
    */
-  async delete<T>(url: string): Promise<T> {
-    return this.request<T>('DELETE', url);
+  async delete<TResponse>(url: string): Promise<TResponse> {
+    return this.request<TResponse>('DELETE', url);
   }
 
   // ============================================================================

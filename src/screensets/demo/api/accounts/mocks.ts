@@ -2,13 +2,8 @@
  * Mock data for accounts service
  */
 
-import {
-  UserRole,
-  Language,
-  type ApiUser,
-  type GetCurrentUserResponse,
-  type MockMap,
-} from '@hai3/uicore';
+import { Language, type MockMap } from '@hai3/react';
+import { UserRole, type ApiUser, type GetCurrentUserResponse } from '@/api';
 import './extra';
 
 export const mockDemoUser: ApiUser = {

@@ -13,10 +13,10 @@
 ## CRITICAL RULES
 - REQUIRED: Use @hai3/uikit components; manual styling only in uikit/base/.
 - Data flow must follow EVENTS.md.
-- State management must follow @hai3/uicore Redux+Flux pattern.
+- State management must follow @hai3/state Redux+Flux pattern.
 - Screensets are isolated; no hardcoded screenset names in shared code.
 - Registry imports only the screenset root file.
-- No direct slice imports; use @hai3/uicore or local actions.
+- No direct slice imports; use @hai3/react hooks or local actions.
 
 ## STATE MANAGEMENT RULES
 - REQUIRED: Export slice object (not just reducer) as default from slice files.
@@ -75,7 +75,7 @@
 - REQUIRED: Screenset uikit/ structure: base/, composite/, icons/ (mirrors global).
 - REQUIRED: uikit/base/ for rare primitives; needs strong justification.
 - REQUIRED: uikit/composite/ for screenset-specific composites (value/onChange).
-- FORBIDDEN: @hai3/uicore imports in screensets/*/uikit/ (except types).
+- FORBIDDEN: @hai3/state or @hai3/framework imports in screensets/*/uikit/ (UI only).
 - REQUIRED: Inline styles allowed ONLY in uikit/base/; composite uses theme tokens.
 
 ## COMPONENT PLACEMENT RULES

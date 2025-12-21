@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
-import { TextLoader } from '@hai3/uicore';
+import { TextLoader } from '@hai3/react';
 
 export interface ExpandableButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /**

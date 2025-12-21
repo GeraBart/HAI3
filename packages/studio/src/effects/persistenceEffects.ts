@@ -1,4 +1,4 @@
-import { eventBus } from '@hai3/uicore';
+import { eventBus } from '@hai3/react';
 import { StudioEvents } from '../events/studioEvents';
 import { saveStudioState } from '../utils/persistence';
 import { STORAGE_KEYS } from '../types';

@@ -1,8 +1,7 @@
 import React from 'react';
 import { upperFirst } from 'lodash';
-import { useAppDispatch, useAppSelector, useTranslation } from '@hai3/uicore';
+import { useTheme, useTranslation } from '@hai3/react';
 import { ButtonVariant } from '@hai3/uikit';
-import { changeTheme, themeRegistry } from '@hai3/uicore';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -14,7 +13,7 @@ import { useStudioContext } from '../StudioProvider';
 
 /**
  * ThemeSelector Component
- * Redux-aware component for theme selection using DropdownMenu
+ * Uses useTheme hook for theme selection using DropdownMenu
  */
 
 export interface ThemeSelectorProps {
@@ -24,8 +23,7 @@ export interface ThemeSelectorProps {
 export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   className = '',
 }) => {
-  const dispatch = useAppDispatch();
-  const currentTheme = useAppSelector((state) => state.uicore.layout.theme);
+  const { currentTheme, themes, setTheme } = useTheme();
   const { portalContainer } = useStudioContext();
   const { t } = useTranslation();
 
@@ -36,9 +34,6 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       .join(' ');
   };
 
-  // Get themes directly from registry
-  const availableThemes = themeRegistry.getThemeNames();
-
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <label className="text-sm text-muted-foreground whitespace-nowrap">
@@ -47,16 +42,16 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <DropdownButton variant={ButtonVariant.Outline}>
-            {formatThemeName(currentTheme)}
+            {formatThemeName(currentTheme || '')}
           </DropdownButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" container={portalContainer} className="z-[99999] pointer-events-auto">
-          {availableThemes.map((themeName) => (
+          {themes.map((theme) => (
             <DropdownMenuItem
-              key={themeName}
-              onClick={() => dispatch(changeTheme(themeName))}
+              key={theme.id}
+              onClick={() => setTheme(theme.id)}
             >
-              {formatThemeName(themeName)}
+              {formatThemeName(theme.name || theme.id)}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

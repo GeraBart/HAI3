@@ -1,23 +1,24 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider, apiRegistry, store } from '@hai3/uicore';
+import { HAI3Provider, apiRegistry } from '@hai3/react';
 import { Toaster } from '@hai3/uikit';
+import { AccountsApiService, ACCOUNTS_DOMAIN } from '@/api';
 import '@hai3/uikit/styles'; // UI Kit styles
 import '@/uikit/uikitRegistry'; // Auto-registers UI Kit (components + icons)
 import '@/screensets/screensetRegistry'; // Auto-registers screensets (includes API services + mocks + i18n loaders)
 import '@/themes/themeRegistry'; // Auto-registers themes
 import App from './App';
 
+// Register accounts service (application-level service for user info)
+(apiRegistry as { register(domain: string, service: typeof AccountsApiService): void }).register(
+  ACCOUNTS_DOMAIN,
+  AccountsApiService
+);
+
 // Initialize API services (using mock mode by default for dev)
-interface LegacyState {
-  'layout/app'?: { useMockApi?: boolean };
-  uicore?: { app?: { useMockApi?: boolean } };
-}
-const state = store.getState() as unknown as LegacyState;
-const initialUseMockApi = state?.['layout/app']?.useMockApi ?? state?.uicore?.app?.useMockApi ?? true;
 apiRegistry.initialize({
-  useMockApi: initialUseMockApi,
+  useMockApi: true,
   mockDelay: 500,
 });
 

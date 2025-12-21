@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAppSelector, useAppDispatch, fetchCurrentUser, useTranslation, TextLoader, useScreenTranslations, I18nRegistry, Language, type AppDispatch } from '@hai3/uicore';
+import { useAppSelector, useAppDispatch, fetchCurrentUser, useTranslation, TextLoader, useScreenTranslations, I18nRegistry, Language, type AppDispatch } from '@hai3/react';
 import type { ThunkAction, UnknownAction } from '@reduxjs/toolkit';
 
 // Type helper for thunk actions

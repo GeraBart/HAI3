@@ -54,6 +54,12 @@ export class I18nRegistryImpl implements II18nRegistry {
   /** Translation loaders: namespace -> loader function */
   private loaders: Map<string, TranslationLoader> = new Map();
 
+  /** Subscribers for translation changes */
+  private subscribers: Set<() => void> = new Set();
+
+  /** Version counter for React re-rendering */
+  private version: number = 0;
+
   /** Language file mapping */
   static readonly LANGUAGE_FILE_MAP: Record<Language, string> = {
     [Language.English]: 'en.json',
@@ -110,6 +116,34 @@ export class I18nRegistryImpl implements II18nRegistry {
       this.dictionaries.set(namespace, new Map());
     }
     this.dictionaries.get(namespace)!.set(language, translations);
+    this.notifySubscribers();
+  }
+
+  /**
+   * Subscribe to translation changes.
+   * Returns an unsubscribe function.
+   */
+  subscribe(callback: () => void): () => void {
+    this.subscribers.add(callback);
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  }
+
+  /**
+   * Notify all subscribers of a change.
+   */
+  private notifySubscribers(): void {
+    this.version++;
+    this.subscribers.forEach((callback) => callback());
+  }
+
+  /**
+   * Get the current version number.
+   * Used by React to detect changes.
+   */
+  getVersion(): number {
+    return this.version;
   }
 
   /**
@@ -332,14 +366,16 @@ export class I18nRegistryImpl implements II18nRegistry {
 
   /**
    * Load translations for a language.
-   * Excludes screenset.* and screen.* namespaces (lazy-loaded separately).
+   * Excludes screen.* and screenset.* namespaces which are lazy-loaded:
+   * - screen.* namespaces: loaded when screen mounts
+   * - screenset.* namespaces: loaded when screenset is activated
    */
   async loadLanguage(language: Language): Promise<void> {
     const loadPromises: Promise<void>[] = [];
 
     this.loaders.forEach((_loader, namespace) => {
-      // Skip screenset and screen namespaces (lazy-loaded)
-      if (namespace.startsWith('screenset.') || namespace.startsWith('screen.')) {
+      // Skip screen and screenset namespaces (lazy-loaded on demand)
+      if (namespace.startsWith('screen.') || namespace.startsWith('screenset.')) {
         return;
       }
       loadPromises.push(this.loadNamespace(namespace, language));
@@ -399,8 +435,8 @@ export class I18nRegistryImpl implements II18nRegistry {
    * ```
    */
   static createLoader(translationMap: TranslationMap): TranslationLoader {
-    return async (language: Language): Promise<TranslationDictionary> => {
-      const importFn = translationMap[language];
+    return async (language: Language | string): Promise<TranslationDictionary> => {
+      const importFn = translationMap[language as Language];
       if (!importFn) {
         throw new Error(`No translation found for language: ${language}`);
       }
@@ -419,8 +455,8 @@ export class I18nRegistryImpl implements II18nRegistry {
   static createLoaderFromDirectory(
     importFn: (filename: string) => Promise<{ default: TranslationDictionary }>
   ): TranslationLoader {
-    return async (language: Language): Promise<TranslationDictionary> => {
-      const filename = I18nRegistryImpl.LANGUAGE_FILE_MAP[language];
+    return async (language: Language | string): Promise<TranslationDictionary> => {
+      const filename = I18nRegistryImpl.LANGUAGE_FILE_MAP[language as Language];
       const module = await importFn(filename);
       return module.default;
     };

@@ -17,8 +17,8 @@ import type {
 
 import type { Reducer } from '@reduxjs/toolkit';
 
-// From @hai3/layout
-import type { ScreensetDefinition } from '@hai3/layout';
+// From @hai3/screensets
+import type { ScreensetRegistry } from '@hai3/screensets';
 
 // From @hai3/api
 import type { ApiRegistry } from '@hai3/api';
@@ -261,22 +261,8 @@ export interface HAI3AppBuilder {
 // Built App Interface
 // ============================================================================
 
-/**
- * Screenset Registry Interface
- * Registry for managing screensets.
- */
-export interface ScreensetRegistry {
-  /** Register a screenset */
-  register(config: ScreensetDefinition): void;
-  /** Register multiple screensets */
-  registerMany(configs: ScreensetDefinition[]): void;
-  /** Get screenset by key */
-  get(key: string): ScreensetDefinition | undefined;
-  /** Get all screensets */
-  getAll(): ScreensetDefinition[];
-  /** Clear registry */
-  clear(): void;
-}
+// Re-export ScreensetRegistry from SDK - do NOT duplicate the interface
+export type { ScreensetRegistry } from '@hai3/screensets';
 
 /**
  * Theme Configuration
@@ -294,12 +280,41 @@ export interface ThemeConfig {
 }
 
 /**
+ * Legacy Theme type (from @hai3/uikit)
+ * Used for backward compatibility with old register(id, theme) pattern.
+ * Using 'unknown' as the base type to accept any theme structure.
+ */
+export type LegacyTheme = unknown;
+
+/**
+ * Theme apply function type
+ * Generic to accept any theme type from UI kit implementations.
+ * @internal - uses generic function signature for compatibility with various theme implementations
+ */
+export interface ThemeApplyFn {
+  (theme: unknown, themeName?: string): void;
+}
+
+/**
  * Theme Registry Interface
  * Registry for managing themes.
  */
 export interface ThemeRegistry {
-  /** Register a theme */
-  register(config: ThemeConfig): void;
+  /**
+   * Register a theme.
+   * Supports both new API (config only) and legacy API (id + theme).
+   *
+   * @param configOrId - ThemeConfig or theme ID (for legacy API)
+   * @param legacyTheme - Legacy Theme object (optional, for backward compatibility)
+   */
+  register(configOrId: ThemeConfig | string, legacyTheme?: LegacyTheme): void;
+
+  /**
+   * Set the apply function (legacy API).
+   * @deprecated Use the built-in apply or provide applyFn at construction.
+   */
+  setApplyFunction(applyFn: ThemeApplyFn): void;
+
   /** Get theme by ID */
   get(id: string): ThemeConfig | undefined;
   /** Get all themes */
@@ -308,6 +323,19 @@ export interface ThemeRegistry {
   apply(id: string): void;
   /** Get current theme */
   getCurrent(): ThemeConfig | undefined;
+
+  /**
+   * Subscribe to theme changes.
+   * @param callback - Called when theme changes
+   * @returns Unsubscribe function
+   */
+  subscribe(callback: () => void): () => void;
+
+  /**
+   * Get current version number.
+   * Used by React for re-rendering on theme changes.
+   */
+  getVersion(): number;
 }
 
 /**
@@ -315,9 +343,15 @@ export interface ThemeRegistry {
  * Registry for managing routes (auto-synced from screensets).
  */
 export interface RouteRegistry {
-  /** Check if a screen exists */
+  /** Check if a screen exists by screenId only (globally unique) */
+  hasScreenById(screenId: string): boolean;
+  /** Check if a screen exists (legacy, requires both IDs) */
   hasScreen(screensetId: string, screenId: string): boolean;
-  /** Get screen loader */
+  /** Get screenset ID for a given screen ID (reverse lookup) */
+  getScreensetForScreen(screenId: string): string | undefined;
+  /** Get screen loader by screenId only */
+  getScreenById(screenId: string): (() => Promise<{ default: React.ComponentType }>) | undefined;
+  /** Get screen loader (legacy, requires both IDs) */
   getScreen(screensetId: string, screenId: string): (() => Promise<{ default: React.ComponentType }>) | undefined;
   /** Get all routes */
   getAll(): Array<{ screensetId: string; screenId: string }>;

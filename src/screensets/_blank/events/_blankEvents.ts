@@ -3,7 +3,7 @@
  * Domain-specific events for this screenset
  */
 
-import '@hai3/uicore';
+import '@hai3/react';
 import { _BLANK_SCREENSET_ID } from '../ids';
 
 const DOMAIN_ID = '_blank';
@@ -25,8 +25,10 @@ void DOMAIN_ID;
  * Module augmentation for type-safe event payloads
  * Add your event payload types here
  */
-declare module '@hai3/uicore' {
+declare module '@hai3/react' {
   interface EventPayloadMap {
+    /** Placeholder - remove when adding real events */
+    '_blank/_placeholder'?: never;
     // Example: [_BlankEvents.Selected]: { id: string };
   }
 }

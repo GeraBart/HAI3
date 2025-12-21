@@ -5,8 +5,8 @@
  */
 
 import { eventBus } from '@hai3/state';
-import type { HAI3Plugin, ChangeThemePayload } from '../types';
-import { createThemeRegistry } from '../registries/themeRegistry';
+import type { HAI3Plugin, ChangeThemePayload, ThemeRegistry } from '../types';
+import { themeRegistry as singletonThemeRegistry } from '../compat';
 
 // Define theme events for module augmentation
 declare module '@hai3/state' {
@@ -41,7 +41,8 @@ function changeTheme(payload: ChangeThemePayload): void {
  * ```
  */
 export function themes(): HAI3Plugin {
-  const themeRegistry = createThemeRegistry();
+  // Use the singleton theme registry - user themes register to this
+  const themeRegistry = singletonThemeRegistry as ThemeRegistry;
 
   return {
     name: 'themes',
@@ -61,6 +62,12 @@ export function themes(): HAI3Plugin {
       eventBus.on('theme/changed', (payload: ChangeThemePayload) => {
         themeRegistry.apply(payload.themeId);
       });
+
+      // Bootstrap: Apply the first registered theme (or default)
+      const themes = themeRegistry.getAll();
+      if (themes.length > 0) {
+        themeRegistry.apply(themes[0].id);
+      }
     },
   };
 }

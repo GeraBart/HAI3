@@ -33,5 +33,11 @@ dist-ssr
 src/themes/tailwindColors.ts
 packages/cli/templates
 
+# NPM pack artifacts
+*.tgz
+
 # Claude Code local settings
 .claude/settings.local.json
+
+# HAI3 migration tracker (project-local state)
+.hai3/

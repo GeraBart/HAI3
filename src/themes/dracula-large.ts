@@ -3,7 +3,7 @@
  * Based on Dracula theme with larger spacing and typography
  */
 
-import type { Theme } from '@hai3/uikit-contracts';
+import type { Theme } from '@hai3/uikit';
 
 /**
  * Dracula Large theme ID

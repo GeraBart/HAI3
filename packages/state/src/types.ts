@@ -307,18 +307,32 @@ export interface SliceObject<TState> {
  * Function that sets up effects (event subscriptions) for a slice.
  * Called by registerSlice after the slice is registered.
  *
+ * IMPORTANT: Effect initializers SHOULD return a cleanup function to unsubscribe
+ * all event handlers. This prevents duplicate subscriptions during HMR or
+ * when slices are re-registered.
+ *
  * @param dispatch - The store's dispatch function
+ * @returns Optional cleanup function to unsubscribe from events
  *
  * @example
  * ```typescript
  * const initThreadsEffects: EffectInitializer = (dispatch) => {
- *   eventBus.on('chat/threads/selected', ({ threadId }) => {
- *     dispatch(threadsSlice.actions.setSelected(threadId));
+ *   const sub1 = eventBus.on('chat/threads/selected', ({ threadId }) => {
+ *     dispatch(setCurrentThreadId(threadId));
  *   });
+ *   const sub2 = eventBus.on('chat/threads/created', ({ thread }) => {
+ *     dispatch(addThread(thread));
+ *   });
+ *
+ *   // Return cleanup function
+ *   return () => {
+ *     sub1.unsubscribe();
+ *     sub2.unsubscribe();
+ *   };
  * };
  * ```
  */
-export type EffectInitializer = (dispatch: AppDispatch) => void;
+export type EffectInitializer = (dispatch: AppDispatch) => void | EffectCleanup;
 
 /**
  * Effect Cleanup Function

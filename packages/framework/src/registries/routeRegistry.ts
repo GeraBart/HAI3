@@ -4,7 +4,7 @@
  * Framework Layer: L2
  */
 
-import type { MenuScreenItem, ScreenLoader } from '@hai3/layout';
+import type { MenuScreenItem, ScreenLoader } from '@hai3/screensets';
 import type { RouteRegistry, ScreensetRegistry } from '../types';
 
 /**
@@ -40,10 +40,12 @@ export function createRouteRegistry(
 
     screensets.forEach((screenset) => {
       screenset.menu.forEach((menuScreenItem: MenuScreenItem) => {
-        if (menuScreenItem.menuItem.screenId && menuScreenItem.screen) {
+        // Use screenId if provided, otherwise fallback to id
+        const screenId = menuScreenItem.menuItem.screenId ?? menuScreenItem.menuItem.id;
+        if (screenId && menuScreenItem.screen) {
           routes!.push({
             screensetId: screenset.id,
-            screenId: menuScreenItem.menuItem.screenId,
+            screenId,
             loader: menuScreenItem.screen,
           });
         }
@@ -55,7 +57,15 @@ export function createRouteRegistry(
 
   return {
     /**
-     * Check if a screen exists.
+     * Check if a screen exists by screenId only (globally unique).
+     */
+    hasScreenById(screenId: string): boolean {
+      const allRoutes = buildRoutes();
+      return allRoutes.some((route) => route.screenId === screenId);
+    },
+
+    /**
+     * Check if a screen exists (legacy, requires both IDs).
      */
     hasScreen(screensetId: string, screenId: string): boolean {
       const allRoutes = buildRoutes();
@@ -66,7 +76,26 @@ export function createRouteRegistry(
     },
 
     /**
-     * Get screen loader.
+     * Get screenset ID for a given screen ID (reverse lookup).
+     * Screen IDs are globally unique across all screensets.
+     */
+    getScreensetForScreen(screenId: string): string | undefined {
+      const allRoutes = buildRoutes();
+      const route = allRoutes.find((r) => r.screenId === screenId);
+      return route?.screensetId;
+    },
+
+    /**
+     * Get screen loader by screenId only.
+     */
+    getScreenById(screenId: string): ScreenLoader | undefined {
+      const allRoutes = buildRoutes();
+      const route = allRoutes.find((r) => r.screenId === screenId);
+      return route?.loader;
+    },
+
+    /**
+     * Get screen loader (legacy, requires both IDs).
      */
     getScreen(
       screensetId: string,

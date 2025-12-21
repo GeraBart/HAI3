@@ -7,7 +7,7 @@
 ## SCOPE
 - All code under packages/uikit/**.
 - UI Kit is presentational only; no state management, no business logic.
-- Must implement the contracts from @hai3/uikit-contracts.
+- All types and contracts are defined within @hai3/uikit itself.
 
 ## CRITICAL RULES
 - Base components come from shadcn; composites are built from base components.
@@ -33,7 +33,7 @@
 
 ## PRE-DIFF CHECKLIST
 - [ ] Base or composite placement is correct.
-- [ ] Component props and types match @hai3/uikit-contracts.
+- [ ] Component props and types match @hai3/uikit contracts.
 - [ ] No Redux, effects, or business logic added.
 - [ ] Icons exported from icons/, no string literal IDs.
 - [ ] Skeleton used for loading states where needed.

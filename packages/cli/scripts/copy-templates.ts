@@ -1,16 +1,18 @@
 /**
  * Copy template files from main project to CLI package
  *
+ * This script is DRIVEN BY manifest.yaml - the single source of truth for template assembly.
+ *
  * 3-Stage Pipeline:
- * - Stage 1a: Copy static presets from presets/standalone/ (extensible: add files/dirs, they're auto-copied)
+ * - Stage 1a: Copy static presets from packages/cli/template-sources/project/
  * - Stage 1b: Copy root project files (source code that IS the monorepo app)
- * - Stage 1c: Assemble .ai/ from markers (uses .ai/standalone-overrides/ for @standalone:override files)
+ * - Stage 1c: Assemble .ai/ from markers (uses ai-overrides/ for @standalone:override files)
  * - Stage 2: Generate IDE rules and command adapters
  *
  * AI CONFIGURATION STRATEGY:
  * - Root .ai/ is canonical source of truth for all rules and commands
  * - Files marked with <!-- @standalone --> are copied verbatim
- * - Files marked with <!-- @standalone:override --> use versions from .ai/standalone-overrides/
+ * - Files marked with <!-- @standalone:override --> use versions from ai-overrides/
  * - Files without markers are monorepo-only (not copied)
  * - hai3dev-* commands are monorepo-only (not copied to standalone projects)
  * - Command adapters are GENERATED for all IDEs
@@ -20,6 +22,7 @@ import fs from 'fs-extra';
 import lodash from 'lodash';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
 
 const { trim } = lodash;
 
@@ -27,41 +30,66 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLI_ROOT = path.resolve(__dirname, '..');
 const PROJECT_ROOT = path.resolve(CLI_ROOT, '../..');
 const TEMPLATES_DIR = path.join(CLI_ROOT, 'templates');
+const MANIFEST_PATH = path.join(CLI_ROOT, 'template-sources', 'manifest.yaml');
 
 /**
- * Template configuration - simplified 3-stage pipeline
+ * Manifest schema (loaded from manifest.yaml)
  */
-const config = {
-  // Stage 1b: Root-level files to copy (relative to project root)
-  rootFiles: [
-    'index.html',
-    'postcss.config.ts',
-    'tailwind.config.ts',
-    'tsconfig.node.json',
-    'vite.config.ts',
-    '.gitignore',
-    'src/vite-env.d.ts',
-    'src/main.tsx',
-    'src/App.tsx',
-    'src/screensets/screensetRegistry.tsx',
-  ],
+interface Manifest {
+  version: string;
+  description: string;
+  project: {
+    source: string;
+    description: string;
+    contents: string[];
+  };
+  layout: {
+    source: string;
+    description: string;
+    destination: string;
+    files: string[];
+  };
+  root: {
+    description: string;
+    files: string[];
+    directories: string[];
+    screensets: string[];
+    screensetTemplate: string;
+  };
+  ai_overrides: {
+    source: string;
+    description: string;
+    usage: string;
+    contents: string[];
+  };
+  generated: {
+    description: string;
+    files: string[];
+  };
+  output: {
+    directory: string;
+    description: string;
+  };
+}
 
-  // Stage 1b: Directories to copy entirely (relative to project root)
-  rootDirectories: [
-    'src/themes',
-    'src/uikit',
-    'src/icons',
-  ],
+/**
+ * Load and parse manifest.yaml
+ */
+async function loadManifest(): Promise<Manifest> {
+  if (!(await fs.pathExists(MANIFEST_PATH))) {
+    throw new Error(`Manifest not found at ${MANIFEST_PATH}`);
+  }
 
-  // Stage 1c: Override files location (for @standalone:override markers)
-  standaloneOverridesDir: '.ai/standalone-overrides',
+  const content = await fs.readFile(MANIFEST_PATH, 'utf-8');
+  const manifest = yaml.load(content) as Manifest;
 
-  // Screensets to include in new projects
-  screensets: ['demo'],
+  // Validate required fields
+  if (!manifest.version || !manifest.project || !manifest.root) {
+    throw new Error('Invalid manifest: missing required fields');
+  }
 
-  // Screenset template for `hai3 screenset create`
-  screensetTemplate: '_blank',
-};
+  return manifest;
+}
 
 /**
  * Extract description from a command file
@@ -297,15 +325,19 @@ async function countFiles(dir: string): Promise<number> {
 async function copyTemplates() {
   console.log('📦 Copying templates from main project...\n');
 
+  // Load manifest - single source of truth
+  const manifest = await loadManifest();
+  console.log(`📄 Loaded manifest v${manifest.version}\n`);
+
   // Clean templates directory
   await fs.remove(TEMPLATES_DIR);
   await fs.ensureDir(TEMPLATES_DIR);
 
   // ============================================
-  // STAGE 1a: Copy static presets
+  // STAGE 1a: Copy static presets (from manifest.project)
   // ============================================
-  console.log('Stage 1a: Static Presets (presets/standalone/):');
-  const presetsDir = path.join(PROJECT_ROOT, 'presets/standalone');
+  console.log(`Stage 1a: Static Presets (${manifest.project.source}):`);
+  const presetsDir = path.join(CLI_ROOT, 'template-sources/project');
 
   // Copy eslint-plugin-local
   const eslintPluginSrc = path.join(presetsDir, 'eslint-plugin-local');
@@ -323,7 +355,10 @@ async function copyTemplates() {
     const configFiles = await fs.readdir(configsSrc);
     for (const file of configFiles) {
       const srcPath = path.join(configsSrc, file);
-      const destPath = path.join(TEMPLATES_DIR, file);
+      // Rename _pre-commit-config.yaml to .pre-commit-config.yaml
+      // (stored with underscore to prevent prek from detecting it during monorepo commits)
+      const destFileName = file === '_pre-commit-config.yaml' ? '.pre-commit-config.yaml' : file;
+      const destPath = path.join(TEMPLATES_DIR, destFileName);
 
       // Transform eslint.config.js path for standalone projects
       // In monorepo: ../eslint-plugin-local (configs/ -> eslint-plugin-local/)
@@ -354,7 +389,7 @@ async function copyTemplates() {
     console.log(`  ✓ scripts/ (${scriptFiles.length} files)`);
   }
 
-  // Copy root-level files from presets/standalone/ (extensible: add files here, they're auto-copied)
+  // Copy root-level files from template-sources/project/
   const presetsEntries = await fs.readdir(presetsDir, { withFileTypes: true });
   const rootFiles = presetsEntries.filter(e => e.isFile());
   for (const file of rootFiles) {
@@ -363,12 +398,12 @@ async function copyTemplates() {
   }
 
   // ============================================
-  // STAGE 1b: Copy root project files
+  // STAGE 1b: Copy root project files (from manifest.root)
   // ============================================
   console.log('\nStage 1b: Root Project Files:');
 
-  // Copy root files
-  for (const file of config.rootFiles) {
+  // Copy root files from manifest
+  for (const file of manifest.root.files) {
     const src = path.join(PROJECT_ROOT, file);
     const dest = path.join(TEMPLATES_DIR, file);
 
@@ -380,8 +415,8 @@ async function copyTemplates() {
     }
   }
 
-  // Copy root directories
-  for (const dir of config.rootDirectories) {
+  // Copy root directories from manifest
+  for (const dir of manifest.root.directories) {
     const src = path.join(PROJECT_ROOT, dir);
     const dest = path.join(TEMPLATES_DIR, dir);
 
@@ -400,8 +435,8 @@ async function copyTemplates() {
     }
   }
 
-  // Copy screensets
-  for (const screenset of config.screensets) {
+  // Copy screensets from manifest
+  for (const screenset of manifest.root.screensets) {
     const src = path.join(PROJECT_ROOT, 'src/screensets', screenset);
     const dest = path.join(TEMPLATES_DIR, 'src/screensets', screenset);
 
@@ -414,8 +449,8 @@ async function copyTemplates() {
     }
   }
 
-  // Copy screenset template
-  const templateSrc = path.join(PROJECT_ROOT, 'src/screensets', config.screensetTemplate);
+  // Copy screenset template from manifest
+  const templateSrc = path.join(PROJECT_ROOT, 'src/screensets', manifest.root.screensetTemplate);
   const templateDest = path.join(TEMPLATES_DIR, 'screenset-template');
   if (await fs.pathExists(templateSrc)) {
     await fs.copy(templateSrc, templateDest);
@@ -423,9 +458,8 @@ async function copyTemplates() {
     console.log(`  ✓ screenset-template/ (${fileCount} files)`);
   }
 
-  // Copy layout templates (from packages/cli/templates-source/layout/)
-  // These are separate from the project files and provide scaffold layout options
-  const layoutSrc = path.join(CLI_ROOT, 'templates-source', 'layout');
+  // Copy layout templates from manifest
+  const layoutSrc = path.join(CLI_ROOT, 'template-sources', 'layout');
   const layoutDest = path.join(TEMPLATES_DIR, 'layout');
   if (await fs.pathExists(layoutSrc)) {
     await fs.copy(layoutSrc, layoutDest);
@@ -434,12 +468,12 @@ async function copyTemplates() {
   }
 
   // ============================================
-  // STAGE 1c: Assemble .ai/ from markers
+  // STAGE 1c: Assemble .ai/ from markers (using manifest.ai_overrides)
   // ============================================
   console.log('\nStage 1c: AI Configuration (marker-based):');
   const aiSourceDir = path.join(PROJECT_ROOT, '.ai');
   const aiDestDir = path.join(TEMPLATES_DIR, '.ai');
-  const overridesDir = path.join(PROJECT_ROOT, config.standaloneOverridesDir);
+  const overridesDir = path.join(CLI_ROOT, 'template-sources', 'ai-overrides');
 
   await fs.ensureDir(aiDestDir);
 
@@ -462,7 +496,7 @@ async function copyTemplates() {
       await fs.copy(srcPath, destPath);
       standaloneCount++;
     } else if (marker === 'override') {
-      // Copy from presets/standalone-overrides/
+      // Copy from ai-overrides/ (path from manifest)
       const overridePath = path.join(overridesDir, relativePath);
       if (await fs.pathExists(overridePath)) {
         await fs.copy(overridePath, destPath);
@@ -496,24 +530,26 @@ async function copyTemplates() {
   console.log('  ✓ .windsurf/rules/hai3.md (pointer)');
 
   // ============================================
-  // Write manifest
+  // Write output manifest.json (runtime manifest for CLI)
   // ============================================
   const standaloneCommandFiles = standaloneCommands
     .filter((f) => f.startsWith('commands/') && !f.includes('hai3dev-') && !f.includes('commands/internal/'));
-  const manifest = {
+  const outputManifest = {
     pipeline: '3-stage',
+    sourceManifest: 'packages/cli/template-sources/manifest.yaml',
     stage1a: {
-      source: 'presets/standalone/',
-      items: ['eslint-plugin-local/', 'configs/ (flattened)', 'scripts/'],
+      source: manifest.project.source,
+      items: manifest.project.contents,
     },
     stage1b: {
       source: 'project root',
-      rootFiles: config.rootFiles,
-      directories: config.rootDirectories,
-      screensets: config.screensets,
+      rootFiles: manifest.root.files,
+      directories: manifest.root.directories,
+      screensets: manifest.root.screensets,
     },
     stage1c: {
       source: 'root .ai/ (marker-based)',
+      overridesSource: manifest.ai_overrides.source,
       standaloneFiles: markedFiles
         .filter((f) => f.marker === 'standalone' && !f.relativePath.includes('hai3dev-') && !f.relativePath.includes('commands/internal/'))
         .map((f) => f.relativePath),
@@ -532,7 +568,7 @@ async function copyTemplates() {
     screensetTemplate: 'screenset-template',
     generatedAt: new Date().toISOString(),
   };
-  await fs.writeJson(path.join(TEMPLATES_DIR, 'manifest.json'), manifest, {
+  await fs.writeJson(path.join(TEMPLATES_DIR, 'manifest.json'), outputManifest, {
     spaces: 2,
   });
 

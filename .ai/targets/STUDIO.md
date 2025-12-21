@@ -11,7 +11,7 @@
 
 ## CRITICAL RULES
 - Studio is presentational and tooling-only; no business or domain logic.
-- Studio reads and controls app state through @hai3/uicore actions and selectors.
+- Studio reads and controls app state through @hai3/react hooks and actions.
 - Studio uses @hai3/uikit components directly (do not use uikitRegistry).
 - All user-facing text uses i18n namespace "studio:key" via useTranslation().
 - Studio UI state (position, size, collapsed, visible) lives in React state or context, not Redux.
@@ -19,7 +19,7 @@
 
 ## STATE MANAGEMENT RULES
 - REQUIRED: Use React state and context for Studio UI state.
-- REQUIRED: Read business state via @hai3/uicore hooks (for example useAppSelector).
+- REQUIRED: Read business state via @hai3/react hooks (for example useAppSelector).
 - REQUIRED: Keep Studio state separate from app Redux store.
 - FORBIDDEN: Studio Redux slices, Zustand-style stores, or manual subscribe/notify patterns.
 
@@ -53,7 +53,7 @@
 - REQUIRED: Provide portal container through a Studio context hook (for example useStudioContext).
 
 ## DEPENDENCY RULES
-- REQUIRED: @hai3/uicore and @hai3/uikit-contracts as peer dependencies.
+- REQUIRED: @hai3/react and @hai3/framework as peer dependencies.
 - REQUIRED: @hai3/uikit as direct dependency.
 - FORBIDDEN: Importing from app-level src/** or screensets.
 
@@ -64,8 +64,8 @@
 
 ## PRE-DIFF CHECKLIST
 - [ ] No Redux or custom store for Studio; UI state uses React state or context.
-- [ ] Controls read app state via @hai3/uicore selectors and call @hai3/uicore actions.
-- [ ] All text uses t("studio:key") and follows UICORE i18n loader pattern.
+- [ ] Controls read app state via @hai3/react hooks and emit events via eventBus.
+- [ ] All text uses t("studio:key") and follows @hai3/i18n loader pattern.
 - [ ] No direct localStorage usage in components or hooks; persistence handled in effects.
 - [ ] Components imported from @hai3/uikit; no raw HTML controls.
 - [ ] Styling follows STYLING.md; no hex colors or inline styles.

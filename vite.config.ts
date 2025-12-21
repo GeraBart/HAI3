@@ -10,6 +10,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime'],
+  },
   build: {
     rollupOptions: {
       output: {
@@ -73,9 +76,9 @@ export default defineConfig({
             return 'uikit';
           }
 
-          // Split UI Core business logic
-          if (id.includes('@hai3/uicore')) {
-            return 'uicore';
+          // Split framework and react packages into separate chunk
+          if (id.includes('@hai3/framework') || id.includes('@hai3/react')) {
+            return 'hai3-core';
           }
           // Split React and React DOM
           if (id.includes('react') || id.includes('react-dom')) {

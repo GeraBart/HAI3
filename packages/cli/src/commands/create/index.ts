@@ -18,7 +18,6 @@ export type LayerType = 'sdk' | 'framework' | 'react' | 'app';
  */
 export interface CreateCommandArgs {
   projectName: string;
-  uikit?: 'hai3' | 'custom';
   studio?: boolean;
   git?: boolean;
   install?: boolean;
@@ -50,12 +49,6 @@ export const createCommand: CommandDefinition<
     },
   ],
   options: [
-    {
-      name: 'uikit',
-      description: 'UIKit to use (hai3 or custom)',
-      type: 'string',
-      choices: ['hai3', 'custom'],
-    },
     {
       name: 'studio',
       description: 'Include Studio package',
@@ -163,34 +156,21 @@ export const createCommand: CommandDefinition<
     }
 
     // App project - get configuration via prompts if not provided
-    let uikit = args.uikit;
     let studio = args.studio;
 
-    if (uikit === undefined || studio === undefined) {
+    if (studio === undefined) {
       const answers = await prompt<{
-        uikit: 'hai3' | 'custom';
         studio: boolean;
       }>([
         {
-          name: 'uikit',
-          type: 'list',
-          message: 'Which UIKit would you like to use?',
-          choices: [
-            { name: 'HAI3 UIKit (recommended)', value: 'hai3' },
-            { name: 'Custom UIKit', value: 'custom' },
-          ],
-          default: 'hai3',
-        },
-        {
           name: 'studio',
           type: 'confirm',
-          message: 'Include Studio?',
+          message: 'Include Studio (development overlay)?',
           default: true,
         },
       ]);
 
-      uikit = uikit ?? answers.uikit;
-      studio = studio ?? answers.studio;
+      studio = answers.studio;
     }
 
     logger.newline();
@@ -200,7 +180,6 @@ export const createCommand: CommandDefinition<
     // Generate project files (async - reads from templates)
     const files = await generateProject({
       projectName: args.projectName,
-      uikit: uikit!,
       studio: studio!,
     });
 
