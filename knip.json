@@ -20,7 +20,6 @@
     "**/node_modules/**",
     "**/templates/**",
     "**/template-sources/**",
-    "presets/**",
     "eslint-plugin-local/**",
     "**/*.config.{ts,js,cjs,mjs}",
     "vite.config.ts",
