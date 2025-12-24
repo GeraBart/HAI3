@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { useAppSelector, useNavigation, uikitRegistry, UiKitIcon, type MenuState, type MenuItem } from '@hai3/react';
+import { useAppSelector, useNavigation, useTranslation, uikitRegistry, UiKitIcon, type MenuState, type MenuItem } from '@hai3/react';
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +25,7 @@ export interface MenuProps {
 
 export const Menu: React.FC<MenuProps> = ({ children }) => {
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const { currentScreen, navigateToScreen, currentScreenset } = useNavigation();
 
@@ -61,14 +62,14 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
                 <SidebarMenuButton
                   isActive={isActive}
                   onClick={() => navigateToScreen(currentScreenset ?? '', item.id)}
-                  tooltip={collapsed ? item.label : undefined}
+                  tooltip={collapsed ? t(item.label) : undefined}
                 >
                   {icon && (
                     <SidebarMenuIcon>
                       {icon}
                     </SidebarMenuIcon>
                   )}
-                  <span>{item.label}</span>
+                  <span>{t(item.label)}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             );
