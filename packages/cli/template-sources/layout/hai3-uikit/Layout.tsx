@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { trim } from 'lodash';
 import { useAppDispatch, apiRegistry, setUser, setHeaderLoading, type HeaderUser } from '@hai3/react';
 import { Header } from './Header';
 import { Footer } from './Footer';
@@ -15,7 +16,7 @@ import { Sidebar } from './Sidebar';
 import { Screen } from './Screen';
 import { Popup } from './Popup';
 import { Overlay } from './Overlay';
-import { ACCOUNTS_DOMAIN, type ApiUser } from './api';
+import { ACCOUNTS_DOMAIN, type ApiUser } from '@/api';
 
 export interface LayoutProps {
   children?: React.ReactNode;
@@ -25,7 +26,7 @@ export interface LayoutProps {
  * Convert API user to header user info
  */
 function toHeaderUser(user: ApiUser): HeaderUser {
-  const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  const displayName = trim(`${user.firstName || ''} ${user.lastName || ''}`);
   return {
     displayName: displayName || undefined,
     email: user.email || undefined,
@@ -50,7 +51,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         dispatch(setHeaderLoading(true));
         // Get accounts service
         // Type assertion needed because accounts domain may not be augmented in ApiServicesMap yet
-        const accountsService = (apiRegistry as { getService(domain: string): unknown }).getService(ACCOUNTS_DOMAIN) as { getCurrentUser?: () => Promise<{ user: ApiUser }> } | undefined;
+        type AccountsService = { getCurrentUser?: () => Promise<{ user: ApiUser }> };
+        const accountsService = (apiRegistry as { getService(domain: string): AccountsService | undefined }).getService(ACCOUNTS_DOMAIN);
         if (accountsService?.getCurrentUser) {
           const response = await accountsService.getCurrentUser();
           if (response?.user) {

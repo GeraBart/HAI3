@@ -51,7 +51,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         dispatch(setHeaderLoading(true));
         // Get accounts service
         // Type assertion needed because accounts domain may not be augmented in ApiServicesMap yet
-        const accountsService = (apiRegistry as { getService(domain: string): unknown }).getService(ACCOUNTS_DOMAIN) as { getCurrentUser?: () => Promise<{ user: ApiUser }> } | undefined;
+        type AccountsService = { getCurrentUser?: () => Promise<{ user: ApiUser }> };
+        const accountsService = (apiRegistry as { getService(domain: string): AccountsService | undefined }).getService(ACCOUNTS_DOMAIN);
         if (accountsService?.getCurrentUser) {
           const response = await accountsService.getCurrentUser();
           if (response?.user) {

@@ -79,9 +79,8 @@ export const ProfileScreen: React.FC = () => {
         return;
       }
 
-      const accountsService = (apiRegistry as { getService(domain: string): unknown }).getService(ACCOUNTS_DOMAIN) as {
-        getCurrentUser?: () => Promise<{ user: ApiUser }>;
-      } | undefined;
+      type AccountsService = { getCurrentUser?: () => Promise<{ user: ApiUser }> };
+      const accountsService = (apiRegistry as { getService(domain: string): AccountsService | undefined }).getService(ACCOUNTS_DOMAIN);
 
       if (accountsService?.getCurrentUser) {
         const response = await accountsService.getCurrentUser();

@@ -51,6 +51,7 @@ root:
     - src/themes      # Theme definitions
     - src/uikit       # UI kit registry
     - src/icons       # Icon definitions
+    - src/api         # API services (AccountsApiService)
   screensets:
     - demo            # Default screenset for new projects
   screensetTemplate: _blank  # Template for hai3 screenset create
