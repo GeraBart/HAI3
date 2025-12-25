@@ -19,8 +19,6 @@ export type LayerType = 'sdk' | 'framework' | 'react' | 'app';
 export interface CreateCommandArgs {
   projectName: string;
   studio?: boolean;
-  git?: boolean;
-  install?: boolean;
   layer?: LayerType;
 }
 

@@ -212,6 +212,60 @@ Use \`.ai/${relativePath}\` as the single source of truth.
 }
 
 /**
+ * Bundle commands from @hai3 packages into CLI templates
+ * These are the actual command files (not adapters) that ship with each package
+ * Scans packages/[pkg]/commands/[cmd].md and copies them to all IDE command directories
+ */
+async function bundlePackageCommands(
+  templatesDir: string
+): Promise<{ claude: number; cursor: number; windsurf: number }> {
+  const claudeCommandsDir = path.join(templatesDir, '.claude', 'commands');
+  const cursorCommandsDir = path.join(templatesDir, '.cursor', 'commands');
+  const windsurfWorkflowsDir = path.join(templatesDir, '.windsurf', 'workflows');
+
+  await fs.ensureDir(claudeCommandsDir);
+  await fs.ensureDir(cursorCommandsDir);
+  await fs.ensureDir(windsurfWorkflowsDir);
+
+  let claudeCount = 0;
+  let cursorCount = 0;
+  let windsurfCount = 0;
+
+  // Scan packages/*/commands/ directories
+  const packagesDir = path.join(PROJECT_ROOT, 'packages');
+  const packages = await fs.readdir(packagesDir);
+
+  for (const pkg of packages) {
+    // Skip CLI package (has its own commands structure)
+    if (pkg === 'cli') continue;
+
+    const commandsDir = path.join(packagesDir, pkg, 'commands');
+    if (!(await fs.pathExists(commandsDir))) continue;
+
+    const files = await fs.readdir(commandsDir);
+    for (const file of files) {
+      if (!file.endsWith('.md')) continue;
+      // Skip monorepo-only commands
+      if (file.startsWith('hai3dev-')) continue;
+
+      const srcPath = path.join(commandsDir, file);
+
+      // Copy to all IDE directories
+      await fs.copy(srcPath, path.join(claudeCommandsDir, file));
+      claudeCount++;
+
+      await fs.copy(srcPath, path.join(cursorCommandsDir, file));
+      cursorCount++;
+
+      await fs.copy(srcPath, path.join(windsurfWorkflowsDir, file));
+      windsurfCount++;
+    }
+  }
+
+  return { claude: claudeCount, cursor: cursorCount, windsurf: windsurfCount };
+}
+
+/**
  * Generate IDE rules as pointers to .ai/GUIDELINES.md
  * All IDEs use the same single source of truth
  */
@@ -514,14 +568,22 @@ async function copyTemplates() {
   // ============================================
   console.log('\nStage 2: Generated IDE Configuration:');
 
-  // Generate command adapters for all IDEs
+  // Generate command adapters for all IDEs (from .ai/commands/)
   const standaloneCommands = markedFiles
     .filter((f) => f.marker === 'standalone')
     .map((f) => f.relativePath);
   const adapterCounts = await generateCommandAdapters(standaloneCommands, TEMPLATES_DIR);
-  console.log(`  ✓ .claude/commands/ (${adapterCounts.claude} adapters)`);
-  console.log(`  ✓ .cursor/commands/ (${adapterCounts.cursor} adapters)`);
-  console.log(`  ✓ .windsurf/workflows/ (${adapterCounts.windsurf} adapters)`);
+
+  // Bundle commands from @hai3 packages (packages/*/commands/)
+  const packageCounts = await bundlePackageCommands(TEMPLATES_DIR);
+
+  const totalClaude = adapterCounts.claude + packageCounts.claude;
+  const totalCursor = adapterCounts.cursor + packageCounts.cursor;
+  const totalWindsurf = adapterCounts.windsurf + packageCounts.windsurf;
+
+  console.log(`  ✓ .claude/commands/ (${totalClaude} commands: ${adapterCounts.claude} adapters + ${packageCounts.claude} from packages)`);
+  console.log(`  ✓ .cursor/commands/ (${totalCursor} commands: ${adapterCounts.cursor} adapters + ${packageCounts.cursor} from packages)`);
+  console.log(`  ✓ .windsurf/workflows/ (${totalWindsurf} workflows: ${adapterCounts.windsurf} adapters + ${packageCounts.windsurf} from packages)`);
 
   // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/)
   await generateIdeRules(TEMPLATES_DIR);

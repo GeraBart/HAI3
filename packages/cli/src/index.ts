@@ -56,8 +56,6 @@ program
   .description('Create a new HAI3 project or layer package')
   .option('--studio', 'Include Studio package')
   .option('--no-studio', 'Exclude Studio package')
-  .option('--no-git', 'Skip git initialization')
-  .option('--no-install', 'Skip npm install')
   .option('-l, --layer <type>', 'Create a package for a specific SDK layer (sdk, framework, react)')
   .action(async (projectName: string, options: Record<string, unknown>) => {
     const result = await executeCommand(
@@ -65,8 +63,6 @@ program
       {
         projectName,
         studio: options.studio as boolean | undefined,
-        git: options.git as boolean,
-        install: options.install as boolean,
         layer: options.layer as 'sdk' | 'framework' | 'react' | 'app' | undefined,
       },
       { interactive: true }
