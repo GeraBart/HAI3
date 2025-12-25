@@ -23,6 +23,7 @@ import fs from 'fs-extra';
 const SYNC_EXCLUDE = [
   'manifest.json',
   'screenset-template',
+  'layout', // Layout templates - handled separately by `hai3 update layout`
 ];
 
 /**
@@ -67,8 +68,13 @@ async function syncDirectory(
     return;
   }
 
-  // Special handling for src/themes/ - preserve user themes and generated files
-  if (relativePath === 'src/themes' || relativePath === 'src\\themes') {
+  // Special handling for src/app/themes/ - preserve user themes and generated files
+  if (
+    relativePath === 'src/app/themes' ||
+    relativePath === 'src\\app\\themes' ||
+    relativePath === 'src/themes' ||
+    relativePath === 'src\\themes'
+  ) {
     await fs.ensureDir(destDir);
     const templateEntries = await fs.readdir(srcDir, { withFileTypes: true });
 
@@ -83,8 +89,20 @@ async function syncDirectory(
     return;
   }
 
-  // Special handling for src/ - recursively handle subdirectories
-  if (relativePath === 'src') {
+  // Special handling for src/app/layout/ - preserve user layout customizations
+  // Layout is managed by `hai3 update layout` command, skip auto-sync
+  if (
+    relativePath === 'src/app/layout' ||
+    relativePath === 'src\\app\\layout' ||
+    relativePath === 'src/layout' ||
+    relativePath === 'src\\layout'
+  ) {
+    // Skip - layout updates are handled by `hai3 update layout` command
+    return;
+  }
+
+  // Special handling for src/ and src/app/ - recursively handle subdirectories
+  if (relativePath === 'src' || relativePath === 'src/app' || relativePath === 'src\\app') {
     await fs.ensureDir(destDir);
     const entries = await fs.readdir(srcDir, { withFileTypes: true });
 
