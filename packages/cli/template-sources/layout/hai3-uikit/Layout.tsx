@@ -16,7 +16,7 @@ import { Sidebar } from './Sidebar';
 import { Screen } from './Screen';
 import { Popup } from './Popup';
 import { Overlay } from './Overlay';
-import { ACCOUNTS_DOMAIN, type ApiUser } from '@/api';
+import { ACCOUNTS_DOMAIN, type ApiUser } from '@/app/api';
 
 export interface LayoutProps {
   children?: React.ReactNode;

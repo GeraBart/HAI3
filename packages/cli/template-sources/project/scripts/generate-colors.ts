@@ -200,10 +200,10 @@ const __dirname = path.dirname(__filename);
 // Detect context: monorepo (packages/cli/template-sources/project/scripts) vs standalone (scripts)
 const isMonorepo = __dirname.includes('packages/cli/template-sources/project/scripts') || __dirname.includes('packages\\cli\\template-sources\\project\\scripts');
 const outputPath = isMonorepo
-  ? path.join(__dirname, '../../../../../src/themes/tailwindColors.ts')
-  : path.join(__dirname, '../src/themes/tailwindColors.ts');
+  ? path.join(__dirname, '../../../../../src/app/themes/tailwindColors.ts')
+  : path.join(__dirname, '../src/app/themes/tailwindColors.ts');
 
 fs.writeFileSync(outputPath, output, 'utf8');
 
-console.log('✓ Generated src/themes/tailwindColors.ts');
+console.log('✓ Generated src/app/themes/tailwindColors.ts');
 console.log(`  ${Object.keys(colors).length} color families converted to HSL`);

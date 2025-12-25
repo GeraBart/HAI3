@@ -5,9 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@/app/*": ["./src/app/*"],
       "@/screensets/*": ["./src/screensets/*"],
-      "@/themes/*": ["./src/themes/*"],
-      "@/components/*": ["./src/components/*"],
       "@hai3/state": ["./packages/state/src/index.ts"],
       "@hai3/state/*": ["./packages/state/src/*"],
       "@hai3/layout": ["./packages/layout/src/index.ts"],

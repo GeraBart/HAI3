@@ -113,8 +113,8 @@ export default [
   {
     files: ['src/**/*'],
     ignores: [
-      'src/main.tsx',
-      'src/App.tsx', // Monorepo demo app - intentionally imports Studio
+      'src/app/main.tsx',
+      'src/app/App.tsx', // Monorepo demo app - intentionally imports Studio
       '**/HAI3Provider.tsx',
       '**/*Actions.ts',
       '**/*Actions.tsx',

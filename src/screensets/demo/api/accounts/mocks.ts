@@ -3,7 +3,7 @@
  */
 
 import { Language, type MockMap } from '@hai3/react';
-import { UserRole, type ApiUser, type GetCurrentUserResponse } from '@/api';
+import { UserRole, type ApiUser, type GetCurrentUserResponse } from '@/app/api';
 import './extra';
 
 export const mockDemoUser: ApiUser = {

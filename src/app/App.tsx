@@ -23,7 +23,7 @@
  */
 
 import { AppRouter } from '@hai3/react';
-import { Layout } from '@/layout';
+import { Layout } from '@/app/layout';
 import { StudioProvider, StudioOverlay } from '@hai3/studio';
 
 function App() {

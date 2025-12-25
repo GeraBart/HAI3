@@ -77,7 +77,7 @@ export async function copyLayoutTemplates(
 
   // Check for existing files if not forcing
   if (!force) {
-    const layoutDir = path.join(projectRoot, 'src', 'layout');
+    const layoutDir = path.join(projectRoot, 'src', 'app', 'layout');
     if (await fs.pathExists(layoutDir)) {
       const existingFiles = await fs.readdir(layoutDir);
       if (existingFiles.length > 0) {
@@ -91,7 +91,7 @@ export async function copyLayoutTemplates(
 
   // Transform paths for output
   const outputFiles: GeneratedFile[] = templateFiles.map((file) => ({
-    path: `src/layout/${file.path}`,
+    path: `src/app/layout/${file.path}`,
     content: file.content,
   }));
 

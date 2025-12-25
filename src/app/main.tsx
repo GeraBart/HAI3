@@ -3,11 +3,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HAI3Provider, apiRegistry } from '@hai3/react';
 import { Toaster } from '@hai3/uikit';
-import { AccountsApiService, ACCOUNTS_DOMAIN } from '@/api';
+import { AccountsApiService, ACCOUNTS_DOMAIN } from '@/app/api';
 import '@hai3/uikit/styles'; // UI Kit styles
-import '@/uikit/uikitRegistry'; // Auto-registers UI Kit (components + icons)
+import '@/app/uikit/uikitRegistry'; // Auto-registers UI Kit (components + icons)
 import '@/screensets/screensetRegistry'; // Auto-registers screensets (includes API services + mocks + i18n loaders)
-import '@/themes/themeRegistry'; // Auto-registers themes
+import '@/app/themes/themeRegistry'; // Auto-registers themes
 import App from './App';
 
 // Register accounts service (application-level service for user info)

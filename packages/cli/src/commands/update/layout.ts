@@ -58,7 +58,7 @@ export const updateLayoutCommand: CommandDefinition<
     const force = args.force ?? false;
 
     // Check for existing layout
-    const layoutDir = path.join(projectRoot!, 'src', 'layout');
+    const layoutDir = path.join(projectRoot!, 'src', 'app', 'layout');
     if (await fs.pathExists(layoutDir)) {
       const existingFiles = await fs.readdir(layoutDir);
       if (existingFiles.length > 0 && !force) {

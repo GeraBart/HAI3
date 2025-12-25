@@ -82,7 +82,7 @@ export const scaffoldLayoutCommand: CommandDefinition<
     logger.log('  npm install @hai3/uikit');
     logger.newline();
 
-    const layoutPath = path.join(projectRoot!, 'src', 'layout');
+    const layoutPath = path.join(projectRoot!, 'src', 'app', 'layout');
 
     return {
       layoutPath,

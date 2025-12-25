@@ -3,9 +3,9 @@
  * Platform-specific user fields via module augmentation
  */
 
-import '@/api';
+import '@/app/api';
 
-declare module '@/api' {
+declare module '@/app/api' {
   interface UserExtra {
     department: string;
   }

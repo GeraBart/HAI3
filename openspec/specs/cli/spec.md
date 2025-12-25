@@ -280,8 +280,10 @@ The CLI SHALL provide a `hai3 create <project-name>` command that scaffolds a ne
 - `.cline/` configuration folder
 - `.aider/` configuration folder
 - `openspec/` directory with project.md and AGENTS.md
-- `src/themes/`, `src/uikit/`, `src/icons/` from templates
+- `src/app/themes/`, `src/app/uikit/`, `src/app/icons/`, `src/app/api/`, `src/app/layout/` from templates
+- `src/app/App.tsx` and `src/app/main.tsx` application entry points
 - `src/screensets/demo/` screenset from templates
+- `src/screensets/screensetRegistry.tsx` for screenset registration
 
 ### Requirement: Update Command
 

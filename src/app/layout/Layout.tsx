@@ -9,7 +9,7 @@
 import React, { useEffect } from 'react';
 import { trim } from 'lodash';
 import { useAppDispatch, apiRegistry, setUser, setHeaderLoading, type HeaderUser } from '@hai3/react';
-import { ACCOUNTS_DOMAIN, type ApiUser } from '@/api';
+import { ACCOUNTS_DOMAIN, type ApiUser } from '@/app/api';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Menu } from './Menu';

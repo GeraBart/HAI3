@@ -88,7 +88,7 @@ export async function generateProject(
   // 3.0 Copy layout templates (HAI3 UIKit layout)
   const layoutDir = path.join(templatesDir, 'layout', 'hai3-uikit');
   if (await fs.pathExists(layoutDir)) {
-    const layoutFiles = await readDirRecursive(layoutDir, 'src/layout');
+    const layoutFiles = await readDirRecursive(layoutDir, 'src/app/layout');
     files.push(...layoutFiles);
   }
 

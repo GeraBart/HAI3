@@ -1,5 +1,5 @@
 import { type ScreensetConfig, ScreensetCategory, uikitRegistry, I18nRegistry, Language, apiRegistry, screensetRegistry, i18nRegistry } from '@hai3/react';
-import { ACCOUNTS_DOMAIN } from '@/api';
+import { ACCOUNTS_DOMAIN } from '@/app/api';
 import { DEMO_SCREENSET_ID, HELLO_WORLD_SCREEN_ID, CURRENT_THEME_SCREEN_ID, PROFILE_SCREEN_ID, UI_KIT_ELEMENTS_SCREEN_ID } from './ids';
 import { WorldIcon, WORLD_ICON_ID } from './uikit/icons/WorldIcon';
 import { PaletteIcon, PALETTE_ICON_ID } from './uikit/icons/PaletteIcon';

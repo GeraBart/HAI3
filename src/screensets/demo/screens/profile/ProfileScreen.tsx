@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation, TextLoader, useScreenTranslations, apiRegistry, I18nRegistry, Language } from '@hai3/react';
 import { Button, Card, CardContent, CardFooter } from '@hai3/uikit';
-import { ACCOUNTS_DOMAIN, type ApiUser } from '@/api';
+import { ACCOUNTS_DOMAIN, type ApiUser } from '@/app/api';
 import { PROFILE_SCREEN_ID } from "../../ids";
 import { DEMO_SCREENSET_ID } from "../../ids";
 

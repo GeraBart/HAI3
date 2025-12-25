@@ -21,7 +21,7 @@ project:
 layout:
   source: ./layout/hai3-uikit/
   description: "Layout component templates using @hai3/uikit"
-  destination: src/layout/
+  destination: src/app/layout/
   files:
     - Layout.tsx
     - Header.tsx
@@ -44,14 +44,14 @@ root:
     - vite.config.ts
     - .gitignore
     - src/vite-env.d.ts
-    - src/main.tsx
-    - src/App.tsx
+    - src/app/main.tsx
+    - src/app/App.tsx
     - src/screensets/screensetRegistry.tsx
   directories:
-    - src/themes      # Theme definitions
-    - src/uikit       # UI kit registry
-    - src/icons       # Icon definitions
-    - src/api         # API services (AccountsApiService)
+    - src/app/themes      # Theme definitions
+    - src/app/uikit       # UI kit registry
+    - src/app/icons       # Icon definitions
+    - src/app/api         # API services (AccountsApiService)
   screensets:
     - demo            # Default screenset for new projects
   screensetTemplate: _blank  # Template for hai3 screenset create
