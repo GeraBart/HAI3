@@ -1,17 +1,12 @@
 import fs from 'fs-extra';
 import path from 'path';
 import type { CommandDefinition } from '../../core/command.js';
-import { validationOk, validationError } from '../../core/types.js';
+import { validationOk, validationError, type LayerType } from '../../core/types.js';
 import { generateProject } from '../../generators/project.js';
 import { generateLayerPackage } from '../../generators/layerPackage.js';
 import { writeGeneratedFiles } from '../../utils/fs.js';
 import { isValidPackageName } from '../../utils/validation.js';
 import { aiSyncCommand } from '../ai/sync.js';
-
-/**
- * Layer types for SDK architecture
- */
-export type LayerType = 'sdk' | 'framework' | 'react' | 'app';
 
 /**
  * Arguments for create command

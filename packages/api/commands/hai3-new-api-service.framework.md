@@ -1,0 +1,252 @@
+<!-- @standalone -->
+# hai3:new-api-service - Add New API Service (Framework Layer)
+
+## AI WORKFLOW (REQUIRED)
+1) Read .ai/targets/API.md and .ai/targets/EVENTS.md before starting.
+2) Gather requirements from user.
+3) Create OpenSpec proposal for approval.
+4) After approval, apply implementation.
+
+## GATHER REQUIREMENTS
+Ask user for:
+- Which screenset will use it.
+- Domain name.
+- Endpoints/methods.
+- Base URL.
+
+## STEP 1: Create OpenSpec Proposal
+Create `openspec/changes/add-{screenset}-{service}/` with:
+
+### proposal.md
+```markdown
+# Proposal: Add {ServiceName} API Service
+
+## Summary
+Add new API service "{serviceName}" to {screenset} screenset with framework integration.
+
+## Details
+- Screenset: {screenset}
+- Domain: {domain}
+- Base URL: {baseUrl}
+- Endpoints: {endpoints}
+
+## Framework Integration
+- Actions: Create actions that emit events via eventBus
+- Store: Define slice for service data
+- Effects: Subscribe to events and update slice
+- API Service: BaseApiService extension with REST protocol
+
+## Implementation
+Create screenset-local API service with mocks, actions, events, effects, and store slice.
+```
+
+### tasks.md
+```markdown
+# Tasks: Add {ServiceName} API Service
+
+- [ ] Create API service class extending BaseApiService
+- [ ] Register with apiRegistry
+- [ ] Define events in events/{domain}Events.ts
+- [ ] Create actions in actions/{domain}Actions.ts (emit events)
+- [ ] Create store slice in slices/{domain}Slice.ts
+- [ ] Create effects in effects/{domain}Effects.ts (subscribe to events, update slice)
+- [ ] Create mocks in api/mocks.ts
+- [ ] Register mocks in screenset config
+- [ ] Validate: `npm run type-check && npm run arch:check`
+- [ ] Test via Chrome DevTools MCP
+```
+
+## STEP 2: Wait for Approval
+Tell user: "I've created an OpenSpec proposal at `openspec/changes/add-{screenset}-{service}/`. Please review and run `/openspec:apply add-{screenset}-{service}` to implement."
+
+## STEP 3: Apply Implementation (after approval)
+When user runs `/openspec:apply`, execute:
+
+### 3.1 Create Service
+File: src/screensets/{screenset}/api/{Name}ApiService.ts
+```typescript
+import { BaseApiService, apiRegistry } from '@hai3/api';
+import { SCREENSET_ID } from '../ids';
+
+export const DOMAIN = `${SCREENSET_ID}:serviceName` as const;
+
+class {Name}ApiService extends BaseApiService {
+  protected baseUrl = '/api/v1/{domain}';
+
+  async getData(): Promise<DataType> {
+    return this.get('/endpoint');
+  }
+}
+
+apiRegistry.register(DOMAIN, {Name}ApiService);
+
+declare module '@hai3/api' {
+  interface ApiServicesMap {
+    [DOMAIN]: {Name}ApiService;
+  }
+}
+```
+
+### 3.2 Define Events
+File: src/screensets/{screenset}/events/{domain}Events.ts
+```typescript
+import { SCREENSET_ID } from '../ids';
+
+const DOMAIN_ID = '{domain}';
+
+export const {Domain}Events = {
+  DataRequested: `${SCREENSET_ID}/${DOMAIN_ID}/dataRequested` as const,
+  DataLoaded: `${SCREENSET_ID}/${DOMAIN_ID}/dataLoaded` as const,
+  DataError: `${SCREENSET_ID}/${DOMAIN_ID}/dataError` as const,
+} as const;
+
+export type DataRequestedPayload = {
+  // request params
+};
+
+export type DataLoadedPayload = {
+  data: DataType;
+};
+
+export type DataErrorPayload = {
+  error: string;
+};
+
+declare module '@hai3/state' {
+  interface EventPayloadMap {
+    [{Domain}Events.DataRequested]: DataRequestedPayload;
+    [{Domain}Events.DataLoaded]: DataLoadedPayload;
+    [{Domain}Events.DataError]: DataErrorPayload;
+  }
+}
+```
+
+### 3.3 Create Actions
+File: src/screensets/{screenset}/actions/{domain}Actions.ts
+```typescript
+import { eventBus } from '@hai3/state';
+import { {Domain}Events } from '../events/{domain}Events';
+
+export const loadData = (params: ParamsType) => {
+  return (): void => {
+    eventBus.emit({Domain}Events.DataRequested, params);
+  };
+};
+```
+
+### 3.4 Create Store Slice
+File: src/screensets/{screenset}/slices/{domain}Slice.ts
+```typescript
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+
+interface {Domain}State {
+  data: DataType | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+const initialState: {Domain}State = {
+  data: null,
+  isLoading: false,
+  error: null,
+};
+
+export const {domain}Slice = createSlice({
+  name: '{screenset}/{domain}',
+  initialState,
+  reducers: {
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
+    setData: (state, action: PayloadAction<DataType>) => {
+      state.data = action.payload;
+      state.isLoading = false;
+      state.error = null;
+    },
+    setError: (state, action: PayloadAction<string>) => {
+      state.error = action.payload;
+      state.isLoading = false;
+    },
+  },
+});
+
+export const { setLoading, setData, setError } = {domain}Slice.actions;
+```
+
+### 3.5 Create Effects
+File: src/screensets/{screenset}/effects/{domain}Effects.ts
+```typescript
+import { eventBus, getStore } from '@hai3/state';
+import { apiRegistry } from '@hai3/api';
+import { {Domain}Events } from '../events/{domain}Events';
+import { setLoading, setData, setError } from '../slices/{domain}Slice';
+import { DOMAIN } from '../api/{Name}ApiService';
+
+export function init{Domain}Effects(): void {
+  const store = getStore();
+
+  eventBus.on({Domain}Events.DataRequested, async (payload) => {
+    store.dispatch(setLoading(true));
+    try {
+      const service = apiRegistry.getService(DOMAIN);
+      const data = await service.getData();
+      eventBus.emit({Domain}Events.DataLoaded, { data });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      eventBus.emit({Domain}Events.DataError, { error: errorMessage });
+    }
+  });
+
+  eventBus.on({Domain}Events.DataLoaded, (payload) => {
+    store.dispatch(setData(payload.data));
+  });
+
+  eventBus.on({Domain}Events.DataError, (payload) => {
+    store.dispatch(setError(payload.error));
+  });
+}
+```
+
+### 3.6 Create Mocks
+File: src/screensets/{screenset}/api/mocks.ts
+```typescript
+import type { MockMap } from '@hai3/api';
+
+export const {domain}MockMap = {
+  'GET /endpoint': () => ({ data: mockData }),
+} satisfies MockMap;
+```
+
+### 3.7 Register in Screenset Config
+Import ./api/{Name}ApiService for side effect.
+Register slice with registerSlice({domain}Slice.reducer).
+Call init{Domain}Effects() in screenset initialization.
+Call apiRegistry.registerMocks(DOMAIN, {domain}MockMap).
+
+### 3.8 Validate
+```bash
+npm run type-check && npm run arch:check
+```
+
+### 3.9 Test via Chrome DevTools MCP
+STOP: If MCP WebSocket is closed, fix first.
+- Dispatch action to trigger data load
+- Verify events are emitted correctly
+- Verify slice updates via Redux DevTools
+- Verify API calls work (check network tab)
+- Toggle API mode in Studio and verify both modes work
+
+### 3.10 Mark Tasks Complete
+Update tasks.md to mark all completed tasks.
+
+## RULES
+- REQUIRED: Screenset-local API services in src/screensets/*/api/
+- REQUIRED: Actions emit events via eventBus.emit() (never async)
+- REQUIRED: Effects subscribe to events and make API calls
+- REQUIRED: Effects update their own slice only
+- REQUIRED: Unique domain constant per screenset
+- FORBIDDEN: Centralized src/api/ directory
+- FORBIDDEN: Sharing API services between screensets
+- FORBIDDEN: Direct slice dispatch from actions
+- FORBIDDEN: Actions calling API directly (use effects)
+- FORBIDDEN: Async thunks (use event-driven pattern)

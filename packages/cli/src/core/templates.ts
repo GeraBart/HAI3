@@ -192,6 +192,59 @@ export async function syncTemplates(
 }
 
 /**
+ * Sync commands from commands-bundle/ with layer-aware variant selection
+ * Uses selectCommandVariant() to pick appropriate variant for each command
+ */
+async function syncCommands(
+  commandsBundleDir: string,
+  destCommandsDir: string,
+  layer: LayerType,
+  logger: TemplateLogger
+): Promise<void> {
+  await fs.ensureDir(destCommandsDir);
+
+  // Get all command files from bundle
+  const bundledFiles = await fs.readdir(commandsBundleDir);
+
+  // Group files by base name (e.g., "hai3-validate" from "hai3-validate.md" and "hai3-validate.sdk.md")
+  const commandGroups = new Map<string, string[]>();
+
+  for (const file of bundledFiles) {
+    if (!file.endsWith('.md')) continue;
+
+    // Extract base name: hai3-validate.sdk.md -> hai3-validate
+    // hai3-validate.md -> hai3-validate
+    const baseName = file
+      .replace(/\.(sdk|framework|react)\.md$/, '')
+      .replace(/\.md$/, '');
+
+    if (!commandGroups.has(baseName)) {
+      commandGroups.set(baseName, []);
+    }
+    commandGroups.get(baseName)!.push(file);
+  }
+
+  // Select appropriate variant for each command group
+  for (const [baseName, variants] of commandGroups) {
+    const { selectCommandVariant } = await import('./layers.js');
+    const selectedVariant = selectCommandVariant(`${baseName}.md`, layer, variants);
+
+    if (selectedVariant) {
+      const srcPath = path.join(commandsBundleDir, selectedVariant);
+      const destPath = path.join(destCommandsDir, `${baseName}.md`);
+
+      await fs.copy(srcPath, destPath, { overwrite: true });
+
+      // Log which variant was selected if it's not the base
+      if (selectedVariant !== `${baseName}.md` && logger.warn) {
+        logger.warn(`  Command '${baseName}.md' using ${selectedVariant.replace(`${baseName}.`, '').replace('.md', '')} variant for layer '${layer}'`);
+      }
+    }
+    // If selectedVariant is null, command is excluded for this layer (skip silently)
+  }
+}
+
+/**
  * Sync .ai directory with layer-aware filtering for targets and commands
  */
 async function syncAiDirectory(
@@ -254,12 +307,19 @@ async function syncAiDirectory(
     }
   }
 
-  // Sync other .ai files/directories (excluding targets/ and GUIDELINES variants)
+  // Sync commands with layer-aware variant selection
+  const commandsBundleDir = path.join(getTemplatesDir(), 'commands-bundle');
+  if (await fs.pathExists(commandsBundleDir)) {
+    await syncCommands(commandsBundleDir, path.join(destDir, 'commands'), layer, logger);
+  }
+
+  // Sync other .ai files/directories (excluding targets/, GUIDELINES variants, and commands/)
   const aiEntries = await fs.readdir(srcDir, { withFileTypes: true });
   for (const entry of aiEntries) {
-    // Skip targets (already handled) and GUIDELINES variants
+    // Skip targets (already handled), GUIDELINES variants, and commands (already handled)
     if (
       entry.name === 'targets' ||
+      entry.name === 'commands' ||
       entry.name.startsWith('GUIDELINES.') ||
       entry.name === 'GUIDELINES.md'
     ) {
@@ -270,11 +330,6 @@ async function syncAiDirectory(
     const destPath = path.join(destDir, entry.name);
 
     if (entry.isDirectory()) {
-      // Special handling for commands directory - not yet implemented for update
-      // Commands are managed by IDE adapters, so we skip them for now
-      if (entry.name === 'commands') {
-        continue;
-      }
       await fs.copy(srcPath, destPath, { overwrite: true });
     } else {
       await fs.copy(srcPath, destPath, { overwrite: true });
