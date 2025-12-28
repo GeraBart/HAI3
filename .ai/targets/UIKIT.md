@@ -1,3 +1,4 @@
+<!-- @standalone -->
 # UI Kit Guidelines
 
 ## AI WORKFLOW (REQUIRED)

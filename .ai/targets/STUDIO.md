@@ -1,3 +1,4 @@
+<!-- @standalone -->
 # Studio Guidelines
 
 ## AI WORKFLOW (REQUIRED)

@@ -1,4 +1,4 @@
-# HAI3 AI Guidelines (React/App Layer)
+# HAI3 AI Guidelines (Framework Layer)
 
 ## AI WORKFLOW (REQUIRED)
 - Route: select target file from Routing section.
@@ -12,24 +12,15 @@
 - REQUIRED: When user says "follow X.md rules", read X.md before any change.
 
 ## ROUTING
-### SDK Layer (L1) - Zero @hai3 dependencies
+### SDK Layer (L1)
 - packages/state -> .ai/targets/STORE.md
 - packages/api -> .ai/targets/API.md
 - packages/i18n -> .ai/targets/I18N.md
 - Event patterns -> .ai/targets/EVENTS.md
-### Framework Layer (L2) - Depends on SDK packages
+### Framework Layer (L2)
 - packages/framework -> .ai/targets/FRAMEWORK.md
 - Layout patterns -> .ai/targets/LAYOUT.md
 - Theme patterns -> .ai/targets/THEMES.md
-### React Layer (L3) - Depends on Framework
-- packages/react -> .ai/targets/REACT.md
-### UI and Dev Packages
-- packages/uikit -> .ai/targets/UIKIT.md
-- packages/studio -> .ai/targets/STUDIO.md
-### Application Layer
-- src/screensets -> .ai/targets/SCREENSETS.md
-- src/themes -> .ai/targets/THEMES.md
-- Styling anywhere -> .ai/targets/STYLING.md
 ### Tooling
 - .ai documentation -> .ai/targets/AI.md
 - .ai/commands -> .ai/targets/AI_COMMANDS.md
@@ -38,7 +29,7 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @hai3/react, @hai3/uikit, react, react-dom.
+- Framework layer depends on SDK packages only.
 - Cross-domain communication only via events.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.
@@ -46,8 +37,8 @@
 
 ## IMPORT RULES
 - Inside same package: relative paths.
-- Cross-branch in app: @/ alias.
-- Cross-package: @hai3/framework, @hai3/react, @hai3/uikit.
+- SDK packages: @hai3/state, @hai3/api, @hai3/i18n, @hai3/events.
+- External deps: lodash, @reduxjs/toolkit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).
 
@@ -59,9 +50,8 @@
 
 ## STOP CONDITIONS
 - Modifying registry root files.
-- Adding new top-level dependencies.
+- Adding React dependencies (Framework is React-agnostic).
 - Bypassing rules in EVENTS.md.
-- Killing MCP server processes (see MCP_TROUBLESHOOTING.md).
 
 ## PRE-DIFF CHECKLIST
 - Routed to correct target file.
@@ -69,12 +59,7 @@
 - Registry root files unchanged.
 - Import paths follow Import Rules.
 - Types and dependents compile.
-- npm run arch:check passes.
-- Dev server test via Google Chrome MCP Tools:
-  - Affected flows and screens exercised.
-  - UI uses @hai3/uikit and theme tokens.
-  - Event-driven behavior (no direct slice dispatch).
-  - No console errors or missing registrations.
+- NO React dependencies in Framework layer.
 
 ## BLOCKLIST
 - Telemetry or tracking code.
@@ -84,6 +69,7 @@
 - Barrel exports that hide real imports.
 - Manual state sync or prop drilling (see EVENTS.md).
 - Native helpers where lodash equivalents exist.
+- React imports (Framework layer restriction).
 
 ## DOC STYLE
 - Short, technical, ASCII only.

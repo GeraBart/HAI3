@@ -16,6 +16,10 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs-extra';
+import {
+  isTargetApplicableToLayer,
+  type LayerType,
+} from './layers.js';
 
 /**
  * Items to EXCLUDE from template sync (internal CLI files only)
@@ -40,6 +44,7 @@ export function getTemplatesDir(): string {
  */
 export interface TemplateLogger {
   info: (msg: string) => void;
+  warn?: (msg: string) => void;
 }
 
 /**
@@ -140,11 +145,13 @@ async function syncDirectory(
  *
  * @param projectRoot - The root directory of the HAI3 project
  * @param logger - Logger instance for output
+ * @param layer - Optional layer for layer-aware filtering of targets and commands
  * @returns Array of synced paths
  */
 export async function syncTemplates(
   projectRoot: string,
-  logger: TemplateLogger
+  logger: TemplateLogger,
+  layer?: LayerType
 ): Promise<string[]> {
   const templatesDir = getTemplatesDir();
   const synced: string[] = [];
@@ -164,17 +171,113 @@ export async function syncTemplates(
     const destPath = path.join(projectRoot, name);
 
     try {
-      if (entry.isDirectory()) {
+      // Special handling for .ai directory with layer-aware filtering
+      if (entry.isDirectory() && name === '.ai' && layer) {
+        await syncAiDirectory(srcPath, destPath, layer, logger);
+        synced.push(name);
+      } else if (entry.isDirectory()) {
         await syncDirectory(srcPath, destPath, name);
+        synced.push(name);
       } else {
         await fs.ensureDir(path.dirname(destPath));
         await fs.copy(srcPath, destPath, { overwrite: true });
+        synced.push(name);
       }
-      synced.push(name);
     } catch (err) {
       logger.info(`  Warning: Could not sync ${name}: ${err}`);
     }
   }
 
   return synced;
+}
+
+/**
+ * Sync .ai directory with layer-aware filtering for targets and commands
+ */
+async function syncAiDirectory(
+  srcDir: string,
+  destDir: string,
+  layer: LayerType,
+  logger: TemplateLogger
+): Promise<void> {
+  await fs.ensureDir(destDir);
+
+  // Sync .ai/targets/ with layer filtering
+  const targetsDir = path.join(srcDir, 'targets');
+  if (await fs.pathExists(targetsDir)) {
+    const destTargetsDir = path.join(destDir, 'targets');
+    await fs.ensureDir(destTargetsDir);
+
+    const targetFiles = await fs.readdir(targetsDir);
+    for (const targetFile of targetFiles) {
+      if (targetFile.endsWith('.md')) {
+        if (isTargetApplicableToLayer(targetFile, layer)) {
+          await fs.copy(
+            path.join(targetsDir, targetFile),
+            path.join(destTargetsDir, targetFile),
+            { overwrite: true }
+          );
+        }
+      }
+    }
+  }
+
+  // Select and sync appropriate GUIDELINES variant
+  const guidelinesVariants: Record<LayerType, string> = {
+    sdk: 'GUIDELINES.sdk.md',
+    framework: 'GUIDELINES.framework.md',
+    react: 'GUIDELINES.md',
+    app: 'GUIDELINES.md',
+  };
+
+  const guidelinesVariant = guidelinesVariants[layer];
+  const guidelinesPath = path.join(srcDir, guidelinesVariant);
+
+  if (await fs.pathExists(guidelinesPath)) {
+    await fs.copy(
+      guidelinesPath,
+      path.join(destDir, 'GUIDELINES.md'),
+      { overwrite: true }
+    );
+  } else {
+    // Fallback to default GUIDELINES.md
+    const fallbackPath = path.join(srcDir, 'GUIDELINES.md');
+    if (await fs.pathExists(fallbackPath)) {
+      if (logger.warn) {
+        logger.warn(`Warning: ${guidelinesVariant} not found, using default GUIDELINES.md`);
+      }
+      await fs.copy(
+        fallbackPath,
+        path.join(destDir, 'GUIDELINES.md'),
+        { overwrite: true }
+      );
+    }
+  }
+
+  // Sync other .ai files/directories (excluding targets/ and GUIDELINES variants)
+  const aiEntries = await fs.readdir(srcDir, { withFileTypes: true });
+  for (const entry of aiEntries) {
+    // Skip targets (already handled) and GUIDELINES variants
+    if (
+      entry.name === 'targets' ||
+      entry.name.startsWith('GUIDELINES.') ||
+      entry.name === 'GUIDELINES.md'
+    ) {
+      continue;
+    }
+
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+
+    if (entry.isDirectory()) {
+      // Special handling for commands directory - not yet implemented for update
+      // Commands are managed by IDE adapters, so we skip them for now
+      if (entry.name === 'commands') {
+        continue;
+      }
+      await fs.copy(srcPath, destPath, { overwrite: true });
+    } else {
+      await fs.copy(srcPath, destPath, { overwrite: true });
+    }
+  }
 }

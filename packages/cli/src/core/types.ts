@@ -3,12 +3,19 @@
  */
 
 /**
+ * Layer types for SDK architecture
+ */
+export type LayerType = 'sdk' | 'framework' | 'react' | 'app';
+
+/**
  * HAI3 project configuration stored in hai3.config.json
  * This file serves as a project marker for CLI detection.
  */
 export interface Hai3Config {
   /** Marker to identify HAI3 projects */
   hai3: true;
+  /** Project layer (SDK architecture tier) */
+  layer?: LayerType;
 }
 
 /**

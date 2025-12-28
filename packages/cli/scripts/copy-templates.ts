@@ -23,6 +23,11 @@ import lodash from 'lodash';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
+import {
+  TARGET_LAYERS,
+  isTargetApplicableToLayer,
+  type LayerType,
+} from '../src/core/layers.js';
 
 const { trim } = lodash;
 
@@ -115,10 +120,15 @@ async function extractCommandDescription(filePath: string): Promise<string> {
  * Generate IDE command adapters from @standalone marked commands
  * Generates adapters for Claude (commands), Cursor (commands), and Windsurf (workflows)
  * Excludes hai3dev-* commands (monorepo-only)
+ *
+ * @param standaloneCommands - List of standalone command paths
+ * @param templatesDir - Destination templates directory
+ * @param layer - Target layer (currently unused for adapters, reserved for future use)
  */
 async function generateCommandAdapters(
   standaloneCommands: string[],
-  templatesDir: string
+  templatesDir: string,
+  _layer: LayerType = 'app'
 ): Promise<{ claude: number; cursor: number; windsurf: number }> {
   const claudeCommandsDir = path.join(templatesDir, '.claude', 'commands');
   const cursorCommandsDir = path.join(templatesDir, '.cursor', 'commands');
@@ -214,22 +224,18 @@ Use \`.ai/${relativePath}\` as the single source of truth.
 /**
  * Bundle commands from @hai3 packages into CLI templates
  * These are the actual command files (not adapters) that ship with each package
- * Scans packages/[pkg]/commands/[cmd].md and copies them to all IDE command directories
+ * Scans packages/[pkg]/commands/[cmd].md and copies ALL variants to a commands-bundle directory
+ * The variant selection happens at project creation time, not at CLI build time
+ *
+ * @param templatesDir - Destination templates directory
  */
 async function bundlePackageCommands(
   templatesDir: string
-): Promise<{ claude: number; cursor: number; windsurf: number }> {
-  const claudeCommandsDir = path.join(templatesDir, '.claude', 'commands');
-  const cursorCommandsDir = path.join(templatesDir, '.cursor', 'commands');
-  const windsurfWorkflowsDir = path.join(templatesDir, '.windsurf', 'workflows');
+): Promise<{ bundledVariants: number }> {
+  const commandsBundleDir = path.join(templatesDir, 'commands-bundle');
+  await fs.ensureDir(commandsBundleDir);
 
-  await fs.ensureDir(claudeCommandsDir);
-  await fs.ensureDir(cursorCommandsDir);
-  await fs.ensureDir(windsurfWorkflowsDir);
-
-  let claudeCount = 0;
-  let cursorCount = 0;
-  let windsurfCount = 0;
+  let bundledVariants = 0;
 
   // Scan packages/*/commands/ directories
   const packagesDir = path.join(PROJECT_ROOT, 'packages');
@@ -243,26 +249,22 @@ async function bundlePackageCommands(
     if (!(await fs.pathExists(commandsDir))) continue;
 
     const files = await fs.readdir(commandsDir);
+
     for (const file of files) {
       if (!file.endsWith('.md')) continue;
       // Skip monorepo-only commands
       if (file.startsWith('hai3dev-')) continue;
 
       const srcPath = path.join(commandsDir, file);
+      const destPath = path.join(commandsBundleDir, file);
 
-      // Copy to all IDE directories
-      await fs.copy(srcPath, path.join(claudeCommandsDir, file));
-      claudeCount++;
-
-      await fs.copy(srcPath, path.join(cursorCommandsDir, file));
-      cursorCount++;
-
-      await fs.copy(srcPath, path.join(windsurfWorkflowsDir, file));
-      windsurfCount++;
+      // Copy all variants to commands-bundle/
+      await fs.copy(srcPath, destPath);
+      bundledVariants++;
     }
   }
 
-  return { claude: claudeCount, cursor: cursorCount, windsurf: windsurfCount };
+  return { bundledVariants };
 }
 
 /**
@@ -328,10 +330,15 @@ async function getStandaloneMarker(
 
 /**
  * Recursively scan directory for files with markers
+ *
+ * @param dir - Directory to scan
+ * @param baseDir - Base directory for relative paths
+ * @param layer - Target layer for filtering targets (optional)
  */
 async function scanForMarkedFiles(
   dir: string,
-  baseDir: string
+  baseDir: string,
+  layer?: LayerType
 ): Promise<Array<{ relativePath: string; marker: 'standalone' | 'override' }>> {
   const results: Array<{
     relativePath: string;
@@ -349,11 +356,20 @@ async function scanForMarkedFiles(
     const relativePath = path.relative(baseDir, fullPath);
 
     if (entry.isDirectory()) {
-      const subResults = await scanForMarkedFiles(fullPath, baseDir);
+      const subResults = await scanForMarkedFiles(fullPath, baseDir, layer);
       results.push(...subResults);
     } else if (entry.name.endsWith('.md')) {
       const marker = await getStandaloneMarker(fullPath);
       if (marker) {
+        // Filter targets based on layer if specified
+        if (layer && relativePath.startsWith('targets/')) {
+          const targetFileName = path.basename(relativePath);
+          if (!isTargetApplicableToLayer(targetFileName, layer)) {
+            console.log(`  ⓘ Excluding target '${targetFileName}' for layer '${layer}'`);
+            continue;
+          }
+        }
+
         results.push({ relativePath, marker });
       }
     }
@@ -531,7 +547,7 @@ async function copyTemplates() {
 
   await fs.ensureDir(aiDestDir);
 
-  // Scan root .ai/ for marked files
+  // Scan root .ai/ for marked files (no layer filtering at build time)
   const markedFiles = await scanForMarkedFiles(aiSourceDir, aiSourceDir);
 
   let standaloneCount = 0;
@@ -561,6 +577,20 @@ async function copyTemplates() {
     }
   }
 
+  // Copy all GUIDELINES layer variants from ai-overrides/
+  // These will be selected at project creation time based on layer
+  const guidelinesVariants = ['GUIDELINES.sdk.md', 'GUIDELINES.framework.md'];
+  for (const variant of guidelinesVariants) {
+    const variantSrc = path.join(overridesDir, variant);
+    const variantDest = path.join(aiDestDir, variant);
+    if (await fs.pathExists(variantSrc)) {
+      await fs.copy(variantSrc, variantDest);
+      console.log(`  ✓ ${variant} (layer variant)`);
+    } else {
+      console.log(`  ⚠ ${variant} (layer variant not found, skipping)`);
+    }
+  }
+
   console.log(`  ✓ .ai/ (${standaloneCount} standalone, ${overrideCount} overrides)`);
 
   // ============================================
@@ -574,16 +604,14 @@ async function copyTemplates() {
     .map((f) => f.relativePath);
   const adapterCounts = await generateCommandAdapters(standaloneCommands, TEMPLATES_DIR);
 
-  // Bundle commands from @hai3 packages (packages/*/commands/)
+  // Bundle ALL command variants from @hai3 packages (packages/*/commands/)
+  // Variant selection happens at project creation time
   const packageCounts = await bundlePackageCommands(TEMPLATES_DIR);
 
-  const totalClaude = adapterCounts.claude + packageCounts.claude;
-  const totalCursor = adapterCounts.cursor + packageCounts.cursor;
-  const totalWindsurf = adapterCounts.windsurf + packageCounts.windsurf;
-
-  console.log(`  ✓ .claude/commands/ (${totalClaude} commands: ${adapterCounts.claude} adapters + ${packageCounts.claude} from packages)`);
-  console.log(`  ✓ .cursor/commands/ (${totalCursor} commands: ${adapterCounts.cursor} adapters + ${packageCounts.cursor} from packages)`);
-  console.log(`  ✓ .windsurf/workflows/ (${totalWindsurf} workflows: ${adapterCounts.windsurf} adapters + ${packageCounts.windsurf} from packages)`);
+  console.log(`  ✓ .claude/commands/ (${adapterCounts.claude} adapters from .ai/commands/)`);
+  console.log(`  ✓ .cursor/commands/ (${adapterCounts.cursor} adapters from .ai/commands/)`);
+  console.log(`  ✓ .windsurf/workflows/ (${adapterCounts.windsurf} adapters from .ai/commands/)`);
+  console.log(`  ✓ commands-bundle/ (${packageCounts.bundledVariants} command variants from packages)`);
 
   // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/)
   await generateIdeRules(TEMPLATES_DIR);
@@ -626,6 +654,17 @@ async function copyTemplates() {
         '.windsurf/rules/hai3.md',
         ...standaloneCommandFiles.map((f) => `.claude/commands/${path.basename(f)}`),
       ],
+    },
+    layerConfiguration: {
+      description: 'Layer-aware filtering for SDK architecture',
+      layers: ['sdk', 'framework', 'react', 'app'],
+      targetMapping: TARGET_LAYERS,
+      guidelinesVariants: {
+        sdk: 'GUIDELINES.sdk.md',
+        framework: 'GUIDELINES.framework.md',
+        react: 'GUIDELINES.md',
+        app: 'GUIDELINES.md',
+      },
     },
     screensetTemplate: 'screenset-template',
     generatedAt: new Date().toISOString(),

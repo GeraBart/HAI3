@@ -1,3 +1,4 @@
+<!-- @standalone -->
 # .ai Documentation Guidelines
 
 ## CRITICAL (AI: READ THIS FIRST)
@@ -25,7 +26,9 @@
 - BAD and GOOD: short inline contrasts.
 - PROTECTION: validation or guard behavior.
 - DELEGATE: command routes to CLI.
-- LAYER: SDK, Framework, or React scope.
+- LAYER: SDK architecture tier (sdk, framework, react, app).
+  Commands and targets filtered by layer. Variants: .sdk.md, .framework.md, .react.md.
+  Fallback chain: react -> framework -> sdk -> base. Layer stored in hai3.config.json.
 
 ## RULE FORMAT
 Rules must follow one of these forms:

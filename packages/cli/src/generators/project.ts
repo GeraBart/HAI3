@@ -1,7 +1,8 @@
 import path from 'path';
 import fs from 'fs-extra';
-import type { GeneratedFile, Hai3Config } from '../core/types.js';
+import type { GeneratedFile, Hai3Config, LayerType } from '../core/types.js';
 import { getTemplatesDir } from '../core/templates.js';
+import { isTargetApplicableToLayer, selectCommandVariant } from '../core/layers.js';
 
 /**
  * Input for project generation
@@ -11,6 +12,8 @@ export interface ProjectGeneratorInput {
   projectName: string;
   /** Include studio */
   studio: boolean;
+  /** Project layer (SDK architecture tier) */
+  layer?: LayerType;
 }
 
 /**
@@ -50,7 +53,7 @@ async function readDirRecursive(
 export async function generateProject(
   input: ProjectGeneratorInput
 ): Promise<GeneratedFile[]> {
-  const { projectName, studio } = input;
+  const { projectName, studio, layer = 'app' } = input;
   const templatesDir = getTemplatesDir();
   const files: GeneratedFile[] = [];
 
@@ -92,13 +95,87 @@ export async function generateProject(
     files.push(...layoutFiles);
   }
 
-  // 3.1 Copy AI configuration directories (.ai, .claude, .cursor, .windsurf)
-  const aiDirs = ['.ai', '.claude', '.cursor', '.windsurf'];
-  for (const dir of aiDirs) {
+  // 3.1 Copy AI configuration with layer-aware filtering
+  // 3.1.1 Copy .ai/targets/ with layer filtering
+  const aiTargetsDir = path.join(templatesDir, '.ai/targets');
+  if (await fs.pathExists(aiTargetsDir)) {
+    const targetFiles = await fs.readdir(aiTargetsDir);
+    for (const targetFile of targetFiles) {
+      if (targetFile.endsWith('.md')) {
+        if (isTargetApplicableToLayer(targetFile, layer)) {
+          const content = await fs.readFile(path.join(aiTargetsDir, targetFile), 'utf-8');
+          files.push({ path: `.ai/targets/${targetFile}`, content });
+        }
+      }
+    }
+  }
+
+  // 3.1.2 Select and copy appropriate GUIDELINES variant
+  const guidelinesVariants: Record<LayerType, string> = {
+    sdk: 'GUIDELINES.sdk.md',
+    framework: 'GUIDELINES.framework.md',
+    react: 'GUIDELINES.md',
+    app: 'GUIDELINES.md',
+  };
+  const guidelinesVariant = guidelinesVariants[layer];
+  const guidelinesPath = path.join(templatesDir, '.ai', guidelinesVariant);
+  if (await fs.pathExists(guidelinesPath)) {
+    const content = await fs.readFile(guidelinesPath, 'utf-8');
+    files.push({ path: '.ai/GUIDELINES.md', content });
+  } else {
+    // Fallback to default GUIDELINES.md with warning
+    console.warn(`Warning: ${guidelinesVariant} not found, using default GUIDELINES.md`);
+    const fallbackPath = path.join(templatesDir, '.ai/GUIDELINES.md');
+    if (await fs.pathExists(fallbackPath)) {
+      const content = await fs.readFile(fallbackPath, 'utf-8');
+      files.push({ path: '.ai/GUIDELINES.md', content });
+    }
+  }
+
+  // 3.1.3 Copy IDE command adapters (.claude, .cursor, .windsurf)
+  const ideDirs = ['.claude', '.cursor', '.windsurf'];
+  for (const dir of ideDirs) {
     const dirPath = path.join(templatesDir, dir);
     if (await fs.pathExists(dirPath)) {
       const dirFiles = await readDirRecursive(dirPath, dir);
       files.push(...dirFiles);
+    }
+  }
+
+  // 3.1.4 Select and copy package commands from commands-bundle based on layer
+  const commandsBundleDir = path.join(templatesDir, 'commands-bundle');
+  if (await fs.pathExists(commandsBundleDir)) {
+    const bundledFiles = await fs.readdir(commandsBundleDir);
+
+    // Group command files by base name
+    const commandGroups = new Map<string, string[]>();
+    for (const file of bundledFiles) {
+      if (!file.endsWith('.md')) continue;
+
+      // Extract base command name (without layer suffixes)
+      const baseName = file.replace(/\.(sdk|framework|react)\.md$/, '.md');
+
+      if (!commandGroups.has(baseName)) {
+        commandGroups.set(baseName, []);
+      }
+      commandGroups.get(baseName)!.push(file);
+    }
+
+    // For each command group, select the most appropriate variant
+    for (const [baseName, variants] of commandGroups.entries()) {
+      const selectedVariant = selectCommandVariant(baseName, layer, variants);
+
+      if (selectedVariant) {
+        const content = await fs.readFile(
+          path.join(commandsBundleDir, selectedVariant),
+          'utf-8'
+        );
+
+        // Copy to all IDE directories with base name
+        files.push({ path: `.claude/commands/${baseName}`, content });
+        files.push({ path: `.cursor/commands/${baseName}`, content });
+        files.push({ path: `.windsurf/workflows/${baseName}`, content });
+      }
     }
   }
 
@@ -148,6 +225,7 @@ export async function generateProject(
   // 5.1 hai3.config.json (marker file for project detection)
   const config: Hai3Config = {
     hai3: true,
+    layer,
   };
   files.push({
     path: 'hai3.config.json',

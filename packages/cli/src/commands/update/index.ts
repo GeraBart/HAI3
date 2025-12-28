@@ -189,7 +189,13 @@ export const updateCommand: CommandDefinition<
       logger.newline();
       logger.info('Syncing project templates...');
 
-      const synced = await syncTemplates(projectRoot, logger);
+      // Read layer from config, default to 'app' if not found
+      const layer = ctx.config?.layer ?? 'app';
+      if (!ctx.config || !ctx.config.layer) {
+        logger.info(`Info: No layer found in config, assuming 'app' layer`);
+      }
+
+      const synced = await syncTemplates(projectRoot, logger, layer);
       if (synced.length > 0) {
         templatesUpdated = true;
         syncedTemplates.push(...synced);

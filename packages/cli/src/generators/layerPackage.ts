@@ -1,5 +1,8 @@
-import type { GeneratedFile } from '../core/types.js';
-import type { LayerType } from '../commands/create/index.js';
+import path from 'path';
+import fs from 'fs-extra';
+import type { GeneratedFile, LayerType } from '../core/types.js';
+import { getTemplatesDir } from '../core/templates.js';
+import { isTargetApplicableToLayer, selectCommandVariant } from '../core/layers.js';
 
 /**
  * Input for layer package generation
@@ -294,7 +297,7 @@ function getTsConfig(layer: LayerType): string {
 /**
  * Generate files for a layer package
  */
-export function generateLayerPackage(input: LayerPackageInput): GeneratedFile[] {
+export async function generateLayerPackage(input: LayerPackageInput): Promise<GeneratedFile[]> {
   const { packageName, layer } = input;
   const files: GeneratedFile[] = [];
   const deps = getLayerDependencies(layer);
@@ -436,32 +439,92 @@ Apache-2.0
     ) + '\n',
   });
 
-  // .ai/GUIDELINES.md
+  // hai3.config.json with layer info
   files.push({
-    path: '.ai/GUIDELINES.md',
-    content: `# ${packageName} Development Guidelines
-
-## Layer: ${layer}
-
-This package follows HAI3's ${layer}-layer architecture.
-
-### Dependency Rules
-
-${layer === 'sdk' ? `- ❌ Cannot import from other @hai3 packages
-- ❌ Cannot import React or React DOM
-- ✅ Can use pure TypeScript/JavaScript` : ''}${layer === 'framework' ? `- ✅ Can import from @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
-- ❌ Cannot import from @hai3/react, @hai3/uikit, @hai3/uicore
-- ❌ Cannot import React or React DOM` : ''}${layer === 'react' ? `- ✅ Can import from @hai3/framework
-- ✅ Can import React and React DOM
-- ❌ Cannot import directly from SDK packages (use Framework re-exports)` : ''}
-
-### Code Style
-
-- Use TypeScript strict mode
-- Export types alongside implementations
-- Document public APIs with JSDoc
-`,
+    path: 'hai3.config.json',
+    content: JSON.stringify(
+      {
+        hai3: true,
+        layer,
+      },
+      null,
+      2
+    ) + '\n',
   });
+
+  // Copy layer-filtered AI configuration from templates
+  const templatesDir = getTemplatesDir();
+
+  // Copy .ai/targets/ with layer filtering
+  const aiTargetsDir = path.join(templatesDir, '.ai/targets');
+  if (await fs.pathExists(aiTargetsDir)) {
+    const targetFiles = await fs.readdir(aiTargetsDir);
+    for (const targetFile of targetFiles) {
+      if (targetFile.endsWith('.md')) {
+        if (isTargetApplicableToLayer(targetFile, layer)) {
+          const content = await fs.readFile(path.join(aiTargetsDir, targetFile), 'utf-8');
+          files.push({ path: `.ai/targets/${targetFile}`, content });
+        }
+      }
+    }
+  }
+
+  // Select and copy appropriate GUIDELINES variant
+  const guidelinesVariants: Record<LayerType, string> = {
+    sdk: 'GUIDELINES.sdk.md',
+    framework: 'GUIDELINES.framework.md',
+    react: 'GUIDELINES.md',
+    app: 'GUIDELINES.md',
+  };
+  const guidelinesVariant = guidelinesVariants[layer];
+  const guidelinesPath = path.join(templatesDir, '.ai', guidelinesVariant);
+  if (await fs.pathExists(guidelinesPath)) {
+    const content = await fs.readFile(guidelinesPath, 'utf-8');
+    files.push({ path: '.ai/GUIDELINES.md', content });
+  } else {
+    // Fallback to default GUIDELINES.md with warning
+    console.warn(`Warning: ${guidelinesVariant} not found, using default GUIDELINES.md`);
+    const fallbackPath = path.join(templatesDir, '.ai/GUIDELINES.md');
+    if (await fs.pathExists(fallbackPath)) {
+      const content = await fs.readFile(fallbackPath, 'utf-8');
+      files.push({ path: '.ai/GUIDELINES.md', content });
+    }
+  }
+
+  // Copy layer-filtered commands from commands-bundle
+  const commandsBundleDir = path.join(templatesDir, 'commands-bundle');
+  if (await fs.pathExists(commandsBundleDir)) {
+    const bundledFiles = await fs.readdir(commandsBundleDir);
+
+    // Group command files by base name
+    const commandGroups = new Map<string, string[]>();
+    for (const file of bundledFiles) {
+      if (!file.endsWith('.md')) continue;
+
+      // Extract base command name (without layer suffixes)
+      const baseName = file.replace(/\.(sdk|framework|react)\.md$/, '.md');
+
+      if (!commandGroups.has(baseName)) {
+        commandGroups.set(baseName, []);
+      }
+      commandGroups.get(baseName)!.push(file);
+    }
+
+    // For each command group, select the most appropriate variant
+    for (const [baseName, variants] of commandGroups.entries()) {
+      const selectedVariant = selectCommandVariant(baseName, layer, variants);
+
+      if (selectedVariant) {
+        const content = await fs.readFile(
+          path.join(commandsBundleDir, selectedVariant),
+          'utf-8'
+        );
+
+        // Copy to .ai/commands/ directory
+        files.push({ path: `.ai/commands/${baseName}`, content });
+      }
+    }
+  }
 
   return files;
 }

@@ -74,6 +74,17 @@ export const createCommand: CommandDefinition<
       );
     }
 
+    // Validate layer parameter
+    if (args.layer) {
+      const validLayers: LayerType[] = ['sdk', 'framework', 'react', 'app'];
+      if (!validLayers.includes(args.layer)) {
+        return validationError(
+          'INVALID_LAYER',
+          `Invalid layer '${args.layer}'. Valid options: sdk, framework, react`
+        );
+      }
+    }
+
     // Check if directory exists
     const projectPath = path.join(ctx.cwd, args.projectName);
     if (fs.existsSync(projectPath)) {
@@ -113,7 +124,7 @@ export const createCommand: CommandDefinition<
       logger.newline();
 
       // Generate layer package files
-      const files = generateLayerPackage({
+      const files = await generateLayerPackage({
         packageName: args.projectName,
         layer,
       });
@@ -179,6 +190,7 @@ export const createCommand: CommandDefinition<
     const files = await generateProject({
       projectName: args.projectName,
       studio: studio!,
+      layer,
     });
 
     // Write files

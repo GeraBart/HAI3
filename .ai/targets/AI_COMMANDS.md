@@ -1,3 +1,4 @@
+<!-- @standalone -->
 # AI Command Maintenance Rules
 
 ## CRITICAL RULES
@@ -21,6 +22,26 @@ openspec:*: OpenSpec workflow commands (managed by openspec update).
 - REQUIRED: Monorepo-only commands use hai3dev- prefix (e.g., hai3dev-update-guidelines.md).
 - FORBIDDEN: Unprefixed command files (except openspec: commands).
 - FORBIDDEN: Changing openspec: prefix (managed by openspec update).
+
+## LAYER VARIANTS
+Commands can have layer-specific variants for SDK architecture tiers:
+- Base command: hai3-new-api-service.md (serves as SDK default).
+- SDK variant: hai3-new-api-service.sdk.md (explicitly SDK-only content).
+- Framework variant: hai3-new-api-service.framework.md (adds Framework patterns).
+- React variant: hai3-new-api-service.react.md (adds React hooks/components).
+
+Fallback chain (most specific first):
+- sdk layer: .sdk.md -> .md
+- framework layer: .framework.md -> .sdk.md -> .md
+- react/app layer: .react.md -> .framework.md -> .sdk.md -> .md
+
+REQUIRED: Only create variants when guidance differs meaningfully per layer.
+REQUIRED: Variant content must match available APIs at that layer.
+FORBIDDEN: React imports in .sdk.md or .framework.md variants.
+FORBIDDEN: Framework imports in .sdk.md variants.
+
+Commands without applicable variants are excluded from that layer.
+Example: hai3-new-screenset.md (React-only) is excluded from SDK/Framework layers.
 
 ## COMMAND STRUCTURE
 - REQUIRED: Commands are self-contained with full procedural steps.

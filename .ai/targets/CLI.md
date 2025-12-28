@@ -1,3 +1,4 @@
+<!-- @standalone -->
 # CLI Guidelines
 
 ## AI WORKFLOW (REQUIRED)
