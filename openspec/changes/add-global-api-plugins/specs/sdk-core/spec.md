@@ -6,18 +6,26 @@ The system SHALL provide API communication infrastructure with a class-based plu
 
 - **WHEN** importing from `@hai3/api`
 - **THEN** `BaseApiService`, `RestProtocol`, `SseProtocol`, `MockPlugin`, `apiRegistry` are available
-- **AND** `ApiPlugin`, `PluginClass`, `ApiRequestContext`, `ApiResponseContext` types are available
+- **AND** `ApiPluginBase`, `ApiPlugin`, `PluginClass`, `ApiRequestContext`, `ApiResponseContext` types are available
 - **AND** `ShortCircuitResponse`, `isShortCircuit` are available
 - **AND** the only external dependency is `axios`
 - **AND** it has ZERO @hai3 dependencies
 
-#### Scenario: ApiPlugin is an abstract base class
+#### Scenario: ApiPluginBase is an abstract base class (non-generic)
+
+- **WHEN** storing plugins in arrays or maps
+- **THEN** use `ApiPluginBase` as the storage type
+- **AND** it defines optional lifecycle methods `onRequest`, `onResponse`, `onError`, `destroy`
+- **AND** it is non-generic (no type parameters)
+- **AND** all plugins ultimately extend this class
+
+#### Scenario: ApiPlugin is an abstract class with typed config
 
 - **WHEN** creating a custom API plugin
 - **THEN** the plugin class extends `ApiPlugin<TConfig>`
 - **AND** `TConfig` is the configuration type (use `void` for no config)
 - **AND** configuration is accessible via `this.config` (protected readonly)
-- **AND** lifecycle methods `onRequest`, `onResponse`, `onError`, `destroy` are optional
+- **AND** `ApiPlugin<TConfig>` extends `ApiPluginBase`
 - **AND** no string name property is required (identification by class)
 
 #### Scenario: Plugin without configuration
@@ -74,6 +82,44 @@ class AuthPlugin extends ApiPlugin<{ getToken: () => string | null }> {
 
 ## ADDED Requirements
 
+### Requirement: Class-Based Service Registration
+
+The system SHALL provide class-based service registration using class constructor references instead of string domains.
+
+#### Scenario: Register service by class reference
+
+- **WHEN** calling `apiRegistry.register(ServiceClass)`
+- **THEN** an instance of the service class is created
+- **AND** the instance is stored with the class as the key
+- **AND** `_setGlobalPluginsProvider()` is called on the instance
+- **AND** the service is available via `getService(ServiceClass)`
+
+#### Scenario: Get service by class reference
+
+- **WHEN** calling `apiRegistry.getService(ServiceClass)`
+- **THEN** the service instance is returned
+- **AND** the return type is correctly inferred as `ServiceClass`
+- **AND** no type assertion is needed
+- **AND** error is thrown if service not registered
+
+#### Scenario: Check if service is registered by class
+
+- **WHEN** calling `apiRegistry.has(ServiceClass)`
+- **THEN** returns `true` if service class is registered
+- **AND** returns `false` otherwise
+
+#### Scenario: Register mocks by class reference
+
+- **WHEN** calling `apiRegistry.registerMocks(ServiceClass, mockMap)`
+- **THEN** mocks are registered for the specified service class
+- **AND** service class must be registered first
+
+#### Scenario: REMOVED - getDomains() method
+
+- **WHEN** the new class-based API is in use
+- **THEN** `getDomains()` method is NOT available
+- **AND** there is no equivalent method (iterate services by class if needed)
+
 ### Requirement: Global API Plugin Registration (Namespaced API)
 
 The system SHALL provide global plugin registration on `apiRegistry.plugins` namespace that applies plugins to ALL API services, both existing and future.
@@ -122,6 +168,13 @@ The system SHALL provide global plugin registration on `apiRegistry.plugins` nam
 - **THEN** a readonly array of all global plugin instances is returned
 - **AND** plugins are in execution order (respecting FIFO and before/after constraints)
 
+#### Scenario: Get plugin by class reference
+
+- **WHEN** calling `apiRegistry.plugins.getPlugin(PluginClass)`
+- **THEN** the plugin instance of that class is returned
+- **AND** the return type is correctly inferred
+- **AND** returns `undefined` if not found
+
 #### Scenario: Global plugins apply to new services
 
 - **WHEN** a new service is registered via `apiRegistry.register()` after global plugins exist
@@ -166,6 +219,14 @@ The system SHALL allow individual services to register service-specific plugins 
 - **THEN** a readonly array of service-specific plugins is returned
 - **AND** does NOT include global plugins
 
+#### Scenario: Get plugin by class reference (service-level)
+
+- **WHEN** calling `service.plugins.getPlugin(PluginClass)`
+- **THEN** the plugin instance of that class is returned
+- **AND** searches service plugins first, then global plugins
+- **AND** the return type is correctly inferred
+- **AND** returns `undefined` if not found
+
 #### Scenario: Plugin merging respects exclusions by class
 
 - **WHEN** `BaseApiService` executes a request
@@ -179,6 +240,25 @@ The system SHALL allow individual services to register service-specific plugins 
 - **THEN** `onResponse` methods are called in reverse order
 - **AND** last registered plugin's `onResponse` runs first
 - **AND** this implements the onion model
+
+### Requirement: Internal Global Plugins Injection
+
+The system SHALL provide internal mechanism for services to receive global plugins from the registry.
+
+#### Scenario: _setGlobalPluginsProvider() internal method
+
+- **WHEN** a service is registered via `apiRegistry.register(ServiceClass)`
+- **THEN** `service._setGlobalPluginsProvider(provider)` is called
+- **AND** the provider is a function returning readonly array of global plugins
+- **AND** this method is internal (underscore convention)
+- **AND** derived service classes do NOT need to know about this method
+
+#### Scenario: Service accesses global plugins via provider
+
+- **WHEN** a service needs to execute plugin chain
+- **THEN** it calls the global plugins provider to get current plugins
+- **AND** this ensures services see newly added global plugins
+- **AND** this allows for dynamic global plugin registration
 
 ### Requirement: Plugin Lifecycle Method Contracts
 
@@ -215,9 +295,18 @@ The system SHALL enforce specific contracts for each plugin lifecycle method.
 - **AND** it is synchronous (no Promise return)
 - **AND** it should clean up resources (close connections, clear timers, etc.)
 
-### Requirement: ApiRegistry Interface Extension (Namespaced API)
+### Requirement: ApiRegistry Interface Extension (Class-Based)
 
-The system SHALL extend the ApiRegistry interface with a namespaced `plugins` object for global plugin management using class-based identification.
+The system SHALL provide class-based service management and namespaced plugin management.
+
+#### Scenario: ApiRegistry interface includes class-based service methods
+
+- **WHEN** checking the `ApiRegistry` interface in types.ts
+- **THEN** `register<T extends BaseApiService>(serviceClass: new () => T): void` is defined
+- **AND** `getService<T extends BaseApiService>(serviceClass: new () => T): T` is defined
+- **AND** `registerMocks<T extends BaseApiService>(serviceClass: new () => T, mockMap: MockMap): void` is defined
+- **AND** `has<T extends BaseApiService>(serviceClass: new () => T): boolean` is defined
+- **AND** `getDomains()` is NOT defined (removed)
 
 #### Scenario: ApiRegistry interface includes plugins namespace
 
@@ -228,14 +317,14 @@ The system SHALL extend the ApiRegistry interface with a namespaced `plugins` ob
 #### Scenario: ApiRegistry.plugins includes add() method
 
 - **WHEN** checking the `ApiRegistry.plugins` interface
-- **THEN** `add(...plugins: ApiPlugin[]): void` method is defined
+- **THEN** `add(...plugins: ApiPluginBase[]): void` method is defined
 - **AND** it registers multiple plugins in FIFO order
 - **AND** it throws on duplicate plugin class
 
 #### Scenario: ApiRegistry.plugins includes addBefore() method
 
 - **WHEN** checking the `ApiRegistry.plugins` interface
-- **THEN** `addBefore<T extends ApiPlugin>(plugin: ApiPlugin, before: PluginClass<T>): void` method is defined
+- **THEN** `addBefore<T extends ApiPluginBase>(plugin: ApiPluginBase, before: PluginClass<T>): void` method is defined
 - **AND** it inserts plugin before the target class
 - **AND** it throws if target class not registered
 - **AND** it throws on circular dependency
@@ -243,7 +332,7 @@ The system SHALL extend the ApiRegistry interface with a namespaced `plugins` ob
 #### Scenario: ApiRegistry.plugins includes addAfter() method
 
 - **WHEN** checking the `ApiRegistry.plugins` interface
-- **THEN** `addAfter<T extends ApiPlugin>(plugin: ApiPlugin, after: PluginClass<T>): void` method is defined
+- **THEN** `addAfter<T extends ApiPluginBase>(plugin: ApiPluginBase, after: PluginClass<T>): void` method is defined
 - **AND** it inserts plugin after the target class
 - **AND** it throws if target class not registered
 - **AND** it throws on circular dependency
@@ -251,7 +340,7 @@ The system SHALL extend the ApiRegistry interface with a namespaced `plugins` ob
 #### Scenario: ApiRegistry.plugins includes remove() method
 
 - **WHEN** checking the `ApiRegistry.plugins` interface
-- **THEN** `remove<T extends ApiPlugin>(pluginClass: PluginClass<T>): void` method is defined
+- **THEN** `remove<T extends ApiPluginBase>(pluginClass: PluginClass<T>): void` method is defined
 - **AND** it removes plugin by class reference (type-safe)
 - **AND** it calls destroy() if defined
 - **AND** it throws if plugin not registered
@@ -259,34 +348,47 @@ The system SHALL extend the ApiRegistry interface with a namespaced `plugins` ob
 #### Scenario: ApiRegistry.plugins includes has() method
 
 - **WHEN** checking the `ApiRegistry.plugins` interface
-- **THEN** `has<T extends ApiPlugin>(pluginClass: PluginClass<T>): boolean` method is defined
+- **THEN** `has<T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean` method is defined
 - **AND** it checks registration by class reference (type-safe)
 
 #### Scenario: ApiRegistry.plugins includes getAll() method
 
 - **WHEN** checking the `ApiRegistry.plugins` interface
-- **THEN** `getAll(): readonly ApiPlugin[]` method is defined
+- **THEN** `getAll(): readonly ApiPluginBase[]` method is defined
 - **AND** it returns plugins in execution order
+
+#### Scenario: ApiRegistry.plugins includes getPlugin() method
+
+- **WHEN** checking the `ApiRegistry.plugins` interface
+- **THEN** `getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined` method is defined
+- **AND** it returns the plugin instance or undefined
 
 ### Requirement: Type Definitions
 
 The system SHALL provide comprehensive type definitions for the class-based plugin system.
 
+#### Scenario: ApiPluginBase abstract class (non-generic)
+
+- **WHEN** using `ApiPluginBase` abstract class
+- **THEN** it defines optional `onRequest` method signature
+- **AND** it defines optional `onResponse` method signature
+- **AND** it defines optional `onError` method signature
+- **AND** it defines optional `destroy` method signature
+- **AND** it is non-generic (used for storage)
+
 #### Scenario: ApiPlugin abstract class with parameter property
 
 - **WHEN** using `ApiPlugin<TConfig>` abstract class
-- **THEN** it uses TypeScript parameter property: `constructor(protected readonly config: TConfig) {}`
-- **AND** optional `onRequest` method signature
-- **AND** optional `onResponse` method signature
-- **AND** optional `onError` method signature
-- **AND** optional `destroy` method signature
+- **THEN** it extends `ApiPluginBase`
+- **AND** it uses TypeScript parameter property: `constructor(protected readonly config: TConfig) {}`
+- **AND** `TConfig` defaults to `void`
 
 #### Scenario: PluginClass type for class references
 
 - **WHEN** using `PluginClass<T>` type
 - **THEN** it represents a class constructor for plugins
 - **AND** it enables type-safe plugin identification
-- **AND** definition: `type PluginClass<T extends ApiPlugin = ApiPlugin> = abstract new (...args: any[]) => T`
+- **AND** definition: `type PluginClass<T extends ApiPluginBase = ApiPluginBase> = abstract new (...args: any[]) => T`
 
 #### Scenario: ApiRequestContext type (pure request data)
 
@@ -466,55 +568,30 @@ class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> {
 }
 ```
 
-### Scenario: Retry plugin with error recovery
+### Scenario: Class-based service registration example
 
-- **WHEN** implementing a retry plugin
-- **THEN** it uses onError for retry logic:
+- **WHEN** registering and using services
+- **THEN** use class references:
 ```typescript
-class RetryPlugin extends ApiPlugin<{ attempts: number; delay?: number }> {
-  private attemptCount = 0;
-
-  onRequest(ctx: ApiRequestContext) {
-    this.attemptCount = 0;
-    return ctx;
-  }
-
-  async onError(error: Error, request: ApiRequestContext): Promise<Error | ApiResponseContext> {
-    if (this.attemptCount < this.config.attempts) {
-      this.attemptCount++;
-      if (this.config.delay) {
-        await new Promise(r => setTimeout(r, this.config.delay));
-      }
-      throw error; // Re-throw signals retry
-    }
-    return error;
-  }
+// Define service
+class AccountsApiService extends BaseApiService {
+  // ...
 }
-```
 
-**Note**: The above uses instance state which is NOT safe for concurrent requests.
-For production, use request-scoped state:
-```typescript
-class RetryPlugin extends ApiPlugin<{ attempts: number; delay?: number }> {
-  private attempts = new WeakMap<ApiRequestContext, number>();
+// Registration - class reference, not string
+apiRegistry.register(AccountsApiService);
 
-  onRequest(ctx: ApiRequestContext) {
-    this.attempts.set(ctx, 0);
-    return ctx;
-  }
+// Retrieval - class reference IS the type
+const service = apiRegistry.getService(AccountsApiService);
+// service is typed as AccountsApiService
 
-  async onError(error: Error, request: ApiRequestContext): Promise<Error | ApiResponseContext> {
-    const count = this.attempts.get(request) ?? 0;
-    if (count < this.config.attempts) {
-      this.attempts.set(request, count + 1);
-      if (this.config.delay) {
-        await new Promise(r => setTimeout(r, this.config.delay));
-      }
-      throw error;
-    }
-    return error;
-  }
-}
+// Check if registered
+apiRegistry.has(AccountsApiService); // true
+
+// Register mocks
+apiRegistry.registerMocks(AccountsApiService, {
+  'GET /accounts': () => [{ id: 1, name: 'Test' }]
+});
 ```
 
 ### Scenario: Service exclusion by class
@@ -531,6 +608,21 @@ class HealthCheckService extends BaseApiService {
 
 // Later - verify exclusion
 healthService.plugins.getExcluded(); // [AuthPlugin, MetricsPlugin]
+```
+
+### Scenario: Plugin retrieval by class
+
+- **WHEN** retrieving plugins by class reference
+- **THEN** use getPlugin() method:
+```typescript
+// From global plugins
+const authPlugin = apiRegistry.plugins.getPlugin(AuthPlugin);
+if (authPlugin) {
+  // authPlugin is typed as AuthPlugin
+}
+
+// From service (searches service first, then global)
+const loggingPlugin = service.plugins.getPlugin(LoggingPlugin);
 ```
 
 ### Scenario: Plugin removal and check by class
@@ -558,27 +650,36 @@ apiRegistry.plugins.getAll();
 
 ## Acceptance Criteria
 
-### AC1: Global plugin registration works (namespaced API)
+### AC1: Class-based service registration works
+
+- [ ] `apiRegistry.register(ServiceClass)` creates and stores service instance
+- [ ] `apiRegistry.getService(ServiceClass)` returns correctly typed instance
+- [ ] `apiRegistry.has(ServiceClass)` returns correct boolean
+- [ ] `apiRegistry.registerMocks(ServiceClass, mockMap)` registers mocks
+- [ ] No `getDomains()` method exists
+
+### AC2: Global plugin registration works (namespaced API)
 
 - [ ] `apiRegistry.plugins.add(new LoggingPlugin(), new AuthPlugin(config))` registers both plugins
 - [ ] Plugins execute in registration order for all services
 - [ ] Duplicate plugin class throws error (global: no duplicates)
 
-### AC2: Plugin positioning works (namespaced API)
+### AC3: Plugin positioning works (namespaced API)
 
 - [ ] `plugins.addAfter(new MetricsPlugin(), LoggingPlugin)` positions correctly
 - [ ] `plugins.addBefore(new ErrorHandler(), AuthPlugin)` positions correctly
 - [ ] Invalid class reference throws error
 - [ ] Circular dependencies throw error
 
-### AC3: Plugin removal works (namespaced API)
+### AC4: Plugin removal and retrieval works (namespaced API)
 
 - [ ] `plugins.remove(MockPlugin)` removes the plugin (type-safe)
 - [ ] Removed plugin's `destroy()` is called
 - [ ] `plugins.has(MockPlugin)` returns false after removal
-- [ ] Error thrown if plugin not registered
+- [ ] `plugins.getPlugin(MockPlugin)` returns instance or undefined
+- [ ] Error thrown if removing plugin not registered
 
-### AC4: Service exclusion works (namespaced API)
+### AC5: Service exclusion works (namespaced API)
 
 - [ ] `service.plugins.exclude(AuthPlugin, MetricsPlugin)` excludes by class
 - [ ] Excluded plugin classes do not execute for that service
@@ -586,27 +687,28 @@ apiRegistry.plugins.getAll();
 - [ ] `plugins.getExcluded()` returns correct classes
 - [ ] Service-level duplicates are allowed
 
-### AC5: Short-circuit works
+### AC6: Short-circuit works
 
 - [ ] Returning `{ shortCircuit: response }` skips HTTP request
 - [ ] `onResponse` hooks still execute with short-circuited response
 - [ ] Short-circuit is detectable (e.g., via header)
 
-### AC6: Error recovery works
+### AC7: Error recovery works
 
 - [ ] `onError` returning `Error` continues error flow
 - [ ] `onError` returning `ApiResponseContext` recovers
 - [ ] Re-throwing error signals retry intent
 
-### AC7: OCP-compliant DI works (pure request data)
+### AC8: OCP-compliant DI works (pure request data)
 
 - [ ] Plugins receive service-specific behavior via config
 - [ ] `ApiRequestContext` has only pure request data (method, url, headers, body)
 - [ ] `ApiRequestContext` does NOT have `serviceName`
 - [ ] Service-level plugins enable per-service configuration
 
-### AC8: Types are exported
+### AC9: Types are exported
 
+- [ ] `ApiPluginBase` abstract class is importable (non-generic)
 - [ ] `ApiPlugin` abstract class is importable (with parameter property)
 - [ ] `PluginClass` type is importable
 - [ ] `ApiRequestContext` is importable (pure request data)
@@ -614,13 +716,25 @@ apiRegistry.plugins.getAll();
 - [ ] `ShortCircuitResponse` is importable
 - [ ] `isShortCircuit` function is importable
 
-### AC9: Tree-shaking compliance
+### AC10: Tree-shaking compliance
 
 - [ ] No static properties on plugin classes
 - [ ] Unused plugins can be tree-shaken
 - [ ] Package.json has `"sideEffects": false`
 
-### AC10: Duplicate policy enforced
+### AC11: Duplicate policy enforced
 
 - [ ] Global plugins: duplicate class throws error
 - [ ] Service plugins: duplicate class allowed (different configs)
+
+### AC12: Internal global plugins injection works
+
+- [ ] `_setGlobalPluginsProvider()` is called on service registration
+- [ ] Services access global plugins via provider
+- [ ] Derived classes don't need to know about this mechanism
+
+### AC13: getPlugin() method works
+
+- [ ] `apiRegistry.plugins.getPlugin(PluginClass)` returns instance or undefined
+- [ ] `service.plugins.getPlugin(PluginClass)` searches service then global
+- [ ] Return type is correctly inferred

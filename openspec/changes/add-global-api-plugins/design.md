@@ -2,7 +2,7 @@
 
 ## Context
 
-The HAI3 API layer follows a plugin-based architecture where plugins can intercept and modify API requests/responses. Currently, plugins are registered per-service via `BaseApiService.registerPlugin()`. This design adds a global plugin registry at the `apiRegistry` level using a **pure class-based approach** with type-safe plugin identification.
+The HAI3 API layer follows a plugin-based architecture where plugins can intercept and modify API requests/responses. Currently, plugins are registered per-service via `BaseApiService.registerPlugin()`. This design adds a global plugin registry at the `apiRegistry` level using a **pure class-based approach** with type-safe plugin identification and class-based service registration.
 
 **Stakeholders:**
 - SDK consumers who want cross-cutting API behavior (logging, auth, telemetry)
@@ -16,17 +16,23 @@ The HAI3 API layer follows a plugin-based architecture where plugins can interce
 - Plugin ordering must be intuitive and follow industry standards (FIFO by default)
 - Services must be able to opt-out of specific global plugins when needed
 - **Type-safe plugin identification** - No string names, compile-time safety
+- **Class-based service registration** - No string domains, class reference IS the type
 - **OCP-compliant** - Plugins should not know about specific services
 - **Pure request data** - No service identification in ApiRequestContext
 - **Namespaced plugin API** - Clear separation via `apiRegistry.plugins` and `service.plugins`
+- **DRY plugin classes** - No duplication of method signatures between base and generic class
+- **Internal global plugins injection** - Services receive global plugins via internal method
+- **Concurrency safety for stateful plugins** - Plugins with state should use request-scoped storage (WeakMap)
 
 ## Goals / Non-Goals
 
 **Goals:**
 - Enable global plugin registration at apiRegistry level via namespaced `plugins` object
+- Enable class-based service registration (replaces string domains)
 - Ensure global plugins apply to ALL services (existing and future)
-- Provide class-based API with abstract `ApiPlugin<TConfig>` base class using parameter property
+- Provide DRY class hierarchy: `ApiPluginBase` (non-generic) + `ApiPlugin<TConfig>` (generic)
 - **Type-safe plugin identification by class reference** (not string names)
+- **Type-safe service registration by class reference** (not string domains)
 - **OCP-compliant dependency injection** via constructor config
 - **Pure request data** - No service identification in ApiRequestContext
 - Support short-circuit responses for mocking
@@ -36,6 +42,8 @@ The HAI3 API layer follows a plugin-based architecture where plugins can interce
 - Support plugin lifecycle management (cleanup via `destroy()`)
 - **Tree-shaking compliance** - No static properties, no module-level instantiation
 - **Clear duplicate policy** - Global: no duplicates; Service: duplicates allowed
+- **Internal global plugins injection** - `_setGlobalPluginsProvider()` called by apiRegistry
+- **getPlugin() method** - Find plugin instance by class reference
 
 **Non-Goals:**
 - Plugin middleware chain with explicit `next()` calls
@@ -44,7 +52,10 @@ The HAI3 API layer follows a plugin-based architecture where plugins can interce
 - Complex dependency graph with topological sorting
 - Async `destroy()` hooks
 - String-based plugin naming or identification
+- String-based service domain registration
 - Service identification in ApiRequestContext (use DI instead)
+- Module augmentation for service type mapping
+- Backward compatibility shims for deprecated methods
 
 ## Architecture Overview
 
@@ -53,20 +64,27 @@ The HAI3 API layer follows a plugin-based architecture where plugins can interce
 ```
 apiRegistry (singleton)
   |
-  +-- globalPlugins: ApiPlugin[] (NEW)
+  +-- globalPlugins: ApiPluginBase[] (NEW)
   |
-  +-- services: Map<string, BaseApiService>
+  +-- services: Map<ServiceClass, BaseApiService> (UPDATED - class key, not string)
         |
-        +-- plugins: ApiPlugin[] (per-service)
+        +-- _globalPluginsProvider: () => readonly ApiPluginBase[] (NEW - internal)
+        +-- plugins: ApiPluginBase[] (per-service)
         +-- excludedPluginClasses: Set<PluginClass> (NEW)
 ```
 
 ### Data Flow
 
 ```
+Service Registration Flow:
+1. apiRegistry.register(ServiceClass) is called
+2. Service is instantiated: new ServiceClass()
+3. apiRegistry calls service._setGlobalPluginsProvider(() => this.globalPlugins)
+4. Service is stored in Map<ServiceClass, service>
+
 Request Flow (Automatic Chaining):
 1. Service method called (e.g., service.get('/users'))
-2. Build plugin chain: global plugins (filtered by exclusion) + service plugins
+2. Build plugin chain: global plugins (from provider, filtered by exclusion) + service plugins
 3. Request phase (FIFO order):
    a. For each plugin with onRequest:
       - Call onRequest(ctx)
@@ -98,11 +116,16 @@ Plugin Ordering (FIFO with Explicit Positioning):
 
 ### Component Responsibilities
 
-**ApiPlugin<TConfig> (abstract class):**
-- Abstract base class defining plugin behavior
-- Protected `config` property for dependency injection
+**ApiPluginBase (abstract class - non-generic):**
+- Abstract base class for all plugins (non-generic for storage)
 - Optional lifecycle methods: `onRequest`, `onResponse`, `onError`, `destroy`
 - No static properties (tree-shaking compliance)
+- Used as storage type in arrays and maps
+
+**ApiPlugin<TConfig> (abstract class - generic):**
+- Extends ApiPluginBase with typed config support
+- Protected `config` property for dependency injection
+- Uses TypeScript parameter property: `constructor(protected readonly config: TConfig) {}`
 
 **PluginClass<T> (type):**
 - Type for referencing plugin classes
@@ -110,6 +133,7 @@ Plugin Ordering (FIFO with Explicit Positioning):
 - Enables compile-time validation
 
 **apiRegistry (singleton):**
+- Stores services by class reference (not string)
 - Stores global plugins as instances
 - Provides namespaced `plugins` object:
   - `plugins.add()` for bulk FIFO registration (no duplicates)
@@ -117,15 +141,19 @@ Plugin Ordering (FIFO with Explicit Positioning):
   - `plugins.remove()` for unregistration (by class reference)
   - `plugins.has()` for checking registration (by class reference)
   - `plugins.getAll()` for getting plugins in execution order
+  - `plugins.getPlugin()` for finding plugin by class
 - Resolves before/after ordering constraints
 - Detects circular dependencies and throws on registration
+- Calls `_setGlobalPluginsProvider()` on services after instantiation
 
 **BaseApiService:**
+- Has internal `_setGlobalPluginsProvider()` method (called by apiRegistry)
 - Provides namespaced `plugins` object:
   - `plugins.add()` for service-specific plugins (duplicates allowed)
   - `plugins.exclude()` for excluding global plugins by class
   - `plugins.getExcluded()` for getting excluded classes
   - `plugins.getAll()` for getting service plugins
+  - `plugins.getPlugin()` for finding plugin by class
 - Merges global + service plugins in execution, respecting exclusions
 
 ## Type Definitions
@@ -169,17 +197,56 @@ export type ShortCircuitResponse = {
  * Type for referencing plugin classes.
  * Used for type-safe removal, exclusion, and positioning.
  *
- * @template T - Plugin type (defaults to ApiPlugin)
+ * @template T - Plugin type (defaults to ApiPluginBase)
  */
-export type PluginClass<T extends ApiPlugin = ApiPlugin> = abstract new (...args: any[]) => T;
+export type PluginClass<T extends ApiPluginBase = ApiPluginBase> = abstract new (...args: any[]) => T;
 ```
 
-### Plugin Base Class
+### Plugin Base Classes (DRY Hierarchy)
 
 ```typescript
 /**
- * Abstract base class for API plugins.
- * Plugins extend this class and override lifecycle methods.
+ * Abstract base class for API plugins (non-generic).
+ * Used as storage type to avoid generic array issues.
+ * All plugins ultimately extend this class.
+ *
+ * @example
+ * ```typescript
+ * // Storage uses non-generic base
+ * const plugins: ApiPluginBase[] = [];
+ * plugins.push(new LoggingPlugin());
+ * plugins.push(new AuthPlugin({ getToken }));
+ * ```
+ */
+export abstract class ApiPluginBase {
+  /**
+   * Called before request is sent.
+   * Return modified context, or ShortCircuitResponse to skip the request.
+   */
+  onRequest?(ctx: ApiRequestContext): ApiRequestContext | ShortCircuitResponse | Promise<ApiRequestContext | ShortCircuitResponse>;
+
+  /**
+   * Called after response is received.
+   * Return modified response.
+   */
+  onResponse?(response: ApiResponseContext, request: ApiRequestContext): ApiResponseContext | Promise<ApiResponseContext>;
+
+  /**
+   * Called when an error occurs.
+   * Return modified error, or ApiResponseContext for recovery.
+   */
+  onError?(error: Error, request: ApiRequestContext): Error | ApiResponseContext | Promise<Error | ApiResponseContext>;
+
+  /**
+   * Called when plugin is unregistered.
+   * Override to cleanup resources (close connections, clear timers, etc.)
+   */
+  destroy?(): void;
+}
+
+/**
+ * Abstract base class for API plugins with configuration.
+ * Extends ApiPluginBase with typed config support.
  * Uses TypeScript parameter property for concise config declaration.
  *
  * @template TConfig - Configuration type passed to constructor (void if no config)
@@ -212,33 +279,11 @@ export type PluginClass<T extends ApiPlugin = ApiPlugin> = abstract new (...args
  * }
  * ```
  */
-export abstract class ApiPlugin<TConfig = void> {
+export abstract class ApiPlugin<TConfig = void> extends ApiPluginBase {
   // Uses TypeScript parameter property for concise declaration
-  constructor(protected readonly config: TConfig) {}
-
-  /**
-   * Called before request is sent.
-   * Return modified context, or ShortCircuitResponse to skip the request.
-   */
-  onRequest?(ctx: ApiRequestContext): ApiRequestContext | ShortCircuitResponse | Promise<ApiRequestContext | ShortCircuitResponse>;
-
-  /**
-   * Called after response is received.
-   * Return modified response.
-   */
-  onResponse?(response: ApiResponseContext, request: ApiRequestContext): ApiResponseContext | Promise<ApiResponseContext>;
-
-  /**
-   * Called when an error occurs.
-   * Return modified error, or ApiResponseContext for recovery.
-   */
-  onError?(error: Error, request: ApiRequestContext): Error | ApiResponseContext | Promise<Error | ApiResponseContext>;
-
-  /**
-   * Called when plugin is unregistered.
-   * Override to cleanup resources (close connections, clear timers, etc.)
-   */
-  destroy?(): void;
+  constructor(protected readonly config: TConfig) {
+    super();
+  }
 }
 ```
 
@@ -272,7 +317,15 @@ export function isShortCircuit(
 
 ```typescript
 export interface ApiRegistry {
-  // ... existing methods (register, getService, etc.) ...
+  // Service management - class-based (replaces string domains)
+  register<T extends BaseApiService>(serviceClass: new () => T): void;
+  getService<T extends BaseApiService>(serviceClass: new () => T): T;
+  has<T extends BaseApiService>(serviceClass: new () => T): boolean;
+
+  // REMOVED: getDomains() - no longer applicable with class-based registration
+  // REMOVED: registerMocks() - mock configuration moved to MockPlugin (OCP/DIP)
+  // REMOVED: setMockMode() - replaced by plugins.add/remove(MockPlugin) (OCP/DIP)
+  // REMOVED: getMockMap() - MockPlugin manages its own map (OCP/DIP)
 
   /**
    * Plugin management namespace
@@ -290,7 +343,7 @@ export interface ApiRegistry {
      * );
      * ```
      */
-    add(...plugins: ApiPlugin[]): void;
+    add(...plugins: ApiPluginBase[]): void;
 
     /**
      * Add a plugin positioned before another plugin class.
@@ -302,7 +355,7 @@ export interface ApiRegistry {
      * apiRegistry.plugins.addBefore(new ErrorPlugin(), AuthPlugin);
      * ```
      */
-    addBefore<T extends ApiPlugin>(plugin: ApiPlugin, before: PluginClass<T>): void;
+    addBefore<T extends ApiPluginBase>(plugin: ApiPluginBase, before: PluginClass<T>): void;
 
     /**
      * Add a plugin positioned after another plugin class.
@@ -314,7 +367,7 @@ export interface ApiRegistry {
      * apiRegistry.plugins.addAfter(new MetricsPlugin(), LoggingPlugin);
      * ```
      */
-    addAfter<T extends ApiPlugin>(plugin: ApiPlugin, after: PluginClass<T>): void;
+    addAfter<T extends ApiPluginBase>(plugin: ApiPluginBase, after: PluginClass<T>): void;
 
     /**
      * Remove a plugin by class.
@@ -326,7 +379,7 @@ export interface ApiRegistry {
      * apiRegistry.plugins.remove(MockPlugin);
      * ```
      */
-    remove<T extends ApiPlugin>(pluginClass: PluginClass<T>): void;
+    remove<T extends ApiPluginBase>(pluginClass: PluginClass<T>): void;
 
     /**
      * Check if a plugin class is registered.
@@ -338,12 +391,26 @@ export interface ApiRegistry {
      * }
      * ```
      */
-    has<T extends ApiPlugin>(pluginClass: PluginClass<T>): boolean;
+    has<T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean;
 
     /**
      * Get all plugins in execution order.
      */
-    getAll(): readonly ApiPlugin[];
+    getAll(): readonly ApiPluginBase[];
+
+    /**
+     * Get a plugin instance by class reference.
+     * Returns undefined if not found.
+     *
+     * @example
+     * ```typescript
+     * const authPlugin = apiRegistry.plugins.getPlugin(AuthPlugin);
+     * if (authPlugin) {
+     *   console.log('Auth is configured');
+     * }
+     * ```
+     */
+    getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined;
   };
 }
 ```
@@ -352,6 +419,15 @@ export interface ApiRegistry {
 
 ```typescript
 export abstract class BaseApiService {
+  /**
+   * Internal method called by apiRegistry after instantiation.
+   * Sets the provider function for accessing global plugins.
+   * Not exposed to users (underscore convention).
+   *
+   * @internal
+   */
+  _setGlobalPluginsProvider(provider: () => readonly ApiPluginBase[]): void;
+
   /**
    * Service-level plugin management
    */
@@ -368,7 +444,7 @@ export abstract class BaseApiService {
      * );
      * ```
      */
-    add(...plugins: ApiPlugin[]): void;
+    add(...plugins: ApiPluginBase[]): void;
 
     /**
      * Exclude global plugin classes from this service.
@@ -393,7 +469,22 @@ export abstract class BaseApiService {
     /**
      * Get service plugins (not including globals).
      */
-    getAll(): readonly ApiPlugin[];
+    getAll(): readonly ApiPluginBase[];
+
+    /**
+     * Get a plugin instance by class reference.
+     * Searches service plugins first, then global plugins.
+     * Returns undefined if not found.
+     *
+     * @example
+     * ```typescript
+     * const authPlugin = service.plugins.getPlugin(AuthPlugin);
+     * if (authPlugin) {
+     *   console.log('Auth is available for this service');
+     * }
+     * ```
+     */
+    getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined;
   };
 }
 ```
@@ -570,44 +661,6 @@ userService.plugins.add(new RateLimitPlugin({ limit: 100 }));
 adminService.plugins.add(new RateLimitPlugin({ limit: 1000 }));
 ```
 
-### URL-Based Rate Limit Plugin (Global)
-
-```typescript
-/**
- * If a global plugin truly needs URL-based limits:
- */
-class UrlRateLimitPlugin extends ApiPlugin<{ getLimitForUrl: (url: string) => number }> {
-  private requestCounts = new Map<string, number>();
-
-  onRequest(ctx: ApiRequestContext) {
-    const limit = this.config.getLimitForUrl(ctx.url);
-    const count = this.requestCounts.get(ctx.url) ?? 0;
-
-    if (count >= limit) {
-      return {
-        shortCircuit: {
-          status: 429,
-          headers: {},
-          data: { error: 'Rate limit exceeded' }
-        }
-      };
-    }
-
-    this.requestCounts.set(ctx.url, count + 1);
-    return ctx;
-  }
-
-  destroy() {
-    this.requestCounts.clear();
-  }
-}
-
-// Usage - URL-based limits
-apiRegistry.plugins.add(new UrlRateLimitPlugin({
-  getLimitForUrl: (url) => url.includes('/admin') ? 1000 : 100
-}));
-```
-
 ### Cache Plugin (With Cleanup)
 
 ```typescript
@@ -648,9 +701,43 @@ class CachePlugin extends ApiPlugin<{ ttl: number }> {
 
 ## Decisions
 
-### Decision 1: Class-Based over Hooks-Based
+### Decision 1: Class-Based Service Registration
 
-**What:** Use abstract `ApiPlugin<TConfig>` class instead of plain hooks objects.
+**What:** Use class constructor reference instead of string domain keys for service registration.
+
+**Why:**
+- **Type-safe service retrieval** - `getService(ServiceClass)` returns correctly typed instance
+- **No module augmentation needed** - Class reference IS the type
+- **Simpler API** - No need for `ApiServicesMap` interface extension
+- **Refactoring-friendly** - Rename class, all references update
+- **IDE support** - Go-to-definition, find references work naturally
+
+**Example:**
+```typescript
+// OLD (string-based) - REMOVED
+apiRegistry.register('accounts', AccountsApiService);
+const service = apiRegistry.getService('accounts'); // needs type assertion
+
+// NEW (class-based)
+apiRegistry.register(AccountsApiService);
+const service = apiRegistry.getService(AccountsApiService); // correctly typed
+```
+
+**Alternatives Considered:**
+1. String keys with module augmentation - Rejected: Verbose, maintenance burden
+2. Symbol keys - Rejected: Less ergonomic, requires separate export
+3. Factory function reference - Rejected: More complex than class reference
+
+**Trade-offs:**
+- (+) Simpler, cleaner API
+- (+) No module augmentation needed
+- (+) Type-safe by default
+- (-) Breaking change from string-based API
+- (-) Requires class import at call site
+
+### Decision 2: Class-Based over Hooks-Based Plugins
+
+**What:** Use abstract `ApiPluginBase` and `ApiPlugin<TConfig>` classes instead of plain hooks objects.
 
 **Why:**
 - **Type-safe plugin identification** - Use class reference instead of string names
@@ -671,50 +758,117 @@ class CachePlugin extends ApiPlugin<{ ttl: number }> {
 - (-) Slightly more boilerplate than plain objects
 - (-) Requires `constructor() { super(void 0); }` for no-config plugins
 
-### Decision 2: Class Reference for Plugin Identification
+### Decision 3: DRY Plugin Class Hierarchy
 
-**What:** Use `PluginClass<T>` type (class reference) instead of string names for removal, exclusion, and positioning.
-
-**Why:**
-- **Compile-time safety** - TypeScript catches typos and refactoring issues
-- **IDE support** - Autocomplete, go-to-definition, find references
-- **No runtime lookup** - Direct class comparison via `instanceof`
-- **Refactoring-friendly** - Rename class, all references update
-
-**Alternatives Considered:**
-1. String names - Rejected: Typos not caught at compile time
-2. Symbols - Rejected: Verbose, need separate export
-3. Factory function reference - Rejected: Doesn't work for configured plugins
-
-**Trade-offs:**
-- (+) Compile-time validation
-- (+) IDE support (autocomplete, refactoring)
-- (+) No string typos possible
-- (-) Requires importing plugin class for removal/exclusion
-
-### Decision 3: OCP-Compliant Dependency Injection
-
-**What:** Plugins receive service-specific behavior via constructor config, not by accessing ServiceContext.
+**What:** Two-class hierarchy: `ApiPluginBase` (non-generic) + `ApiPlugin<TConfig>` (generic with config).
 
 **Why:**
-- **Open/Closed Principle** - Plugin code doesn't change when services change
-- **Testability** - Easy to mock config in tests
-- **Decoupling** - Plugin doesn't know about service internals
-- **Flexibility** - Caller decides the mapping, not the plugin
+- **DRY principle** - No duplication of method signatures
+- **Storage type** - ApiPluginBase can be used in arrays without generic issues
+- **Type safety** - ApiPlugin<TConfig> provides typed config access
+- **Flexibility** - Plugins without config can extend either class
+
+**Example:**
+```typescript
+// Non-generic base for storage
+abstract class ApiPluginBase {
+  onRequest?(ctx: ApiRequestContext): ...;
+  onResponse?(response: ApiResponseContext, request: ApiRequestContext): ...;
+  onError?(error: Error, request: ApiRequestContext): ...;
+  destroy?(): void;
+}
+
+// Generic class for config
+abstract class ApiPlugin<TConfig> extends ApiPluginBase {
+  constructor(protected readonly config: TConfig) {
+    super();
+  }
+}
+
+// Storage uses non-generic base
+const plugins: ApiPluginBase[] = [];
+```
 
 **Alternatives Considered:**
-1. ServiceContext in ApiRequestContext - Rejected: Violates OCP, tight coupling
-2. Plugin-level `shouldApply(service)` - Rejected: Plugin knows about services
-3. Service-level metadata only - Rejected: Less flexible for cross-cutting logic
+1. Single generic class with default `void` - Rejected: Awkward storage typing
+2. Duplicate method signatures - Rejected: DRY violation
+3. Interface + class - Rejected: More complex, no clear benefit
 
 **Trade-offs:**
-- (+) OCP compliant
-- (+) Better testability
-- (+) Plugins are more reusable
-- (-) Caller must provide configuration
-- (-) Slightly more setup code
+- (+) Clean separation of concerns
+- (+) No method signature duplication
+- (+) Works naturally with TypeScript arrays
+- (-) Two classes to understand
 
-### Decision 4: Pure Request Data in ApiRequestContext
+### Decision 4: Internal Global Plugins Injection
+
+**What:** BaseApiService has internal `_setGlobalPluginsProvider()` method called by apiRegistry after instantiation.
+
+**Why:**
+- **No burden on derived classes** - Service classes don't need to know about global plugins
+- **Encapsulation** - Internal implementation detail, not public API
+- **Flexibility** - apiRegistry controls injection timing
+- **Testability** - Can mock global plugins provider in tests
+
+**Example:**
+```typescript
+// In apiRegistry.register()
+register<T extends BaseApiService>(serviceClass: new () => T): void {
+  const service = new serviceClass();
+  service._setGlobalPluginsProvider(() => this.globalPlugins);
+  this.services.set(serviceClass, service);
+}
+
+// In BaseApiService
+_setGlobalPluginsProvider(provider: () => readonly ApiPluginBase[]): void {
+  this.globalPluginsProvider = provider;
+}
+```
+
+**Alternatives Considered:**
+1. Constructor injection - Rejected: Changes constructor signature, burden on derived classes
+2. Static registry access - Rejected: Tight coupling, harder to test
+3. Public method - Rejected: Exposes internal detail to users
+
+**Trade-offs:**
+- (+) No changes to derived class constructors
+- (+) Clean separation of concerns
+- (+) Easy to test
+- (-) Underscore convention may confuse some developers
+
+### Decision 5: getPlugin() Method
+
+**What:** Add method to find plugin instance by class reference.
+
+**Why:**
+- **Discoverability** - Easy to check if a plugin is active
+- **Access** - Get plugin instance for inspection or configuration
+- **Type-safe** - Returns correctly typed plugin instance
+- **Useful for testing** - Verify plugin state
+
+**Example:**
+```typescript
+// Find plugin by class
+const authPlugin = service.plugins.getPlugin(AuthPlugin);
+if (authPlugin) {
+  // authPlugin is typed as AuthPlugin
+}
+
+// Also on apiRegistry
+const loggingPlugin = apiRegistry.plugins.getPlugin(LoggingPlugin);
+```
+
+**Alternatives Considered:**
+1. Only has() method - Rejected: Sometimes need access to instance
+2. getAll() with filter - Rejected: Verbose, less type-safe
+3. Property access - Rejected: Not dynamic
+
+**Trade-offs:**
+- (+) Type-safe instance access
+- (+) Consistent with has() method pattern
+- (-) Slightly more API surface
+
+### Decision 6: Pure Request Data in ApiRequestContext
 
 **What:** `ApiRequestContext` contains only pure request data (method, url, headers, body). No service identification at all.
 
@@ -736,7 +890,7 @@ class CachePlugin extends ApiPlugin<{ ttl: number }> {
 - (+) Forces proper DI patterns
 - (-) Service-specific limits require service-level plugins (but this is the right pattern)
 
-### Decision 5: Short-Circuit via Return Type
+### Decision 7: Short-Circuit via Return Type
 
 **What:** Return `{ shortCircuit: ApiResponseContext }` from `onRequest` to skip HTTP.
 
@@ -757,7 +911,7 @@ class CachePlugin extends ApiPlugin<{ ttl: number }> {
 - (-) Slightly verbose syntax
 - (-) Plugin must handle both return types
 
-### Decision 6: FIFO with Before/After Positioning by Class
+### Decision 8: FIFO with Before/After Positioning by Class
 
 **What:** Plugins execute in registration order (FIFO) by default, with optional explicit positioning by class reference.
 
@@ -778,7 +932,7 @@ class CachePlugin extends ApiPlugin<{ ttl: number }> {
 - (+) No magic numbers or string typos
 - (-) Requires importing plugin class for positioning
 
-### Decision 7: Namespaced Plugin API
+### Decision 9: Namespaced Plugin API
 
 **What:** Plugin operations are namespaced under `apiRegistry.plugins` and `service.plugins` objects.
 
@@ -797,7 +951,7 @@ class CachePlugin extends ApiPlugin<{ ttl: number }> {
 - (+) Easy to discover plugin operations
 - (-) Slightly more verbose (`plugins.add` vs `use`)
 
-### Decision 8: Duplicate Policy (Global vs Service)
+### Decision 10: Duplicate Policy (Global vs Service)
 
 **What:** Global plugins prohibit duplicates; service plugins allow duplicates.
 
@@ -826,47 +980,51 @@ adminService.plugins.add(new RateLimitPlugin({ limit: 1000 }));
 - (+) Enables per-service configuration patterns
 - (-) Asymmetric behavior between scopes
 
-### Decision 9: Parameter Property for Config
+### Decision 11: Clean Break (No Backward Compatibility)
 
-**What:** `ApiPlugin` class uses TypeScript parameter property: `constructor(protected readonly config: TConfig) {}`
+**What:** No deprecated methods, no backward compatibility shims.
 
 **Why:**
-- **Concise** - Single line instead of three
-- **TypeScript idiomatic** - Well-known pattern
-- **Less boilerplate** - Reduces class overhead
+- **Simpler codebase** - No maintenance burden for old patterns
+- **Clearer API** - Users see only the new patterns
+- **No confusion** - No mixing old and new approaches
 
 **Alternatives Considered:**
-1. Explicit property + assignment - Rejected: More verbose
-2. No config (use setters) - Rejected: Less type-safe
+1. Deprecation warnings - Rejected: Adds complexity, delays migration
+2. Adapter layer - Rejected: More code to maintain
 
 **Trade-offs:**
-- (+) Minimal boilerplate
-- (+) Clear and concise
-- (-) Less familiar to devs new to TypeScript
-
-### Decision 10: Tree-Shaking Compliance
-
-**What:** Plugin classes have no static properties; no module-level instantiation.
-
-**Why:**
-- **Bundler optimization** - Unused plugins can be tree-shaken
-- **Lazy instantiation** - Plugins created only when needed
-- **Smaller bundles** - Only used plugins in final build
-
-**Requirements:**
-- No `static` properties on plugin classes
-- No module-level `new Plugin()` calls
-- `"sideEffects": false` in package.json
-- `"module": "ESNext"` in tsconfig.json
-
-**Trade-offs:**
-- (+) Better tree-shaking
-- (+) Smaller bundles for apps that don't use all plugins
-- (-) Can't use static properties for plugin metadata
+- (+) Cleaner implementation
+- (+) No technical debt
+- (-) Breaking change for existing code
 
 ## Risks / Trade-offs
 
-### Risk 1: Class Boilerplate
+### Risk 1: Breaking Change for Service Registration
+
+**Risk:** Existing code uses string-based service registration.
+
+**Likelihood:** High (all existing code affected)
+
+**Impact:** Medium (straightforward migration)
+
+**Mitigation:**
+- Document migration path clearly
+- Find-and-replace pattern is simple
+- IDE refactoring can help
+
+**Migration example:**
+```typescript
+// Before
+apiRegistry.register('accounts', AccountsApiService);
+const service = apiRegistry.getService<AccountsApiService>('accounts');
+
+// After
+apiRegistry.register(AccountsApiService);
+const service = apiRegistry.getService(AccountsApiService);
+```
+
+### Risk 2: Class Boilerplate
 
 **Risk:** Plugins require more code than plain objects.
 
@@ -875,22 +1033,11 @@ adminService.plugins.add(new RateLimitPlugin({ limit: 1000 }));
 **Impact:** Low (boilerplate is minimal)
 
 **Mitigation:**
-- Abstract base class handles common pattern
+- DRY class hierarchy handles most boilerplate
 - No-config plugins need only `constructor() { super(void 0); }`
 - Clear examples in documentation
 
-**Note on `super(void 0)` pattern:**
-For plugins without configuration, use `void 0` (or `undefined`) as the config value:
-```typescript
-class LoggingPlugin extends ApiPlugin<void> {
-  constructor() {
-    super(void 0); // void 0 is preferred over undefined for explicitness
-  }
-}
-```
-Alternative: use `super(undefined)` - both are equivalent but `void 0` makes the intentional absence of config explicit.
-
-### Risk 2: Global Plugin Class Collisions
+### Risk 3: Global Plugin Class Collisions
 
 **Risk:** Two instances of same plugin class registered globally.
 
@@ -902,51 +1049,6 @@ Alternative: use `super(undefined)` - both are equivalent but `void 0` makes the
 - Throw error on duplicate class registration (global only)
 - Include plugin class name in error message
 - Service-level plugins allow duplicates by design
-
-**Error class recommendation:**
-Consider using a custom `PluginRegistrationError` class for clearer error handling:
-```typescript
-class PluginRegistrationError extends Error {
-  constructor(
-    public readonly pluginClass: PluginClass,
-    message: string
-  ) {
-    super(`Plugin registration error (${pluginClass.name}): ${message}`);
-    this.name = 'PluginRegistrationError';
-  }
-}
-
-// Usage in apiRegistry.plugins.add()
-if (this.globalPlugins.some(p => p instanceof pluginClass)) {
-  throw new PluginRegistrationError(pluginClass, 'already registered globally');
-}
-```
-
-### Risk 3: Short-Circuit Confusion
-
-**Risk:** Plugin short-circuits unexpectedly, other plugins don't understand.
-
-**Likelihood:** Low (explicit return type)
-
-**Impact:** Medium (request not made)
-
-**Mitigation:**
-- Response includes marker (e.g., header) for short-circuited requests
-- Documentation clearly explains short-circuit behavior
-- Type system makes short-circuit explicit
-
-**Header convention for short-circuited responses:**
-Use the `x-hai3-short-circuit: true` header to mark responses that did not make an actual HTTP request:
-```typescript
-return {
-  shortCircuit: {
-    status: 200,
-    headers: { 'x-hai3-short-circuit': 'true' },
-    data: mockData
-  }
-};
-```
-This allows downstream code to detect mocked/cached responses if needed.
 
 ### Risk 4: Memory Leaks in Long-Running Plugins
 
@@ -961,47 +1063,30 @@ This allows downstream code to detect mocked/cached responses if needed.
 - `reset()` calls `destroy()` on all plugins
 - Document cleanup patterns for stateful plugins
 
-**Async cleanup guidance:**
-The `destroy()` method is synchronous by design. For async cleanup needs, use fire-and-forget:
-```typescript
-destroy(): void {
-  // Sync cleanup
-  this.cache.clear();
-
-  // Async cleanup (fire-and-forget)
-  this.closeConnections().catch(console.error);
-}
-
-private async closeConnections(): Promise<void> {
-  await this.connection?.close();
-}
-```
-If you need to await cleanup completion, do so before calling `apiRegistry.plugins.remove()`.
-
-### Risk 5: Import Overhead for Exclusion
-
-**Risk:** Services must import plugin classes to exclude them.
-
-**Likelihood:** High (required for type safety)
-
-**Impact:** Low (minimal bundle impact)
-
-**Mitigation:**
-- Plugin classes are already typically imported
-- Clear documentation on import patterns
-- Consider barrel exports for common plugins
-
 ## Migration Plan
 
-### Phase 1: Add Core Types (Non-Breaking)
+### Phase 1: Add Core Types (Non-Breaking in isolation)
 
-1. Add `ApiPlugin<TConfig>` abstract class with parameter property
-2. Add `PluginClass<T>` type
-3. Add `ApiRequestContext` (pure request data, no serviceName)
-4. Add `ApiResponseContext`, `ShortCircuitResponse` types
-5. Add `isShortCircuit` type guard
+1. Add `ApiPluginBase` abstract class (non-generic)
+2. Add `ApiPlugin<TConfig>` class extending ApiPluginBase
+3. Add `PluginClass<T>` type
+4. Add `ApiRequestContext` (pure request data, no serviceName)
+5. Add `ApiResponseContext`, `ShortCircuitResponse` types
+6. Add `isShortCircuit` type guard
 
-### Phase 2: Add Namespaced Registry API (Non-Breaking)
+### Phase 2: Update ApiRegistry (Breaking)
+
+1. Change service storage from `Map<string, service>` to `Map<ServiceClass, service>`
+2. Update `register()` to take class, not string + class
+3. Update `getService()` to take class, return typed instance
+4. Update `has()` to take class
+5. Remove `getDomains()` method
+6. Remove `registerMocks()` method (OCP/DIP - mock config goes to MockPlugin)
+7. Remove `setMockMode()` method (OCP/DIP - replaced by plugins.add/remove)
+8. Remove `getMockMap()` method (OCP/DIP - MockPlugin manages its own map)
+9. Add `_setGlobalPluginsProvider()` call after service instantiation
+
+### Phase 3: Add Namespaced Plugin API
 
 1. Add `apiRegistry.plugins` namespace object
 2. Implement `plugins.add(...plugins)` - FIFO, no duplicates
@@ -1009,23 +1094,26 @@ If you need to await cleanup completion, do so before calling `apiRegistry.plugi
 4. Implement `plugins.remove(pluginClass)`
 5. Implement `plugins.has(pluginClass)`
 6. Implement `plugins.getAll()`
-7. Internal: add global plugin storage
+7. Implement `plugins.getPlugin(pluginClass)`
+8. Internal: add global plugin storage
 
-### Phase 3: Add Namespaced Service API (Non-Breaking)
+### Phase 4: Add Namespaced Service API
 
-1. Add `service.plugins` namespace object
-2. Implement `plugins.add(...plugins)` - allows duplicates
-3. Implement `plugins.exclude(...pluginClasses)`
-4. Implement `plugins.getExcluded()`
-5. Implement `plugins.getAll()`
-6. Update plugin execution to use new chain pattern
+1. Add `_setGlobalPluginsProvider()` internal method
+2. Add `service.plugins` namespace object
+3. Implement `plugins.add(...plugins)` - allows duplicates
+4. Implement `plugins.exclude(...pluginClasses)`
+5. Implement `plugins.getExcluded()`
+6. Implement `plugins.getAll()`
+7. Implement `plugins.getPlugin(pluginClass)`
+8. Update plugin execution to use new chain pattern
 
-### Phase 4: Update MockPlugin
+### Phase 5: Update MockPlugin
 
 1. Update `MockPlugin` to extend `ApiPlugin<TConfig>`
 2. Update all MockPlugin usages
 
-### Phase 5: Documentation
+### Phase 6: Documentation
 
 1. Update API.md guidelines
 2. Create migration guide
@@ -1034,38 +1122,5 @@ If you need to await cleanup completion, do so before calling `apiRegistry.plugi
 ### Rollback Plan
 
 If issues are discovered:
-1. Class-based plugins can coexist with any existing patterns
-2. Provide adapter utilities if needed
-3. Gradual migration with clear deprecation path
-
-## Open Questions (Resolved)
-
-> These questions have been addressed in this design.
-
-1. **Should plugins be classes or hooks objects?**
-   - **RESOLVED**: Classes with abstract `ApiPlugin<TConfig>` base using parameter property
-   - Rationale: Type-safe identification, consistent with HAI3, clear DI, minimal boilerplate
-
-2. **How are plugins identified for removal/exclusion?**
-   - **RESOLVED**: By class reference (`PluginClass<T>`)
-   - Rationale: Compile-time safety, IDE support, no string typos
-
-3. **How do plugins access service-specific information?**
-   - **RESOLVED**: Via constructor config (DI), not context
-   - Rationale: OCP compliance, plugins don't know about services
-
-4. **Should serviceName be in ApiRequestContext?**
-   - **RESOLVED**: No, pure request data only (method, url, headers, body)
-   - Rationale: Forces proper DI patterns; use service-level plugins for per-service configs
-
-5. **Should `onError` allow recovery?**
-   - **RESOLVED**: Yes, return `ApiResponseContext` to recover
-   - Rationale: Enables retry and fallback patterns
-
-6. **Should plugin API be flat or namespaced?**
-   - **RESOLVED**: Namespaced under `apiRegistry.plugins` and `service.plugins`
-   - Rationale: Clean organization, discoverability, extensibility
-
-7. **Should duplicates be allowed?**
-   - **RESOLVED**: Global: no; Service: yes
-   - Rationale: Global clarity + service flexibility (different configs per service)
+1. This is a clean break, no rollback to string-based API planned
+2. For critical issues, revert the entire change and redesign

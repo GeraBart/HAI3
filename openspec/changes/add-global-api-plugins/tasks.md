@@ -2,38 +2,69 @@
 
 ## Ordered Work Items
 
-### 1. Add ApiPlugin Abstract Base Class to types.ts
+### 1. Add ApiPluginBase Abstract Class to types.ts
 
-**Goal**: Add the abstract base class for all plugins using TypeScript parameter property
+**Goal**: Add the non-generic abstract base class for all plugins
 
 **Files**:
 - `packages/api/src/types.ts` (modified)
 
 **Changes**:
-- Add `ApiPlugin<TConfig>` abstract class with:
-  - TypeScript parameter property: `constructor(protected readonly config: TConfig) {}`
-  - Optional `onRequest` method
-  - Optional `onResponse` method
-  - Optional `onError` method
-  - Optional `destroy` method
+- Add `ApiPluginBase` abstract class with:
+  - Optional `onRequest` method signature
+  - Optional `onResponse` method signature
+  - Optional `onError` method signature
+  - Optional `destroy` method signature
+  - No generic type parameters (used for storage)
 
 **Traceability**:
 - Requirement: Type Definitions (spec.md)
-- Scenario: ApiPlugin abstract class with parameter property (spec.md)
-- Decision 1: Class-Based over Hooks-Based (design.md)
-- Decision 9: Parameter Property for Config (design.md)
+- Scenario: ApiPluginBase abstract class (non-generic) (spec.md)
+- Decision 3: DRY Plugin Class Hierarchy (design.md)
 
 **Validation**:
-- [ ] `ApiPlugin<TConfig>` abstract class is exported
-- [ ] Uses parameter property: `constructor(protected readonly config: TConfig) {}`
+- [ ] `ApiPluginBase` abstract class is exported
 - [ ] All lifecycle methods are optional
+- [ ] No generic type parameters
 - [ ] TypeScript compiles without errors
+
+**Status**: NOT STARTED
 
 **Dependencies**: None
 
 ---
 
-### 2. Add Core Context Types to types.ts
+### 2. Add ApiPlugin Generic Class to types.ts
+
+**Goal**: Add the generic abstract class extending ApiPluginBase with typed config
+
+**Files**:
+- `packages/api/src/types.ts` (modified)
+
+**Changes**:
+- Add `ApiPlugin<TConfig>` abstract class:
+  - Extends `ApiPluginBase`
+  - Uses parameter property: `constructor(protected readonly config: TConfig) { super(); }`
+  - TConfig defaults to `void`
+
+**Traceability**:
+- Requirement: Type Definitions (spec.md)
+- Scenario: ApiPlugin abstract class with parameter property (spec.md)
+- Decision 3: DRY Plugin Class Hierarchy (design.md)
+
+**Validation**:
+- [ ] `ApiPlugin<TConfig>` abstract class is exported
+- [ ] Extends `ApiPluginBase`
+- [ ] Uses parameter property for config
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 1
+
+---
+
+### 3. Add Core Context Types to types.ts
 
 **Goal**: Add request, response, and short-circuit types (pure request data)
 
@@ -58,7 +89,7 @@
 - Scenario: ApiRequestContext type (pure request data) (spec.md)
 - Scenario: ApiResponseContext type (spec.md)
 - Scenario: ShortCircuitResponse type (spec.md)
-- Decision 4: Pure Request Data in ApiRequestContext (design.md)
+- Decision 6: Pure Request Data in ApiRequestContext (design.md)
 
 **Validation**:
 - [ ] `ApiRequestContext` has only pure request data (method, url, headers, body)
@@ -67,11 +98,13 @@
 - [ ] `ShortCircuitResponse` type is exported
 - [ ] TypeScript compiles without errors
 
+**Status**: NOT STARTED
+
 **Dependencies**: None
 
 ---
 
-### 3. Add PluginClass Type and isShortCircuit Guard
+### 4. Add PluginClass Type and isShortCircuit Guard
 
 **Goal**: Add type-safe plugin class reference type and type guard
 
@@ -81,7 +114,7 @@
 **Changes**:
 - Add `PluginClass<T>` type:
   ```typescript
-  export type PluginClass<T extends ApiPlugin = ApiPlugin> = abstract new (...args: any[]) => T;
+  export type PluginClass<T extends ApiPluginBase = ApiPluginBase> = abstract new (...args: any[]) => T;
   ```
 - Add `isShortCircuit` type guard function:
   ```typescript
@@ -96,7 +129,6 @@
 - Requirement: Type Definitions (spec.md)
 - Scenario: PluginClass type for class references (spec.md)
 - Scenario: isShortCircuit type guard (spec.md)
-- Decision 2: Class Reference for Plugin Identification (design.md)
 
 **Validation**:
 - [ ] `PluginClass<T>` type is exported
@@ -104,11 +136,57 @@
 - [ ] Type guard narrows type correctly
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 1, 2
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 1, 3
 
 ---
 
-### 4. Add Namespaced Plugin API to ApiRegistry Interface
+### 5. Update ApiRegistry Interface for Class-Based Service Registration (OCP/DIP Compliant)
+
+**Goal**: Change service registration from string domains to class references, remove mock-specific methods
+
+**Files**:
+- `packages/api/src/types.ts` (modified)
+
+**Changes**:
+- Update `ApiRegistry` interface:
+  - `register<T extends BaseApiService>(serviceClass: new () => T): void`
+  - `getService<T extends BaseApiService>(serviceClass: new () => T): T`
+  - `has<T extends BaseApiService>(serviceClass: new () => T): boolean`
+  - REMOVE `getDomains()` method
+  - REMOVE `registerMocks()` method (OCP/DIP - mock config goes to MockPlugin)
+  - REMOVE `setMockMode()` method (OCP/DIP - replaced by plugins.add/remove)
+  - REMOVE `getMockMap()` method (OCP/DIP - MockPlugin manages its own map)
+- Update `ApiServicesConfig` interface:
+  - REMOVE `useMockApi` field (OCP/DIP)
+  - REMOVE `mockDelay` field (OCP/DIP - now in MockPluginConfig)
+
+**Traceability**:
+- Requirement: Class-Based Service Registration (spec.md)
+- Scenario: Register service by class reference (spec.md)
+- Scenario: REMOVED - getDomains() method (spec.md)
+- Decision 1: Class-Based Service Registration (design.md)
+- Decision 13: OCP/DIP Compliant Registry (design.md)
+
+**Validation**:
+- [ ] `register()` takes class constructor
+- [ ] `getService()` takes class constructor, returns typed instance
+- [ ] `has()` takes class constructor
+- [ ] `getDomains()` is NOT defined
+- [ ] `registerMocks()` is NOT defined (OCP/DIP)
+- [ ] `setMockMode()` is NOT defined (OCP/DIP)
+- [ ] `getMockMap()` is NOT defined (OCP/DIP)
+- [ ] `useMockApi` is NOT in ApiServicesConfig (OCP/DIP)
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT STARTED
+
+**Dependencies**: None
+
+---
+
+### 6. Add Namespaced Plugin API to ApiRegistry Interface
 
 **Goal**: Extend ApiRegistry interface with namespaced `plugins` object
 
@@ -117,40 +195,87 @@
 
 **Changes**:
 - Add `readonly plugins: { ... }` namespace object to ApiRegistry interface:
-  - `add(...plugins: ApiPlugin[]): void` - throws on duplicate class
-  - `addBefore<T extends ApiPlugin>(plugin: ApiPlugin, before: PluginClass<T>): void`
-  - `addAfter<T extends ApiPlugin>(plugin: ApiPlugin, after: PluginClass<T>): void`
-  - `remove<T extends ApiPlugin>(pluginClass: PluginClass<T>): void` - throws if not registered
-  - `has<T extends ApiPlugin>(pluginClass: PluginClass<T>): boolean`
-  - `getAll(): readonly ApiPlugin[]`
+  - `add(...plugins: ApiPluginBase[]): void` - throws on duplicate class
+  - `addBefore<T extends ApiPluginBase>(plugin: ApiPluginBase, before: PluginClass<T>): void`
+  - `addAfter<T extends ApiPluginBase>(plugin: ApiPluginBase, after: PluginClass<T>): void`
+  - `remove<T extends ApiPluginBase>(pluginClass: PluginClass<T>): void` - throws if not registered
+  - `has<T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean`
+  - `getAll(): readonly ApiPluginBase[]`
+  - `getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined`
 - Add JSDoc with code examples for each method
 
 **Traceability**:
-- Requirement: ApiRegistry Interface Extension (Namespaced API) (spec.md)
+- Requirement: ApiRegistry Interface Extension (spec.md)
 - Scenario: ApiRegistry interface includes plugins namespace (spec.md)
-- Scenario: ApiRegistry.plugins includes add() method (spec.md)
-- Scenario: ApiRegistry.plugins includes addBefore() method (spec.md)
-- Scenario: ApiRegistry.plugins includes addAfter() method (spec.md)
-- Scenario: ApiRegistry.plugins includes remove() method (spec.md)
-- Scenario: ApiRegistry.plugins includes has() method (spec.md)
-- Scenario: ApiRegistry.plugins includes getAll() method (spec.md)
-- Decision 7: Namespaced Plugin API (design.md)
+- Scenario: ApiRegistry.plugins includes getPlugin() method (spec.md)
+- Decision 5: getPlugin() Method (design.md)
+- Decision 9: Namespaced Plugin API (design.md)
 
 **Validation**:
 - [ ] ApiRegistry interface includes `plugins` namespace object
-- [ ] `plugins.add()` method signature defined
-- [ ] `plugins.addBefore()` / `plugins.addAfter()` method signatures defined
-- [ ] `plugins.remove()` method signature defined
-- [ ] `plugins.has()` method signature defined
-- [ ] `plugins.getAll()` method signature defined
+- [ ] All plugin methods defined with correct signatures
+- [ ] `getPlugin()` method defined
 - [ ] JSDoc includes code examples
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 1, 3
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 1, 4
 
 ---
 
-### 5. Implement Namespaced Plugin API in apiRegistry
+### 7. Implement Class-Based Service Registration in apiRegistry (OCP/DIP Compliant)
+
+**Goal**: Update apiRegistry to use class references instead of string domains, remove mock-specific methods
+
+**Files**:
+- `packages/api/src/apiRegistry.ts` (modified)
+
+**Changes**:
+- Change services storage from `Map<string, service>` to `Map<ServiceClass, service>`
+- Update `register()`:
+  - Take class constructor, not string + class
+  - Instantiate service
+  - Call `_setGlobalPluginsProvider()` on service
+  - Store with class as key
+- Update `getService()`:
+  - Take class constructor
+  - Return typed instance
+  - Throw if not registered
+- Update `has()`:
+  - Take class constructor
+- REMOVE `getDomains()` method
+- REMOVE `registerMocks()` method (OCP/DIP)
+- REMOVE `setMockMode()` method (OCP/DIP)
+- REMOVE `getMockMap()` method (OCP/DIP)
+- REMOVE `mockMaps` storage (OCP/DIP)
+- REMOVE mock-related private methods (`enableMockMode`, `disableMockMode`, `updateServiceMockPlugin`)
+
+**Traceability**:
+- Requirement: Class-Based Service Registration (spec.md)
+- Scenario: Register service by class reference (spec.md)
+- Decision 1: Class-Based Service Registration (design.md)
+- Decision 13: OCP/DIP Compliant Registry (design.md)
+
+**Validation**:
+- [ ] `register(ServiceClass)` creates and stores instance
+- [ ] `getService(ServiceClass)` returns correctly typed instance
+- [ ] `has(ServiceClass)` returns correct boolean
+- [ ] `getDomains()` does not exist
+- [ ] `registerMocks()` does not exist (OCP/DIP)
+- [ ] `setMockMode()` does not exist (OCP/DIP)
+- [ ] `getMockMap()` does not exist (OCP/DIP)
+- [ ] No mock-related code in apiRegistry (OCP/DIP)
+- [ ] `_setGlobalPluginsProvider()` called on registration
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 5
+
+---
+
+### 8. Implement Namespaced Plugin API in apiRegistry
 
 **Goal**: Add private storage and implement `plugins` namespace object
 
@@ -158,35 +283,42 @@
 - `packages/api/src/apiRegistry.ts` (modified)
 
 **Changes**:
-- Add `private globalPlugins: ApiPlugin[] = []` field to ApiRegistryImpl
+- Add `private globalPlugins: ApiPluginBase[] = []` field to ApiRegistryImpl
 - Create `readonly plugins` namespace object with implementations:
-  - `add(...plugins: ApiPlugin[]): void`
+  - `add(...plugins: ApiPluginBase[]): void`
     - Validate no duplicate plugin classes (via instanceof)
     - Append each plugin to globalPlugins array (FIFO)
     - Throw if duplicate class already registered
-  - `getAll(): readonly ApiPlugin[]`
+  - `getAll(): readonly ApiPluginBase[]`
     - Return readonly array of plugins in execution order
-  - `has<T extends ApiPlugin>(pluginClass: PluginClass<T>): boolean`
+  - `has<T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean`
     - Return true if plugin of given class is registered
+  - `getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined`
+    - Find and return plugin instance by class
 
 **Traceability**:
 - Scenario: Register global plugins with plugins.add() (spec.md)
 - Scenario: Get global plugins (spec.md)
 - Scenario: Check if plugin is registered (spec.md)
-- Decision 8: Duplicate Policy (Global vs Service) (design.md)
+- Scenario: Get plugin by class reference (spec.md)
+- Decision 5: getPlugin() Method (design.md)
+- Decision 10: Duplicate Policy (design.md)
 
 **Validation**:
 - [ ] `plugins.add()` appends plugins in FIFO order
 - [ ] `plugins.add()` throws on duplicate plugin class
 - [ ] `plugins.getAll()` returns readonly array in execution order
 - [ ] `plugins.has()` returns true/false based on class
+- [ ] `plugins.getPlugin()` returns instance or undefined
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 1, 4
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 1, 6
 
 ---
 
-### 6. Implement Plugin Positioning in apiRegistry
+### 9. Implement Plugin Positioning in apiRegistry
 
 **Goal**: Add before/after positioning via `plugins.addBefore()` and `plugins.addAfter()`
 
@@ -195,13 +327,13 @@
 
 **Changes**:
 - Add to `plugins` namespace object:
-  - `addBefore<T extends ApiPlugin>(plugin: ApiPlugin, before: PluginClass<T>): void`
+  - `addBefore<T extends ApiPluginBase>(plugin: ApiPluginBase, before: PluginClass<T>): void`
     - Find target plugin by class (using instanceof)
     - Insert before target
     - Throw if target plugin class not found
     - Throw on duplicate plugin class
     - Detect circular dependencies and throw
-  - `addAfter<T extends ApiPlugin>(plugin: ApiPlugin, after: PluginClass<T>): void`
+  - `addAfter<T extends ApiPluginBase>(plugin: ApiPluginBase, after: PluginClass<T>): void`
     - Find target plugin by class (using instanceof)
     - Insert after target
     - Throw if target plugin class not found
@@ -220,11 +352,13 @@
 - [ ] Throws on circular dependency
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Task 5
+**Status**: NOT STARTED
+
+**Dependencies**: Task 8
 
 ---
 
-### 7. Implement Plugin Removal in apiRegistry
+### 10. Implement Plugin Removal in apiRegistry
 
 **Goal**: Add ability to remove plugins by class with cleanup via `plugins.remove()`
 
@@ -233,7 +367,7 @@
 
 **Changes**:
 - Add to `plugins` namespace object:
-  - `remove<T extends ApiPlugin>(pluginClass: PluginClass<T>): void`
+  - `remove<T extends ApiPluginBase>(pluginClass: PluginClass<T>): void`
     - Find plugin by class (using instanceof)
     - If found, call `destroy()` if available
     - Remove from globalPlugins array
@@ -254,11 +388,63 @@
 - [ ] `reset()` clears globalPlugins array
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Task 5
+**Status**: NOT STARTED
+
+**Dependencies**: Task 8
 
 ---
 
-### 8. Add Namespaced Plugin API to BaseApiService
+### 11. Add Internal Global Plugins Injection to BaseApiService (OCP/DIP Compliant)
+
+**Goal**: Add `_setGlobalPluginsProvider()` internal method, remove mock-related code
+
+**Files**:
+- `packages/api/src/BaseApiService.ts` (modified)
+
+**Changes**:
+- Add `private globalPluginsProvider: (() => readonly ApiPluginBase[]) | null = null` field
+- Add internal method:
+  ```typescript
+  _setGlobalPluginsProvider(provider: () => readonly ApiPluginBase[]): void {
+    this.globalPluginsProvider = provider;
+  }
+  ```
+- Add method to get global plugins:
+  ```typescript
+  private getGlobalPlugins(): readonly ApiPluginBase[] {
+    return this.globalPluginsProvider?.() ?? [];
+  }
+  ```
+- REMOVE `getMockMap()` method (OCP/DIP - services unaware of mocking):
+  ```typescript
+  // REMOVE THIS:
+  protected getMockMap(): MockMap {
+    return {};
+  }
+  ```
+- REMOVE any mock-related imports or dependencies
+
+**Traceability**:
+- Requirement: Internal Global Plugins Injection (spec.md)
+- Scenario: _setGlobalPluginsProvider() internal method (spec.md)
+- Decision 4: Internal Global Plugins Injection (design.md)
+- Decision 15: Services unaware of plugins (design.md)
+
+**Validation**:
+- [ ] `_setGlobalPluginsProvider()` method exists
+- [ ] Method is internal (underscore convention)
+- [ ] Global plugins accessible via provider
+- [ ] `getMockMap()` does NOT exist (OCP/DIP)
+- [ ] No mock-related code in BaseApiService (OCP/DIP)
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 1
+
+---
+
+### 12. Add Namespaced Plugin API to BaseApiService
 
 **Goal**: Add namespaced `plugins` object to BaseApiService
 
@@ -266,25 +452,30 @@
 - `packages/api/src/BaseApiService.ts` (modified)
 
 **Changes**:
-- Add `private servicePlugins: ApiPlugin[] = []` field
+- Add `private servicePlugins: ApiPluginBase[] = []` field
 - Add `private excludedPluginClasses: Set<PluginClass> = new Set()` field
 - Create `readonly plugins` namespace object with implementations:
-  - `add(...plugins: ApiPlugin[]): void`
+  - `add(...plugins: ApiPluginBase[]): void`
     - Append plugins to servicePlugins array (FIFO)
     - Duplicates of same class ARE allowed (different configs)
   - `exclude(...pluginClasses: PluginClass[]): void`
     - Add classes to excludedPluginClasses set
   - `getExcluded(): readonly PluginClass[]`
     - Return array of excluded plugin classes
-  - `getAll(): readonly ApiPlugin[]`
+  - `getAll(): readonly ApiPluginBase[]`
     - Return service plugins (not including globals)
+  - `getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined`
+    - Search service plugins first, then global plugins
+    - Return instance or undefined
 
 **Traceability**:
 - Scenario: Register service-specific plugins with plugins.add() (spec.md)
 - Scenario: Exclude global plugins by class (spec.md)
 - Scenario: Get excluded plugin classes (spec.md)
 - Scenario: Get service plugins (spec.md)
-- Decision 8: Duplicate Policy (Global vs Service) (design.md)
+- Scenario: Get plugin by class reference (service-level) (spec.md)
+- Decision 5: getPlugin() Method (design.md)
+- Decision 10: Duplicate Policy (design.md)
 
 **Validation**:
 - [ ] `plugins.add()` appends plugins to service-specific storage
@@ -292,14 +483,17 @@
 - [ ] `plugins.exclude()` stores plugin classes for exclusion
 - [ ] `plugins.getExcluded()` returns readonly array of classes
 - [ ] `plugins.getAll()` returns service plugins only
+- [ ] `plugins.getPlugin()` searches service then global
 - [ ] Service plugins are separate from global plugins
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 1, 3
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 1, 4, 11
 
 ---
 
-### 9. Implement Plugin Merging in BaseApiService
+### 13. Implement Plugin Merging in BaseApiService
 
 **Goal**: Merge global and service plugins respecting exclusions by class
 
@@ -307,14 +501,13 @@
 - `packages/api/src/BaseApiService.ts` (modified)
 
 **Changes**:
-- Import `apiRegistry` (if not already)
-- Implement or update `getPluginsInOrder(): readonly ApiPlugin[]`
-  - Get global plugins via `apiRegistry.plugins.getAll()`
+- Implement `getMergedPluginsInOrder(): readonly ApiPluginBase[]`
+  - Get global plugins via provider
   - Filter out plugins where `plugin instanceof excludedClass` for any excluded class
   - Append servicePlugins (FIFO)
   - Return merged array
-- Implement `getPluginsReversed(): readonly ApiPlugin[]`
-  - Return reversed `getPluginsInOrder()` for response phase
+- Implement `getMergedPluginsReversed(): readonly ApiPluginBase[]`
+  - Return reversed `getMergedPluginsInOrder()` for response phase
 
 **Traceability**:
 - Scenario: Plugin merging respects exclusions by class (spec.md)
@@ -324,14 +517,16 @@
 **Validation**:
 - [ ] Global plugins come before service plugins
 - [ ] Excluded plugin classes are filtered out (via instanceof)
-- [ ] `getPluginsReversed()` returns correct reverse order
+- [ ] `getMergedPluginsReversed()` returns correct reverse order
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 5, 8
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 11, 12
 
 ---
 
-### 10. Implement Plugin Execution Chain
+### 14. Implement Plugin Execution Chain
 
 **Goal**: Execute plugin lifecycle methods with short-circuit and error recovery support
 
@@ -357,7 +552,7 @@
 - Scenario: onRequest lifecycle method contract (spec.md)
 - Scenario: onResponse lifecycle method contract (spec.md)
 - Scenario: onError lifecycle method contract (spec.md)
-- Decision 4: Pure Request Data in ApiRequestContext (design.md)
+- Decision 6: Pure Request Data in ApiRequestContext (design.md)
 
 **Validation**:
 - [ ] `onRequest` methods execute in FIFO order
@@ -367,32 +562,38 @@
 - [ ] Request context has pure request data (no serviceName)
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Task 9
+**Status**: NOT STARTED
+
+**Dependencies**: Task 13
 
 ---
 
-### 11. Update MockPlugin to Extend ApiPlugin
+### 15. Update MockPlugin to Extend ApiPlugin (OCP/DIP Compliant)
 
-**Goal**: Update MockPlugin to use class-based design with config
+**Goal**: Update MockPlugin to be completely self-contained - all mock config in constructor
 
 **Files**:
 - `packages/api/src/plugins/MockPlugin.ts` (modified)
 
 **Changes**:
-- Remove old interface-based patterns (alpha - clean break):
-  - Remove `name = 'MockPlugin'` property
-  - Remove `priority = 100` property
-  - Remove `implements ApiPlugin` (now `extends`)
-  - Replace `ApiPluginRequestContext` with `ApiRequestContext`
-  - Replace `__mockResponse` pattern with proper `ShortCircuitResponse`
-- Update MockPlugin to extend `ApiPlugin<{ mockMap: MockMap; delay?: number }>`:
+- Update MockPlugin to extend `ApiPlugin<MockPluginConfig>`:
 ```typescript
-type MockMap = Record<string, (body?: unknown) => unknown>;
+export interface MockPluginConfig {
+  /** Mock response map - keys are full URL patterns (e.g., 'GET /api/accounts/user/current') */
+  mockMap: MockMap;
+  /** Simulated network delay in ms */
+  delay?: number;
+}
 
-export class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> {
+export class MockPlugin extends ApiPlugin<MockPluginConfig> {
+  /** Update mock map dynamically */
+  setMockMap(mockMap: Readonly<MockMap>): void {
+    (this.config as { mockMap: Readonly<MockMap> }).mockMap = mockMap;
+  }
+
   async onRequest(ctx: ApiRequestContext): Promise<ApiRequestContext | ShortCircuitResponse> {
-    const key = `${ctx.method} ${ctx.url}`;
-    const factory = this.config.mockMap[key];
+    // Match against full URL (includes service baseURL path)
+    const factory = this.findMockFactory(ctx.method, ctx.url);
 
     if (factory) {
       if (this.config.delay) {
@@ -408,27 +609,47 @@ export class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> 
     }
     return ctx;
   }
+
+  // ... existing URL pattern matching logic
 }
 ```
+- MockPlugin matches full URL patterns including service baseURL:
+  - `'GET /api/accounts/user/current'` (not relative `/user/current`)
+  - This allows centralized mock configuration without per-service knowledge
+- Remove any dependency on registry mock storage
+- **NOTE**: The current MockPlugin implementation already matches against `ctx.url` directly.
+  The request context `url` is built by protocols (RestProtocol) to include the full path
+  (baseURL + endpoint). No URL transformation changes are needed in MockPlugin itself -
+  only the mock map keys should use full URL patterns.
 
 **Traceability**:
 - Scenario: Mock plugin with short-circuit (spec.md)
 - Example: MockPlugin implementation (design.md)
+- Decision 13: OCP/DIP Compliant Registry (design.md)
+- Decision 14: Self-contained plugins (design.md)
 
 **Validation**:
-- [ ] `MockPlugin` extends `ApiPlugin<TConfig>`
+- [ ] `MockPlugin` extends `ApiPlugin<MockPluginConfig>`
 - [ ] Uses `this.config.mockMap` for mock data
+- [ ] Matches full URL patterns (includes baseURL path)
 - [ ] Uses short-circuit to return mock responses
+- [ ] `setMockMap()` allows dynamic updates
+- [ ] No dependency on registry mock methods
 - [ ] Supports optional delay via `this.config.delay`
-- [ ] No `name` or `priority` properties
-- [ ] No `__mockResponse` pattern (uses `ShortCircuitResponse`)
+- [ ] No concurrency issues (MockPlugin is stateless except for config)
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 1, 2, 10
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 2, 3, 14
+
+**Note on Concurrency Safety**:
+Stateful plugins should use request-scoped storage (WeakMap keyed by request context)
+for production use. MockPlugin is safe as it only reads from immutable config.
 
 ---
 
-### 12. Update Package Exports
+### 16. Update Package Exports
 
 **Goal**: Ensure all new types and classes are properly exported
 
@@ -437,6 +658,7 @@ export class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> 
 
 **Changes**:
 - Export all new types and classes:
+  - `ApiPluginBase` (abstract class)
   - `ApiPlugin` (abstract class)
   - `PluginClass` (type)
   - `ApiRequestContext` (type)
@@ -444,26 +666,27 @@ export class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> 
   - `ShortCircuitResponse` (type)
   - `isShortCircuit` (function)
 - Export updated `MockPlugin` class
-- Remove old types (alpha - no deprecation, clean break):
-  - Remove `ApiPluginRequestContext` (replaced by `ApiRequestContext`)
-  - Remove old `ApiPlugin` interface (replaced by abstract class)
+- Remove old types (clean break):
+  - Remove any deprecated exports
 
 **Traceability**:
-- Acceptance Criteria: AC8 Types are exported
+- Acceptance Criteria: AC9 Types are exported
 
 **Validation**:
 - [ ] All new types importable from '@hai3/api'
+- [ ] `ApiPluginBase` class importable from '@hai3/api'
 - [ ] `ApiPlugin` class importable from '@hai3/api'
 - [ ] `isShortCircuit` function importable from '@hai3/api'
 - [ ] `apiRegistry.plugins.add()` method available
-- [ ] Old `ApiPluginRequestContext` type removed
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Tasks 1-11
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 1-15
 
 ---
 
-### 13. Verify Framework Re-exports
+### 17. Verify Framework Re-exports
 
 **Goal**: Confirm L2 layer properly re-exports updated types
 
@@ -478,15 +701,17 @@ export class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> 
 - Proposal: Layer Propagation section
 
 **Validation**:
-- [ ] `import { ApiPlugin, apiRegistry } from '@hai3/framework'` works
+- [ ] `import { ApiPluginBase, ApiPlugin, apiRegistry } from '@hai3/framework'` works
 - [ ] `import { MockPlugin } from '@hai3/framework'` works
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Task 12
+**Status**: NOT STARTED
+
+**Dependencies**: Task 16
 
 ---
 
-### 14. Verify React Re-exports
+### 18. Verify React Re-exports
 
 **Goal**: Confirm L3 layer properly re-exports updated types
 
@@ -501,14 +726,16 @@ export class MockPlugin extends ApiPlugin<{ mockMap: MockMap; delay?: number }> 
 - Proposal: Layer Propagation section
 
 **Validation**:
-- [ ] `import { ApiPlugin, apiRegistry } from '@hai3/react'` works
+- [ ] `import { ApiPluginBase, ApiPlugin, apiRegistry } from '@hai3/react'` works
 - [ ] TypeScript compiles without errors
 
-**Dependencies**: Task 13
+**Status**: NOT STARTED
+
+**Dependencies**: Task 17
 
 ---
 
-### 15. Run Architecture Validation
+### 19. Run Architecture Validation
 
 **Goal**: Ensure changes follow HAI3 architecture rules
 
@@ -529,18 +756,53 @@ npm run arch:deps
 - [ ] Architecture tests pass
 - [ ] Dependency rules validated
 
-**Dependencies**: Task 14
+**Status**: NOT STARTED
+
+**Dependencies**: Task 18
 
 ---
 
-### 16. Manual Testing - Global Plugin Registration (Namespaced API)
+### 20. Manual Testing - Class-Based Service Registration
 
-**Goal**: Verify global plugins work with FIFO ordering via namespaced API
+**Goal**: Verify class-based service registration works
 
 **Steps**:
 1. Start dev server: `npm run dev`
 2. Open browser console
-3. Test FIFO ordering:
+3. Test registration:
+   ```typescript
+   class TestService extends BaseApiService {}
+   apiRegistry.register(TestService);
+   const service = apiRegistry.getService(TestService);
+   // service should be typed as TestService
+   ```
+4. Test has():
+   ```typescript
+   apiRegistry.has(TestService); // true
+   apiRegistry.has(UnregisteredService); // false
+   ```
+
+**Traceability**:
+- Acceptance Criteria: AC1 Class-based service registration works
+
+**Validation**:
+- [ ] `register(ServiceClass)` creates instance
+- [ ] `getService(ServiceClass)` returns correctly typed instance
+- [ ] `has(ServiceClass)` returns correct boolean
+- [ ] No console errors
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 19
+
+---
+
+### 21. Manual Testing - Global Plugin Registration (Namespaced API)
+
+**Goal**: Verify global plugins work with FIFO ordering via namespaced API
+
+**Steps**:
+1. Test FIFO ordering:
    ```typescript
    class LoggingPlugin extends ApiPlugin<void> {
      constructor() { super(void 0); }
@@ -551,24 +813,28 @@ npm run arch:deps
    }
    apiRegistry.plugins.add(new LoggingPlugin(), new AuthPlugin({ getToken: () => 'token' }));
    ```
-4. Make an API request
-5. Verify console shows: "1: Logging" then "2: Auth"
-6. Test `plugins.has()`: `apiRegistry.plugins.has(LoggingPlugin)` returns `true`
+2. Make an API request
+3. Verify console shows: "1: Logging" then "2: Auth"
+4. Test `plugins.has()`: `apiRegistry.plugins.has(LoggingPlugin)` returns `true`
+5. Test `plugins.getPlugin()`: `apiRegistry.plugins.getPlugin(LoggingPlugin)` returns instance
 
 **Traceability**:
-- Acceptance Criteria: AC1 Global plugin registration works (namespaced API)
+- Acceptance Criteria: AC2 Global plugin registration works (namespaced API)
 
 **Validation**:
 - [ ] FIFO ordering works correctly
 - [ ] Duplicate class throws error
 - [ ] `plugins.has()` returns correct boolean
+- [ ] `plugins.getPlugin()` returns instance or undefined
 - [ ] No console errors
 
-**Dependencies**: Task 15
+**Status**: NOT STARTED
+
+**Dependencies**: Task 20
 
 ---
 
-### 17. Manual Testing - Plugin Positioning by Class (Namespaced API)
+### 22. Manual Testing - Plugin Positioning by Class (Namespaced API)
 
 **Goal**: Verify before/after positioning works via namespaced API
 
@@ -582,18 +848,20 @@ npm run arch:deps
 3. Verify order: LoggingPlugin -> MetricsPlugin -> AuthPlugin
 
 **Traceability**:
-- Acceptance Criteria: AC2 Plugin positioning works (namespaced API)
+- Acceptance Criteria: AC3 Plugin positioning works (namespaced API)
 
 **Validation**:
 - [ ] `plugins.addAfter(plugin, TargetClass)` positions correctly
 - [ ] `plugins.addBefore(plugin, TargetClass)` positions correctly
 - [ ] Invalid class reference throws error
 
-**Dependencies**: Task 16
+**Status**: NOT STARTED
+
+**Dependencies**: Task 21
 
 ---
 
-### 18. Manual Testing - Short-Circuit
+### 23. Manual Testing - Short-Circuit
 
 **Goal**: Verify short-circuit skips HTTP request
 
@@ -609,8 +877,7 @@ npm run arch:deps
 4. Check for `x-hai3-short-circuit: true` header in response
 
 **Traceability**:
-- Acceptance Criteria: AC5 Short-circuit works
-- design.md: Short-circuit header convention
+- Acceptance Criteria: AC6 Short-circuit works
 
 **Validation**:
 - [ ] Mock data returned
@@ -618,11 +885,13 @@ npm run arch:deps
 - [ ] Response includes `x-hai3-short-circuit: true` header
 - [ ] `onResponse` hooks still execute
 
-**Dependencies**: Task 17
+**Status**: NOT STARTED
+
+**Dependencies**: Task 22
 
 ---
 
-### 19. Manual Testing - Service Exclusion by Class (Namespaced API)
+### 24. Manual Testing - Service Exclusion by Class (Namespaced API)
 
 **Goal**: Verify services can exclude global plugins via namespaced API
 
@@ -641,7 +910,7 @@ npm run arch:deps
 4. Verify auth plugin runs for regular service but not health service
 
 **Traceability**:
-- Acceptance Criteria: AC4 Service exclusion works (namespaced API)
+- Acceptance Criteria: AC5 Service exclusion works (namespaced API)
 
 **Validation**:
 - [ ] Excluded plugin classes do not run for the service
@@ -649,326 +918,448 @@ npm run arch:deps
 - [ ] `plugins.getExcluded()` returns correct classes
 - [ ] Service-level duplicates are allowed
 
-**Dependencies**: Task 18
+**Status**: NOT STARTED
+
+**Dependencies**: Task 23
 
 ---
 
-### 20. Manual Testing - Error Recovery
+### 25. Manual Testing - getPlugin() Method
 
-**Goal**: Verify onError can transform errors or recover
+**Goal**: Verify getPlugin() works at both registry and service level
 
 **Steps**:
-1. Create a plugin that recovers from specific errors:
+1. Register plugins:
    ```typescript
-   class ErrorRecoveryPlugin extends ApiPlugin<void> {
-     constructor() { super(void 0); }
-     onError(error: Error, request: ApiRequestContext) {
-       if (error.message.includes('404')) {
-         return { status: 200, headers: {}, data: { fallback: true } };
-       }
-       return error;
-     }
-   }
+   apiRegistry.plugins.add(new LoggingPlugin(), new AuthPlugin({ getToken }));
    ```
-2. Register globally
-3. Make request that would 404
-4. Verify recovery response is returned
+2. Test registry-level getPlugin:
+   ```typescript
+   const logging = apiRegistry.plugins.getPlugin(LoggingPlugin);
+   // logging should be typed as LoggingPlugin
+   ```
+3. Test service-level getPlugin (searches service then global):
+   ```typescript
+   service.plugins.add(new RateLimitPlugin({ limit: 100 }));
+   const rateLimit = service.plugins.getPlugin(RateLimitPlugin); // service plugin
+   const auth = service.plugins.getPlugin(AuthPlugin); // global plugin
+   ```
 
 **Traceability**:
-- Acceptance Criteria: AC6 Error recovery works
+- Acceptance Criteria: AC13 getPlugin() method works
 
 **Validation**:
-- [ ] Error can be transformed
-- [ ] Returning ApiResponseContext recovers
-- [ ] Unhandled errors propagate normally
+- [ ] `apiRegistry.plugins.getPlugin()` returns instance or undefined
+- [ ] `service.plugins.getPlugin()` searches service first
+- [ ] `service.plugins.getPlugin()` falls back to global
+- [ ] Return types correctly inferred
 
-**Dependencies**: Task 19
+**Status**: NOT STARTED
+
+**Dependencies**: Task 24
 
 ---
 
-### 21. Manual Testing - OCP-Compliant DI (Pure Request Data)
+### 26. Manual Testing - Internal Global Plugins Injection
 
-**Goal**: Verify plugins use DI for service-specific behavior (no serviceName in context)
+**Goal**: Verify services receive global plugins via internal method
 
 **Steps**:
-1. Create a rate limit plugin with pure DI:
+1. Register global plugin BEFORE service:
    ```typescript
-   class RateLimitPlugin extends ApiPlugin<{ limit: number }> {
-     onRequest(ctx: ApiRequestContext) {
-       // ctx has only pure request data (method, url, headers, body)
-       console.log(`Rate limit: ${this.config.limit}`);
-       return ctx;
-     }
-   }
+   apiRegistry.plugins.add(new LoggingPlugin());
+   apiRegistry.register(TestService);
+   // Verify logging works for TestService
    ```
-2. Register different limits per service (using service-level plugins):
+2. Register global plugin AFTER service:
    ```typescript
-   userService.plugins.add(new RateLimitPlugin({ limit: 100 }));
-   adminService.plugins.add(new RateLimitPlugin({ limit: 1000 }));
+   apiRegistry.register(AnotherService);
+   apiRegistry.plugins.add(new AuthPlugin({ getToken }));
+   // Verify auth works for AnotherService (via provider)
    ```
-3. Make requests from different services
-4. Verify correct limits are applied per service
 
 **Traceability**:
-- Decision 3: OCP-Compliant Dependency Injection (design.md)
-- Decision 4: Pure Request Data in ApiRequestContext (design.md)
-- Decision 8: Duplicate Policy (Global vs Service) (design.md)
+- Acceptance Criteria: AC12 Internal global plugins injection works
 
 **Validation**:
-- [ ] Plugin receives limits via config, not from context
-- [ ] Different services get different limits via service-level plugins
-- [ ] Plugin doesn't access serviceName (not available in context)
-- [ ] Service-level duplicates work correctly
+- [ ] Services registered before plugins see new plugins
+- [ ] Services registered after plugins see existing plugins
+- [ ] No changes needed in derived service classes
 
-**Dependencies**: Task 20
+**Status**: NOT STARTED
 
----
-
-### 22. Update Package CLAUDE.md (Shipped with @hai3/api)
-
-**Goal**: Update package-level AI guidelines that ship with the @hai3/api package
-
-**Files**:
-- `packages/api/CLAUDE.md` (modified)
-
-**Changes**:
-- Update "Plugin System" section (lines 88-115) to use class-based pattern:
-  - Replace `implements ApiPlugin` with `extends ApiPlugin<TConfig>`
-  - Replace string `name` property with class reference pattern
-  - Replace `priority` number with FIFO ordering explanation
-  - Add `apiRegistry.plugins.add()` for global registration
-  - Add `service.plugins.add()` for service-specific plugins
-  - Add `service.plugins.exclude()` for excluding global plugins
-- Update exports section to include new types:
-  - `ApiPlugin` - Abstract base class
-  - `PluginClass` - Type for class references
-  - `ApiRequestContext`, `ApiResponseContext`, `ShortCircuitResponse` - Context types
-  - `isShortCircuit` - Type guard function
-- Keep file under 200 lines (package CLAUDE.md files are more detailed than .ai/targets/)
-
-**Traceability**:
-- AI_COMMANDS.md: Package CLAUDE.md files contain package-specific guidelines
-- AI.md: Files must use declarative rules with keywords
-
-**Validation**:
-- [ ] Plugin System section updated to class-based pattern
-- [ ] Global plugin registration documented (`apiRegistry.plugins.*`)
-- [ ] Service-level plugins documented (`service.plugins.*`)
-- [ ] Short-circuit pattern documented
-- [ ] New exports listed
-- [ ] File remains coherent and under 200 lines
-
-**Dependencies**: Tasks 1-21 (after implementation complete)
-
----
-
-### 23. Update .ai/targets/API.md (Monorepo Guidelines)
-
-**Goal**: Update monorepo-specific API guidelines with new plugin rules
-
-**Files**:
-- `.ai/targets/API.md` (modified)
-
-**Changes**:
-- Update "PLUGIN RULES" section to reflect class-based API:
-  - Change `Extend ApiPlugin abstract class` to `Extend ApiPlugin<TConfig> abstract class`
-  - Add rule: `REQUIRED: Use constructor config for DI, not context access`
-  - Add rule: `REQUIRED: Use class reference for plugin identification (not strings)`
-  - Add rule: `FORBIDDEN: Accessing serviceName in plugin context (use service-level plugins)`
-  - Update `destroy()` guidance
-- Keep file under 100 lines (per AI.md rules)
-- Use ASCII only, no unicode
-
-**Traceability**:
-- AI.md: Files must stay under 100 lines, ASCII only
-- AI.md: Use keywords MUST, REQUIRED, FORBIDDEN
-
-**Validation**:
-- [ ] PLUGIN RULES section updated with class-based rules
-- [ ] OCP-compliant DI pattern enforced via rules
-- [ ] File remains under 100 lines
-- [ ] ASCII only, no unicode
-- [ ] Uses proper keywords (REQUIRED, FORBIDDEN)
-
-**Dependencies**: Task 22
-
----
-
-### 24. Verify App/Screenset Backward Compatibility
-
-**Goal**: Ensure existing app and screenset code continues to work without changes
-
-**Files**:
-- `src/app/main.tsx` (verify, no changes expected)
-- `src/screensets/*/api/*.ts` (verify, no changes expected)
-- `packages/api/src/apiRegistry.ts` (may need internal refactor)
-
-**Changes**:
-- Verify `apiRegistry.initialize({ useMockApi: true })` still works
-- Verify `apiRegistry.registerMocks(domain, mockMap)` still works
-- Verify `apiRegistry.setMockMode(boolean)` still works
-- Internal: Consider refactoring `enableMockMode()` to use global plugins
-  - Option A: Keep per-service MockPlugin (backward compatible, simpler)
-  - Option B: Use single global MockPlugin with combined mockMaps (cleaner)
-- Either option must maintain the existing public API
-
-**Traceability**:
-- design.md: Migration Plan states "Non-Breaking"
-- Proposal: "Maintains backward compatibility for per-service plugins"
-
-**Validation**:
-- [ ] `apiRegistry.initialize({ useMockApi: true })` works without code changes
-- [ ] `apiRegistry.registerMocks(domain, mockMap)` works without code changes
-- [ ] `apiRegistry.setMockMode(boolean)` toggles mock mode correctly
-- [ ] Existing screenset mock maps continue to function
-- [ ] No changes required in `src/app/main.tsx`
-- [ ] No changes required in `src/screensets/*/api/*.ts`
-- [ ] App starts and mock API calls return expected data
-
-**Dependencies**: Tasks 5-11 (after core implementation)
-
----
-
-### 25. Update hai3-new-api-service Command (SDK Layer)
-
-**Goal**: Update SDK command to include plugin creation guidance
-
-**Files**:
-- `packages/api/commands/hai3-new-api-service.md` (modified)
-
-**Changes**:
-- Add optional plugin creation section in implementation steps
-- Add example of creating a service-specific plugin extending `ApiPlugin<TConfig>`
-- Add example of excluding global plugins via `this.plugins.exclude()`
-- Keep existing OpenSpec workflow pattern
-- Keep file under 100 lines (per AI.md rules)
-
-**Traceability**:
-- AI_COMMANDS.md: Commands are self-contained with full procedural steps
-- AI_COMMANDS.md: Commands follow AI.md format rules (under 100 lines)
-
-**Validation**:
-- [ ] Plugin creation guidance added (optional section)
-- [ ] `ApiPlugin<TConfig>` pattern shown
-- [ ] `service.plugins.exclude()` pattern shown
-- [ ] Existing OpenSpec workflow preserved
-- [ ] File remains under 100 lines
-
-**Dependencies**: Task 22
+**Dependencies**: Task 25
 
 ---
 
 ## Task Dependency Graph
 
 ```
-Task 1 (ApiPlugin Class) ────┬─────────────────────────────────────────────┐
-                             │                                             │
-Task 2 (Context Types) ──────┼─────────────────────────────────────────────┼──┐
-                             │                                             │  │
-                             v                                             │  │
-Task 3 (PluginClass + Guard)─┴──>Task 4 (Registry Interface)               │  │
-                                        │                                  │  │
-                                        v                                  │  │
-                                 Task 5 (Storage)──>Task 6 (Positioning)   │  │
-                                        │                  │               │  │
-                                        │                  v               │  │
-                                        │           Task 7 (Removal)       │  │
-                                        │                  │               │  │
-                                        v                  │               v  v
-                                 Task 8 (Service Methods)──┴────>Task 9 (Merging)
-                                                                      │
-                                                                      v
-                                                              Task 10 (Execution)
-                                                                      │
-                                                                      v
-                                                              Task 11 (MockPlugin)
-                                                                      │
-                                                                      v
-                                                              Task 12 (Exports)
-                                                                      │
-                                                         ┌────────────┴────────────┐
-                                                         v                         v
-                                                  Task 13 (Framework)       Task 14 (React)
-                                                         │                         │
-                                                         v                         v
-                                                  Task 15 (Validate) <─────────────┘
-                                                         │
-                                                         v
-                                                  Task 16 (Test Registration)
-                                                         │
-                                                         v
-                                                  Task 17 (Test Positioning)
-                                                         │
-                                                         v
-                                                  Task 18 (Test Short-Circuit)
-                                                         │
-                                                         v
-                                                  Task 19 (Test Exclusion)
-                                                         │
-                                                         v
-                                                  Task 20 (Test Error Recovery)
-                                                         │
-                                                         v
-                                                  Task 21 (Test OCP DI)
-                                                         │
-                                            ┌────────────┴────────────┐
-                                            v                         v
-                                    Task 22                    Task 24
-                               (Package CLAUDE.md)        (Backward Compat)
-                                            │
-                                       ┌────┴────┐
-                                       v         v
-                                   Task 23   Task 25
-                                  (API.md)  (Command)
+Task 1 (ApiPluginBase) ──────────────────────────────────────────────────┐
+       │                                                                  │
+       v                                                                  │
+Task 2 (ApiPlugin<TConfig>) ─────────────────────────────────────────────┤
+                                                                          │
+Task 3 (Context Types) ──────────────────────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 4 (PluginClass + Guard) ────────────────────────────────────────────┤
+                                                                          │
+Task 5 (ApiRegistry Service Interface) ──────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 6 (ApiRegistry Plugin Interface) ───────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 7 (apiRegistry Service Impl) ───────────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 8 (apiRegistry Plugin Storage) ─────────────────────────────────────┤
+       │                                                                  │
+       ├──> Task 9 (Plugin Positioning)                                   │
+       │                                                                  │
+       └──> Task 10 (Plugin Removal)                                      │
+                                                                          │
+Task 11 (BaseApiService Global Injection) ───────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 12 (BaseApiService Plugin Namespace) ───────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 13 (Plugin Merging) ────────────────────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 14 (Plugin Execution Chain) ────────────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 15 (MockPlugin Update) ─────────────────────────────────────────────┤
+       │                                                                  │
+       v                                                                  │
+Task 16 (Package Exports) ───────────────────────────────────────────────┘
+       │
+       v
+Task 17 (Framework Re-exports)
+       │
+       v
+Task 18 (React Re-exports)
+       │
+       v
+Task 19 (Architecture Validation)
+       │
+       v
+Task 20 (Test Service Registration)
+       │
+       v
+Task 21 (Test Plugin Registration)
+       │
+       v
+Task 22 (Test Positioning)
+       │
+       v
+Task 23 (Test Short-Circuit)
+       │
+       v
+Task 24 (Test Exclusion)
+       │
+       v
+Task 25 (Test getPlugin)
+       │
+       v
+Task 26 (Test Internal Injection)
+       |
+       v
+Task 27 (Update API.md)
+       |
+       v
+Task 28-31 (Update Commands) [parallel]
+       |
+       v
+Task 32 (Validation Grep)
 ```
+
+---
+
+### 27. Update .ai/targets/API.md Guidelines
+
+**Goal**: Update API guidelines for new class-based plugin architecture
+
+**Files**:
+- `.ai/targets/API.md` (modified)
+
+**Changes**:
+- Update SCOPE section: Change path from `packages/uicore/src/api/**` to `packages/api/src/**`
+- Update CRITICAL RULES:
+  - Change "update ApiServicesMap via module augmentation" to class-based registration
+  - Remove "Mock data lives in the app layer and is wired via apiRegistry.initialize({ useMockApi, mockMaps })"
+  - Add "Mock data configured via `apiRegistry.plugins.add(new MockPlugin({ mockMap }))`"
+- Update STOP CONDITIONS:
+  - Remove or update "Editing BaseApiService or apiRegistry.ts" (feature requires it)
+- Update USAGE RULES:
+  - Change `apiRegistry.getService(DOMAIN)` to `apiRegistry.getService(ServiceClass)`
+  - Update "Type inference must originate from ApiServicesMap" to class-based
+  - Remove any references to `registerMocks()`, `setMockMode()`, `useMockApi`
+- Rewrite PLUGIN RULES section:
+  - REQUIRED: Extend ApiPluginBase (no config) or ApiPlugin<TConfig> (with config)
+  - REQUIRED: Use namespaced API (apiRegistry.plugins.add, service.plugins.add)
+  - REQUIRED: Plugins are identified by class reference (instanceof)
+  - REQUIRED: MockPlugin is self-contained (all config in constructor)
+  - FORBIDDEN: String-based plugin names for identification
+  - FORBIDDEN: Mock-specific methods on apiRegistry (registerMocks, setMockMode)
+- Update PRE-DIFF CHECKLIST:
+  - Change "ApiServicesMap augmented" to "Service registered with apiRegistry.register(ServiceClass)"
+
+**Traceability**:
+- Gate 1 Review: Non-blocking suggestion (API.md Target File Update)
+
+**Validation**:
+- [ ] File stays under 100 lines
+- [ ] ASCII only, no unicode
+- [ ] Rules use keywords (REQUIRED, FORBIDDEN, STOP)
+- [ ] No duplication with other target files
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 19
+
+---
+
+### 28. Update hai3-new-api-service.md Command (SDK Layer)
+
+**Goal**: Update SDK command template for class-based registration
+
+**Files**:
+- `packages/api/commands/hai3-new-api-service.md` (modified)
+
+**Changes**:
+- Update service registration pattern:
+  - BAD: `apiRegistry.register(DOMAIN, ServiceClass)`
+  - GOOD: `apiRegistry.register(ServiceClass)`
+- Remove module augmentation pattern (ApiServicesMap)
+- Update getService examples:
+  - BAD: `apiRegistry.getService(DOMAIN)`
+  - GOOD: `apiRegistry.getService(ServiceClass)`
+- REMOVE mock registration section (OCP/DIP - mocks now configured via MockPlugin):
+  - Remove any references to `apiRegistry.registerMocks()`
+  - Add note: "Mock configuration via `apiRegistry.plugins.add(new MockPlugin({ mockMap }))`"
+- Update constructor (simple, no globalPluginsProvider):
+  ```typescript
+  constructor() {
+    super({ baseURL: '/api/v1/{domain}' }, [new RestProtocol()]);
+  }
+  ```
+
+**Traceability**:
+- Decision 1: Class-Based Service Registration (design.md)
+- Decision 13: OCP/DIP Compliant Registry (design.md)
+
+**Validation**:
+- [ ] No string domain registration
+- [ ] No module augmentation
+- [ ] No `registerMocks()` references (OCP/DIP)
+- [ ] Constructor takes no parameters
+- [ ] File follows AI.md format rules
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 27
+
+---
+
+### 29. Update hai3-new-api-service.framework.md Command
+
+**Goal**: Update Framework layer command template for class-based registration
+
+**Files**:
+- `packages/api/commands/hai3-new-api-service.framework.md` (modified)
+
+**Changes**:
+- Same changes as Task 28
+- Ensure imports use `@hai3/framework` not `@hai3/api`
+
+**Traceability**:
+- Decision 1: Class-Based Service Registration (design.md)
+
+**Validation**:
+- [ ] No string domain registration
+- [ ] No module augmentation
+- [ ] Imports from @hai3/framework
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 27
+
+---
+
+### 30. Update hai3-new-api-service.react.md Command
+
+**Goal**: Update React layer command template for class-based registration
+
+**Files**:
+- `packages/api/commands/hai3-new-api-service.react.md` (modified)
+
+**Changes**:
+- Same registration changes as Task 28
+- Update effects to use class-based getService:
+  ```typescript
+  const service = apiRegistry.getService(MyApiService);
+  ```
+- Ensure imports use `@hai3/react`
+
+**Traceability**:
+- Decision 1: Class-Based Service Registration (design.md)
+
+**Validation**:
+- [ ] No string domain registration
+- [ ] No module augmentation
+- [ ] Effects use class-based getService
+- [ ] Imports from @hai3/react
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 27
+
+---
+
+### 31. Update hai3-quick-ref.md Command
+
+**Goal**: Update quick reference Registry section
+
+**Files**:
+- `packages/framework/commands/hai3-quick-ref.md` (modified)
+
+**Changes**:
+- Update Registry section (lines 29-33):
+  - REMOVE: `export const MY_DOMAIN = 'my-domain'`
+  - KEEP: `class MyService extends BaseApiService`
+  - REMOVE: `declare module '@hai3/api' { interface ApiServicesMap }`
+  - CHANGE: `apiRegistry.register(MY_DOMAIN, MyService)` to `apiRegistry.register(MyService)`
+
+**Traceability**:
+- Decision 1: Class-Based Service Registration (design.md)
+
+**Validation**:
+- [ ] No string domain constant
+- [ ] No module augmentation
+- [ ] Class-based registration only
+
+**Status**: NOT STARTED
+
+**Dependencies**: Task 27
+
+---
+
+### 32. Add ApiServicesMap Migration Validation
+
+**Goal**: Verify no orphaned ApiServicesMap module augmentation remains
+
+**Files**:
+- None (validation only)
+
+**Commands**:
+```bash
+grep -rn "interface ApiServicesMap" src/ packages/
+grep -rn "declare module.*@hai3" src/ packages/ | grep ApiServicesMap
+```
+
+**Traceability**:
+- Gate 1 Review: Non-blocking suggestion (ApiServicesMap Removal Validation)
+
+**Validation**:
+- [ ] No ApiServicesMap module augmentation in src/
+- [ ] No ApiServicesMap module augmentation in app code
+- [ ] Only type definition in packages/api/src/types.ts (empty interface)
+
+**Status**: NOT STARTED
+
+**Dependencies**: Tasks 28-31
+
+---
 
 ## Parallelizable Work
 
-- Tasks 1 and 2 can run in parallel (both are type definitions)
-- Task 3 depends on Tasks 1 and 2
-- Tasks 5-7 (apiRegistry changes) and Task 8 (BaseApiService changes) can run in parallel after Task 4
-- Task 9 depends on both apiRegistry and BaseApiService changes
-- Tasks 13-14 (re-export verification) can run in parallel after Task 12
-- Tasks 16-21 (manual testing) must be sequential
-- Task 22 (Package CLAUDE.md) and Task 24 (Backward Compat) can run in parallel after Task 21
-- Tasks 23 and 25 (API.md and Command) can run in parallel after Task 22
+- Tasks 1, 3, 5 can run in parallel (independent type definitions)
+- Task 2 depends on Task 1
+- Task 4 depends on Tasks 1 and 3
+- Task 6 depends on Tasks 1 and 4
+- Tasks 7 and 11 can run in parallel after Tasks 5 and 1 respectively
+- Task 8 depends on Tasks 1 and 6
+- Tasks 9 and 10 can run in parallel after Task 8
+- Tasks 12 and 13 are sequential after Task 11
+- Tasks 17-18 (re-export verification) can run in parallel after Task 16
+- Tasks 20-26 (manual testing) must be sequential
+- Task 27 (API.md) depends on Task 19
+- Tasks 28-31 (command updates) can run in parallel after Task 27
+- Task 32 (migration validation) depends on Tasks 28-31
 
 ## Estimated Effort
 
-- Task 1: 30 minutes (abstract class)
-- Task 2: 20 minutes (context types)
-- Task 3: 15 minutes (PluginClass type + guard)
-- Task 4: 20 minutes (interface extension)
-- Tasks 5-7: 2 hours (apiRegistry implementation)
-- Tasks 8-9: 1.5 hours (BaseApiService changes)
-- Task 10: 2 hours (plugin execution chain with short-circuit)
-- Task 11: 30 minutes (MockPlugin update)
-- Task 12: 15 minutes (export verification)
-- Tasks 13-14: 20 minutes (re-export verification)
-- Task 15: 15 minutes (validation commands)
-- Tasks 16-21: 1.5 hours (manual testing)
-- Task 22: 30 minutes (Package CLAUDE.md update)
-- Task 23: 15 minutes (.ai/targets/API.md update)
-- Task 24: 30 minutes (backward compatibility verification)
-- Task 25: 20 minutes (hai3-new-api-service command update)
+- Tasks 1-4: 1.5 hours (type definitions)
+- Tasks 5-6: 1 hour (interface updates)
+- Task 7: 1.5 hours (class-based service registration)
+- Tasks 8-10: 2 hours (apiRegistry plugin implementation)
+- Tasks 11-13: 1.5 hours (BaseApiService changes)
+- Task 14: 2 hours (plugin execution chain)
+- Task 15: 30 minutes (MockPlugin update)
+- Task 16: 15 minutes (export verification)
+- Tasks 17-18: 20 minutes (re-export verification)
+- Task 19: 15 minutes (validation commands)
+- Tasks 20-26: 2 hours (manual testing)
+- Task 27: 30 minutes (API.md guidelines update)
+- Tasks 28-31: 1 hour (command updates, parallel)
+- Task 32: 10 minutes (migration validation grep)
 
-**Total**: ~11 hours
+**Total**: ~14 hours
 
 ## Success Criteria
 
-- [ ] `ApiPlugin<TConfig>` abstract class exported from `@hai3/api` (with parameter property)
+### Type Definitions
+- [ ] `ApiPluginBase` abstract class exported from `@hai3/api` (non-generic)
+- [ ] `ApiPlugin<TConfig>` abstract class exported (extends ApiPluginBase)
 - [ ] `PluginClass<T>` type exported for class references
 - [ ] `ApiRequestContext` exported with pure request data (no serviceName)
 - [ ] All context types exported from `@hai3/api`
+
+### Class-Based Service Registration
+- [ ] `apiRegistry.register(ServiceClass)` creates and stores instance
+- [ ] `apiRegistry.getService(ServiceClass)` returns correctly typed instance
+- [ ] `apiRegistry.has(ServiceClass)` returns correct boolean
+- [ ] `getDomains()` method does NOT exist
+
+### OCP/DIP Compliance (Registry)
+- [ ] `apiRegistry.registerMocks()` does NOT exist
+- [ ] `apiRegistry.setMockMode()` does NOT exist
+- [ ] `apiRegistry.getMockMap()` does NOT exist
+- [ ] `useMockApi` is NOT in ApiServicesConfig
+- [ ] No mock-related private methods in apiRegistry
+
+### OCP/DIP Compliance (Services)
+- [ ] `BaseApiService.getMockMap()` does NOT exist
+- [ ] Services have zero knowledge of mocking
+- [ ] No mock-related imports in BaseApiService
+
+### OCP/DIP Compliance (MockPlugin)
+- [ ] MockPlugin is completely self-contained
+- [ ] MockPlugin receives all mock config in constructor
+- [ ] MockPlugin matches full URL patterns (includes baseURL path)
+- [ ] `MockPlugin.setMockMap()` for dynamic updates
+
+### Plugin Registry API
 - [ ] `apiRegistry.plugins.add()` registers plugins in FIFO order (no duplicates)
 - [ ] `apiRegistry.plugins.addBefore()` / `addAfter()` support positioning by class
 - [ ] `apiRegistry.plugins.remove()` removes by class with cleanup
 - [ ] `apiRegistry.plugins.has()` checks registration by class
 - [ ] `apiRegistry.plugins.getAll()` returns ordered plugins
+- [ ] `apiRegistry.plugins.getPlugin()` returns instance by class
+
+### Plugin Service API
 - [ ] `service.plugins.add()` registers service-specific plugins (duplicates allowed)
 - [ ] `service.plugins.exclude()` excludes global plugins by class
 - [ ] `service.plugins.getExcluded()` returns excluded classes
 - [ ] `service.plugins.getAll()` returns service plugins
+- [ ] `service.plugins.getPlugin()` searches service then global
+
+### Plugin Execution
+- [ ] `_setGlobalPluginsProvider()` called on service registration
 - [ ] Short-circuit via `{ shortCircuit: response }` skips HTTP
 - [ ] `onResponse` hooks execute in reverse order (onion model)
 - [ ] `onError` can transform errors or recover with response
@@ -976,14 +1367,15 @@ Task 3 (PluginClass + Guard)─┴──>Task 4 (Registry Interface)            
 - [ ] `isShortCircuit()` type guard exported and functional
 - [ ] Global plugins: duplicate class throws error
 - [ ] Service plugins: duplicate class allowed (different configs)
+
+### Validation
 - [ ] All architecture validations pass
 - [ ] Framework and React layers re-export correctly
 - [ ] Manual testing confirms end-to-end functionality
-- [ ] OCP-compliant DI pattern works (pure request data, service-level plugins for per-service config)
-- [ ] `packages/api/CLAUDE.md` updated with class-based plugin patterns
-- [ ] `.ai/targets/API.md` updated with namespaced plugin API rules
-- [ ] `packages/api/commands/hai3-new-api-service.md` updated with plugin guidance
-- [ ] Existing `apiRegistry.initialize({ useMockApi })` works without changes
-- [ ] Existing `apiRegistry.registerMocks()` works without changes
-- [ ] App (`src/app/main.tsx`) requires no code changes
-- [ ] Screensets (`src/screensets/*/api/*.ts`) require no code changes
+
+### Documentation
+- [ ] `.ai/targets/API.md` updated for class-based registration
+- [ ] `.ai/targets/API.md` PLUGIN RULES section reflects new class hierarchy
+- [ ] `hai3-new-api-service.md` uses class-based registration (all variants)
+- [ ] `hai3-quick-ref.md` Registry section updated
+- [ ] No orphaned ApiServicesMap module augmentation in codebase
