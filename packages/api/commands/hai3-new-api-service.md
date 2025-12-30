@@ -62,7 +62,7 @@ When user runs `/openspec:apply`, execute:
 ### 3.1 Create Service
 File: packages/api/src/{domain}/{Name}ApiService.ts
 ```typescript
-import { BaseApiService, RestProtocol, MockPlugin, apiRegistry } from '@hai3/api';
+import { BaseApiService, RestProtocol, RestMockPlugin, apiRegistry } from '@hai3/api';
 
 // Request/Response interfaces
 export interface GetDataRequest {
@@ -76,16 +76,18 @@ export interface DataResponse {
 
 class {Name}ApiService extends BaseApiService {
   constructor() {
+    // Create protocol instance
+    const restProtocol = new RestProtocol();
+
     super(
       { baseURL: '/api/v1/{domain}' },
-      new RestProtocol()
+      restProtocol
     );
 
-    // For development/testing, register service-specific mocks
-    // NOTE: MockPlugin should be registered per-service for vertical slice compliance
-    // WARNING: Avoid global MockPlugin registration if screenset mocks need to be self-contained
+    // Register protocol-specific mock plugin in development
+    // NOTE: Mocks are registered on the protocol instance, not the service
     if (process.env.NODE_ENV === 'development') {
-      this.plugins.add(new MockPlugin({
+      restProtocol.plugins.add(new RestMockPlugin({
         mockMap: {
           'GET /api/v1/{domain}/data/:id': () => ({ id: '123', data: 'mock data' }),
           'PUT /api/v1/{domain}/data/:id': (body) => ({ ...body, updatedAt: new Date() }),
@@ -148,25 +150,52 @@ class {Name}ApiService extends BaseApiService {
 ```
 
 ### 3.4 Multiple Protocols (Advanced)
-If service needs multiple protocols:
+If service needs multiple protocols (REST + SSE):
 ```typescript
-import { BaseApiService, RestProtocol, SseProtocol } from '@hai3/api';
+import { BaseApiService, RestProtocol, SseProtocol, RestMockPlugin, SseMockPlugin } from '@hai3/api';
 
 class {Name}ApiService extends BaseApiService {
   constructor() {
+    // Create protocol instances
+    const restProtocol = new RestProtocol();
+    const sseProtocol = new SseProtocol();
+
     super(
       { baseURL: '/api/v1/{domain}' },
-      new RestProtocol(),
-      new SseProtocol()
+      restProtocol,
+      sseProtocol
     );
+
+    // Register protocol-specific mock plugins in development
+    if (process.env.NODE_ENV === 'development') {
+      restProtocol.plugins.add(new RestMockPlugin({
+        mockMap: {
+          'GET /api/v1/{domain}/data': () => ({ items: [] }),
+        },
+        delay: 100,
+      }));
+
+      sseProtocol.plugins.add(new SseMockPlugin({
+        mockStreams: {
+          '/api/v1/{domain}/events': [
+            { data: '{"type": "update", "value": 1}' },
+            { data: '{"type": "update", "value": 2}' },
+            { event: 'done', data: '' },
+          ],
+        },
+        delay: 50,
+      }));
+    }
   }
 
   async getData(): Promise<DataResponse> {
     return this.protocol(RestProtocol).get('/data');
   }
 
-  streamEvents(onEvent: (data: EventData) => void): () => void {
-    return this.protocol(SseProtocol).subscribe('/events', onEvent);
+  streamEvents(onEvent: (data: EventData) => void, onComplete?: () => void): string {
+    return this.protocol(SseProtocol).connect('/events', (event) => {
+      onEvent(JSON.parse(event.data));
+    }, onComplete);
   }
 }
 ```

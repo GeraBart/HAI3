@@ -2552,7 +2552,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] `SseConnectContext` type exported
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 1 (ApiPluginBase must exist)
 
@@ -2586,7 +2586,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] `isSseShortCircuit()` correctly identifies SSE short-circuit
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 54
 
@@ -2617,7 +2617,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] Config accessible via `this.config` in WithConfig variants
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 54, 55
 
@@ -2650,7 +2650,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] Plugin resolution: global first, then instance
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 54, 55, 56
 
@@ -2682,7 +2682,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] Plugin resolution: global first, then instance
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 54, 55, 56
 
@@ -2715,7 +2715,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] onopen, onmessage, onerror handlers work
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 55 (EventSourceLike interface)
 
@@ -2747,7 +2747,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] Delay is applied before returning mock response
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 55, 56
 
@@ -2779,7 +2779,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] MockEventSource emits configured events
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 55, 56, 59
 
@@ -2812,7 +2812,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] SseProtocol imports only protocol-specific types
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 58
 
@@ -2850,7 +2850,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] onEvent hooks run for incoming messages
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 58, 62
 
@@ -2881,7 +2881,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] All plugin management via protocol-level APIs
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 57, 58
 
@@ -2910,7 +2910,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] All usages migrated to protocol-specific plugins
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 60, 61
 
@@ -2940,7 +2940,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] No `plugins` namespace on service
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 57, 58, 64
 
@@ -2980,7 +2980,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] Old generic types NOT exported
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 54-66
 
@@ -3013,7 +3013,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] Protocol instance created and plugins added to it
 - [ ] File follows AI.md format rules
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 67
 
@@ -3046,7 +3046,7 @@ The following tasks implement the protocol-specific plugin architecture that sup
 - [ ] File stays under 100 lines
 - [ ] ASCII only, no unicode
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 68
 
@@ -3080,7 +3080,7 @@ describe('RestProtocol plugins', () => {
 - [ ] Short-circuit behavior verified
 - [ ] Type safety verified at compile time
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 57, 60, 67
 
@@ -3114,7 +3114,7 @@ describe('SseProtocol plugins', () => {
 - [ ] Same code path for mock and real verified
 - [ ] Type safety verified at compile time
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 58, 59, 61, 63, 67
 
@@ -3146,7 +3146,7 @@ describe('Cross-cutting plugins', () => {
 - [ ] Same instance works for both protocols
 - [ ] Correct hooks called for each protocol
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 57, 58, 67
 
@@ -3201,7 +3201,7 @@ Expected improvements:
 - No cross-protocol type checks
 - Smaller bundle size (no generic MockPlugin code for unused protocols)
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 54-72
 
@@ -3596,7 +3596,7 @@ apiRegistry.register(ChatApiService);
 - [ ] Class-based registration: `apiRegistry.register(ChatApiService)`
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 54-58 (protocol-specific types and management)
 
@@ -3653,7 +3653,7 @@ export class ChatRestMockPlugin extends RestPluginWithConfig<RestMockConfig> {
 - [ ] All REST endpoints from original mockMap are covered
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 60 (RestMockPlugin base class)
 
@@ -3732,7 +3732,7 @@ export class ChatSseMockPlugin extends SsePluginWithConfig<SseMockConfig> {
 - [ ] Mock EventSource emits word-by-word with delay
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 61 (SseMockPlugin base class)
 
@@ -3784,7 +3784,7 @@ export class ChatApiService extends BaseApiService {
 - [ ] No references to old `apiRegistry.getMockMap()`
 - [ ] TypeScript compiles without errors
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 75, 76
 
@@ -3819,7 +3819,7 @@ export class ChatApiService extends BaseApiService {
 - [ ] No console errors
 - [ ] Response timing reflects configured delay
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 77
 
@@ -3857,7 +3857,7 @@ export class ChatApiService extends BaseApiService {
 - [ ] No console errors during streaming
 - [ ] Clean completion of stream
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Task 77
 
@@ -3896,7 +3896,7 @@ export class ChatApiService extends BaseApiService {
 - [ ] Both REST and SSE protocols use correct mock plugins
 - [ ] No cross-protocol mock logic
 
-**Status**: NOT_STARTED
+**Status**: COMPLETED
 
 **Dependencies**: Tasks 78, 79
 

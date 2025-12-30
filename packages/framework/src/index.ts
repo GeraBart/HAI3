@@ -219,7 +219,27 @@ export {
 export type { TenantChangedPayload, TenantClearedPayload } from './effects';
 
 // From @hai3/api
-export { apiRegistry, BaseApiService, RestProtocol, SseProtocol, MockPlugin, ApiPluginBase, ApiPlugin, isShortCircuit } from '@hai3/api';
+export {
+  apiRegistry,
+  BaseApiService,
+  RestProtocol,
+  SseProtocol,
+  // Protocol-specific mock plugins (replaces generic MockPlugin)
+  RestMockPlugin,
+  SseMockPlugin,
+  MockEventSource,
+  // Plugin base classes
+  ApiPluginBase,
+  ApiPlugin,
+  RestPlugin,
+  RestPluginWithConfig,
+  SsePlugin,
+  SsePluginWithConfig,
+  // Type guards
+  isShortCircuit,
+  isRestShortCircuit,
+  isSseShortCircuit,
+} from '@hai3/api';
 export type {
   ApiService,
   MockMap,
@@ -236,6 +256,18 @@ export type {
   ApiResponseContext,
   ShortCircuitResponse,
   PluginClass,
+  // Protocol-specific types
+  RestPluginHooks,
+  SsePluginHooks,
+  RestRequestContext,
+  RestResponseContext,
+  SseConnectContext,
+  EventSourceLike,
+  RestShortCircuitResponse,
+  SseShortCircuitResponse,
+  RestMockConfig,
+  SseMockConfig,
+  SseMockEvent,
 } from '@hai3/api';
 
 

@@ -183,10 +183,21 @@ export {
   BaseApiService,
   RestProtocol,
   SseProtocol,
-  MockPlugin,
+  // Protocol-specific mock plugins (replaces generic MockPlugin)
+  RestMockPlugin,
+  SseMockPlugin,
+  MockEventSource,
+  // Plugin base classes
   ApiPluginBase,
   ApiPlugin,
+  RestPlugin,
+  RestPluginWithConfig,
+  SsePlugin,
+  SsePluginWithConfig,
+  // Type guards
   isShortCircuit,
+  isRestShortCircuit,
+  isSseShortCircuit,
 
   // I18n
   i18nRegistry,
@@ -288,6 +299,18 @@ export type {
   ApiResponseContext,
   ShortCircuitResponse,
   PluginClass,
+  // Protocol-specific types
+  RestPluginHooks,
+  SsePluginHooks,
+  RestRequestContext,
+  RestResponseContext,
+  SseConnectContext,
+  EventSourceLike,
+  RestShortCircuitResponse,
+  SseShortCircuitResponse,
+  RestMockConfig,
+  SseMockConfig,
+  SseMockEvent,
 
   // Backward compatibility type aliases
   ScreensetConfig,

@@ -23,6 +23,7 @@ export type {
   ApiProtocol,
   RestProtocolConfig,
   SseProtocolConfig,
+  HttpMethod,
   ApiRequestContext,
   ApiResponseContext,
   ShortCircuitResponse,
@@ -30,10 +31,36 @@ export type {
   ServiceConstructor,
   ApiRegistry,
   PluginClass,
+  // Protocol-specific types
+  RestPluginHooks,
+  SsePluginHooks,
+  RestRequestContext,
+  RestResponseContext,
+  SseConnectContext,
+  EventSourceLike,
+  RestShortCircuitResponse,
+  SseShortCircuitResponse,
 } from './types';
 
+// Re-export mock config types from plugin files
+export type { RestMockConfig } from './plugins/RestMockPlugin';
+export type { SseMockConfig } from './plugins/SseMockPlugin';
+export type { SseMockEvent } from './mocks/MockEventSource';
+
 // Export plugin classes and functions
-export { ApiPluginBase, ApiPlugin, isShortCircuit } from './types';
+export {
+  ApiPluginBase,
+  ApiPlugin,
+  isShortCircuit,
+  // Protocol-specific plugin classes
+  RestPlugin,
+  RestPluginWithConfig,
+  SsePlugin,
+  SsePluginWithConfig,
+  // Protocol-specific type guards
+  isRestShortCircuit,
+  isSseShortCircuit,
+} from './types';
 
 // Export base service class
 export { BaseApiService } from './BaseApiService';
@@ -42,9 +69,10 @@ export { BaseApiService } from './BaseApiService';
 export { RestProtocol } from './protocols/RestProtocol';
 export { SseProtocol } from './protocols/SseProtocol';
 
-// Export plugins
-export { MockPlugin } from './plugins/MockPlugin';
-export type { MockPluginConfig } from './plugins/MockPlugin';
+// Export protocol-specific mock plugins
+export { RestMockPlugin } from './plugins/RestMockPlugin';
+export { SseMockPlugin } from './plugins/SseMockPlugin';
+export { MockEventSource } from './mocks/MockEventSource';
 
 // Export registry
 export { apiRegistry, createApiRegistry } from './apiRegistry';

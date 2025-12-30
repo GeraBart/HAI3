@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HAI3Provider, apiRegistry, MockPlugin } from '@hai3/react';
+import { HAI3Provider, apiRegistry, RestProtocol, RestMockPlugin } from '@hai3/react';
 import { Toaster } from '@hai3/uikit';
 import { AccountsApiService } from '@/app/api';
 import { accountsMockMap } from '@/app/api/mocks';
@@ -17,9 +17,9 @@ apiRegistry.register(AccountsApiService);
 // Initialize API services
 apiRegistry.initialize({});
 
-// Enable mock mode for development
-apiRegistry.plugins.add(
-  new MockPlugin({
+// Enable mock mode for development (global - affects all REST services)
+RestProtocol.globalPlugins.add(
+  new RestMockPlugin({
     mockMap: accountsMockMap,
     delay: 500,
   })

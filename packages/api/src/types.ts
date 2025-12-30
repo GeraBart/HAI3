@@ -103,13 +103,11 @@ export interface ApiProtocol {
    * Initialize the protocol with configuration.
    *
    * @param config - Base service configuration
-   * @param getMockMap - Function to access mock response map
    * @param getPlugins - Function to access registered plugins
    * @param getClassPlugins - Function to access class-based plugins (merged global + service)
    */
   initialize(
     config: Readonly<ApiServiceConfig>,
-    getMockMap: () => Readonly<MockMap>,
     getPlugins: () => ReadonlyArray<ApiPluginBase>,
     getClassPlugins: () => ReadonlyArray<ApiPluginBase>
   ): void;
@@ -149,6 +147,12 @@ export interface SseProtocolConfig {
 // ============================================================================
 
 /**
+ * HTTP Method
+ * Standard HTTP methods used in REST APIs.
+ */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+
+/**
  * API Request Context
  * Pure request data passed to plugins during request lifecycle.
  * Contains only request information - no service-specific metadata.
@@ -156,7 +160,7 @@ export interface SseProtocolConfig {
  */
 export interface ApiRequestContext {
   /** HTTP method */
-  readonly method: string;
+  readonly method: HttpMethod;
   /** Request URL */
   readonly url: string;
   /** Request headers */
@@ -289,14 +293,13 @@ export abstract class ApiPluginBase {
  *   }
  * }
  *
- * // With config
- * apiRegistry.plugins.add(new AuthPlugin({ getToken: () => 'token' }));
- *
- * // Without config (void)
- * class LoggingPlugin extends ApiPlugin<void> {
- *   constructor() { super(void 0); }
- *   onRequest(ctx) { console.log('Request'); return ctx; }
+ * // With config - use RestPluginWithConfig for REST protocol
+ * class AuthPlugin extends RestPluginWithConfig<AuthConfig> {
+ *   onRequest(ctx) {
+ *     return { ...ctx, headers: { ...ctx.headers, Authorization: `Bearer ${this.config.getToken()}` } };
+ *   }
  * }
+ * RestProtocol.globalPlugins.add(new AuthPlugin({ getToken: () => 'token' }));
  * ```
  */
 export abstract class ApiPlugin<TConfig = void> extends ApiPluginBase {
@@ -315,7 +318,7 @@ export abstract class ApiPlugin<TConfig = void> extends ApiPluginBase {
  * @example
  * ```typescript
  * const pluginClass: PluginClass<AuthPlugin> = AuthPlugin;
- * apiRegistry.plugins.has(pluginClass);
+ * RestProtocol.globalPlugins.has(pluginClass);
  * ```
  */
 export type PluginClass<T extends ApiPluginBase = ApiPluginBase> = abstract new (...args: never[]) => T;
@@ -339,6 +342,332 @@ export function isShortCircuit(
   result: ApiRequestContext | ShortCircuitResponse | undefined
 ): result is ShortCircuitResponse {
   return result !== undefined && 'shortCircuit' in result;
+}
+
+// ============================================================================
+// Protocol-Specific Plugin Types
+// ============================================================================
+
+/**
+ * REST Request Context
+ * Context passed to REST protocol plugins during request lifecycle.
+ */
+export interface RestRequestContext {
+  /** HTTP method */
+  readonly method: HttpMethod;
+  /** Request URL */
+  readonly url: string;
+  /** Request headers */
+  readonly headers: Record<string, string>;
+  /** Request body */
+  readonly body?: unknown;
+}
+
+/**
+ * SSE Connect Context
+ * Context passed to SSE protocol plugins during connection lifecycle.
+ */
+export interface SseConnectContext {
+  /** SSE endpoint URL */
+  readonly url: string;
+  /** Connection headers */
+  readonly headers: Record<string, string>;
+}
+
+/**
+ * REST Plugin Hooks Interface
+ * Hook methods for REST protocol plugins.
+ */
+export interface RestPluginHooks {
+  /**
+   * Called before REST request is sent.
+   * Can modify the request context or short-circuit with immediate response.
+   *
+   * @param context - REST request context
+   * @returns Modified request context, short-circuit response, or Promise
+   */
+  onRequest?(
+    context: RestRequestContext
+  ): RestRequestContext | RestShortCircuitResponse | Promise<RestRequestContext | RestShortCircuitResponse>;
+
+  /**
+   * Called after REST response is received.
+   * Can modify the response context.
+   *
+   * @param context - REST response context
+   * @returns Modified response context (or Promise)
+   */
+  onResponse?(
+    context: RestResponseContext
+  ): RestResponseContext | Promise<RestResponseContext>;
+
+  /**
+   * Called when a REST error occurs.
+   * Can transform the error or provide a recovery response.
+   *
+   * @param error - The error that occurred
+   * @param context - REST request context at time of error
+   * @returns Modified error, recovery response, or Promise
+   */
+  onError?(
+    error: Error,
+    context: RestRequestContext
+  ): Error | RestResponseContext | Promise<Error | RestResponseContext>;
+
+  /**
+   * Called when plugin is removed or protocol is cleaned up.
+   * Use for cleanup of resources.
+   */
+  destroy(): void;
+}
+
+/**
+ * SSE Plugin Hooks Interface
+ * Hook methods for SSE protocol plugins.
+ */
+export interface SsePluginHooks {
+  /**
+   * Called before SSE connection is established.
+   * Can modify the connection context or short-circuit with mock EventSource.
+   *
+   * @param context - SSE connection context
+   * @returns Modified connection context, short-circuit response, or Promise
+   */
+  onConnect?(
+    context: SseConnectContext
+  ): SseConnectContext | SseShortCircuitResponse | Promise<SseConnectContext | SseShortCircuitResponse>;
+
+  /**
+   * Called for each SSE event received.
+   * Can modify or filter the event.
+   *
+   * @param event - The SSE message event
+   * @returns Modified event or void (or Promise)
+   */
+  onEvent?(
+    event: MessageEvent
+  ): MessageEvent | void | Promise<MessageEvent | void>;
+
+  /**
+   * Called when SSE connection is closed.
+   * Can perform cleanup or logging.
+   *
+   * @param connectionId - The connection ID
+   */
+  onDisconnect?(
+    connectionId: string
+  ): void | Promise<void>;
+
+  /**
+   * Called when plugin is removed or protocol is cleaned up.
+   * Use for cleanup of resources.
+   */
+  destroy(): void;
+}
+
+/**
+ * REST Response Context
+ * Response data passed to REST plugins during response lifecycle.
+ */
+export interface RestResponseContext {
+  /** HTTP status code */
+  readonly status: number;
+  /** Response headers */
+  readonly headers: Record<string, string>;
+  /** Response data */
+  readonly data: unknown;
+}
+
+/**
+ * REST Short Circuit Response
+ * Returned by REST plugins to skip HTTP request and provide immediate response.
+ */
+export interface RestShortCircuitResponse {
+  /** Response to return immediately, skipping HTTP request */
+  readonly shortCircuit: RestResponseContext;
+}
+
+/**
+ * EventSource-like Interface
+ * Minimal interface matching EventSource API for SSE mocking.
+ * Allows plugins to provide mock EventSource implementations.
+ */
+export interface EventSourceLike {
+  /** Current ready state */
+  readonly readyState: number;
+  /** Event handler for open event */
+  onopen: ((this: EventSource, ev: Event) => void) | null;
+  /** Event handler for message event */
+  onmessage: ((this: EventSource, ev: MessageEvent) => void) | null;
+  /**
+   * Event handler for error event.
+   * Uses union type for compatibility - real EventSource uses ErrorEvent,
+   * but MockEventSource uses Event. Both are acceptable.
+   */
+  onerror: ((this: EventSource, ev: Event | ErrorEvent) => void) | null;
+  /** Add event listener */
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
+  /** Remove event listener */
+  removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
+  /** Close the connection */
+  close(): void;
+}
+
+/**
+ * SSE Short Circuit Response
+ * Returned by SSE plugins to skip real EventSource and provide mock implementation.
+ */
+export interface SseShortCircuitResponse {
+  /** Mock EventSource to use instead of real connection */
+  readonly shortCircuit: EventSourceLike;
+}
+
+/**
+ * REST Short Circuit Type Guard
+ * Checks if a plugin result is a REST short-circuit response.
+ *
+ * @param result - Plugin onRequest result
+ * @returns True if result is a REST short-circuit response
+ */
+export function isRestShortCircuit(
+  result: RestRequestContext | RestShortCircuitResponse | undefined
+): result is RestShortCircuitResponse {
+  return result !== undefined && 'shortCircuit' in result && typeof (result as RestShortCircuitResponse).shortCircuit === 'object' && 'status' in (result as RestShortCircuitResponse).shortCircuit;
+}
+
+/**
+ * SSE Short Circuit Type Guard
+ * Checks if a plugin result is an SSE short-circuit response.
+ *
+ * @param result - Plugin onConnect result
+ * @returns True if result is an SSE short-circuit response
+ */
+export function isSseShortCircuit(
+  result: SseConnectContext | SseShortCircuitResponse | undefined
+): result is SseShortCircuitResponse {
+  return result !== undefined && 'shortCircuit' in result && typeof (result as SseShortCircuitResponse).shortCircuit === 'object' && 'close' in (result as SseShortCircuitResponse).shortCircuit;
+}
+
+// ============================================================================
+// Protocol-Specific Plugin Convenience Classes
+// ============================================================================
+
+/**
+ * REST Plugin Base Class
+ * Convenience class for REST protocol plugins without configuration.
+ * Extends ApiPluginBase and implements RestPluginHooks.
+ *
+ * @example
+ * ```typescript
+ * class LoggingPlugin extends RestPlugin {
+ *   onRequest(ctx: RestRequestContext): RestRequestContext {
+ *     console.log(`[REST] ${ctx.method} ${ctx.url}`);
+ *     return ctx;
+ *   }
+ * }
+ * ```
+ */
+export abstract class RestPlugin extends ApiPluginBase implements RestPluginHooks {
+  /** Default destroy implementation - override if cleanup needed */
+  destroy(): void {
+    // Override in subclass if cleanup needed
+  }
+}
+
+/**
+ * REST Plugin With Config
+ * Convenience class for REST protocol plugins with typed configuration.
+ * Extends ApiPluginBase and implements RestPluginHooks.
+ *
+ * @template TConfig - Configuration type
+ *
+ * @example
+ * ```typescript
+ * interface AuthConfig {
+ *   getToken: () => string;
+ * }
+ *
+ * class AuthPlugin extends RestPluginWithConfig<AuthConfig> {
+ *   onRequest(ctx: RestRequestContext): RestRequestContext {
+ *     return {
+ *       ...ctx,
+ *       headers: {
+ *         ...ctx.headers,
+ *         Authorization: `Bearer ${this.config.getToken()}`,
+ *       },
+ *     };
+ *   }
+ * }
+ * ```
+ */
+export abstract class RestPluginWithConfig<TConfig> extends ApiPluginBase implements RestPluginHooks {
+  constructor(protected readonly config: TConfig) {
+    super();
+  }
+
+  /** Default destroy implementation - override if cleanup needed */
+  destroy(): void {
+    // Override in subclass if cleanup needed
+  }
+}
+
+/**
+ * SSE Plugin Base Class
+ * Convenience class for SSE protocol plugins without configuration.
+ * Extends ApiPluginBase and implements SsePluginHooks.
+ *
+ * @example
+ * ```typescript
+ * class SseLoggingPlugin extends SsePlugin {
+ *   onConnect(ctx: SseConnectContext): SseConnectContext {
+ *     console.log(`[SSE] Connecting to ${ctx.url}`);
+ *     return ctx;
+ *   }
+ * }
+ * ```
+ */
+export abstract class SsePlugin extends ApiPluginBase implements SsePluginHooks {
+  /** Default destroy implementation - override if cleanup needed */
+  destroy(): void {
+    // Override in subclass if cleanup needed
+  }
+}
+
+/**
+ * SSE Plugin With Config
+ * Convenience class for SSE protocol plugins with typed configuration.
+ * Extends ApiPluginBase and implements SsePluginHooks.
+ *
+ * @template TConfig - Configuration type
+ *
+ * @example
+ * ```typescript
+ * interface SseAuthConfig {
+ *   getToken: () => string;
+ * }
+ *
+ * class SseAuthPlugin extends SsePluginWithConfig<SseAuthConfig> {
+ *   onConnect(ctx: SseConnectContext): SseConnectContext {
+ *     return {
+ *       ...ctx,
+ *       headers: {
+ *         ...ctx.headers,
+ *         Authorization: `Bearer ${this.config.getToken()}`,
+ *       },
+ *     };
+ *   }
+ * }
+ * ```
+ */
+export abstract class SsePluginWithConfig<TConfig> extends ApiPluginBase implements SsePluginHooks {
+  constructor(protected readonly config: TConfig) {
+    super();
+  }
+
+  /** Default destroy implementation - override if cleanup needed */
+  destroy(): void {
+    // Override in subclass if cleanup needed
+  }
 }
 
 // ============================================================================
@@ -475,154 +804,4 @@ export interface ApiRegistry {
    * @returns Current API configuration
    */
   getConfig(): Readonly<ApiServicesConfig>;
-
-  /**
-   * Namespaced plugin API for global plugins.
-   * Plugins registered here apply to all services unless excluded.
-   */
-  readonly plugins: {
-    /**
-     * Add one or more global plugins.
-     * Plugins are executed in FIFO order (first added executes first).
-     * Throws if a plugin of the same class is already registered.
-     *
-     * @param plugins - Plugin instances to add
-     * @throws Error if plugin class is already registered
-     *
-     * @example
-     * ```typescript
-     * class LoggingPlugin extends ApiPlugin<void> {
-     *   constructor() { super(void 0); }
-     *   onRequest(ctx) {
-     *     console.log(`${ctx.method} ${ctx.url}`);
-     *     return ctx;
-     *   }
-     * }
-     *
-     * class AuthPlugin extends ApiPlugin<{ getToken: () => string }> {
-     *   onRequest(ctx) {
-     *     ctx.headers['Authorization'] = `Bearer ${this.config.getToken()}`;
-     *     return ctx;
-     *   }
-     * }
-     *
-     * // Add plugins in FIFO order
-     * apiRegistry.plugins.add(
-     *   new LoggingPlugin(),
-     *   new AuthPlugin({ getToken: () => 'token' })
-     * );
-     * ```
-     */
-    add(...plugins: ApiPluginBase[]): void;
-
-    /**
-     * Add a plugin before another plugin by class reference.
-     * Throws if target plugin class is not registered.
-     * Throws if plugin class is already registered.
-     *
-     * @template T - Target plugin type
-     * @param plugin - Plugin instance to add
-     * @param before - Target plugin class to insert before
-     * @throws Error if target plugin class not found
-     * @throws Error if plugin class already registered
-     *
-     * @example
-     * ```typescript
-     * // Add logging plugin
-     * apiRegistry.plugins.add(new LoggingPlugin());
-     *
-     * // Add metrics plugin before logging
-     * apiRegistry.plugins.addBefore(new MetricsPlugin(), LoggingPlugin);
-     * // Execution order: MetricsPlugin -> LoggingPlugin
-     * ```
-     */
-    addBefore<T extends ApiPluginBase>(plugin: ApiPluginBase, before: PluginClass<T>): void;
-
-    /**
-     * Add a plugin after another plugin by class reference.
-     * Throws if target plugin class is not registered.
-     * Throws if plugin class is already registered.
-     *
-     * @template T - Target plugin type
-     * @param plugin - Plugin instance to add
-     * @param after - Target plugin class to insert after
-     * @throws Error if target plugin class not found
-     * @throws Error if plugin class already registered
-     *
-     * @example
-     * ```typescript
-     * // Add logging plugin
-     * apiRegistry.plugins.add(new LoggingPlugin());
-     *
-     * // Add auth plugin after logging
-     * apiRegistry.plugins.addAfter(new AuthPlugin({ getToken }), LoggingPlugin);
-     * // Execution order: LoggingPlugin -> AuthPlugin
-     * ```
-     */
-    addAfter<T extends ApiPluginBase>(plugin: ApiPluginBase, after: PluginClass<T>): void;
-
-    /**
-     * Remove a plugin by class reference.
-     * Calls destroy() on the plugin if available.
-     * Throws if plugin class is not registered.
-     *
-     * @template T - Plugin type
-     * @param pluginClass - Plugin class to remove
-     * @throws Error if plugin class not registered
-     *
-     * @example
-     * ```typescript
-     * // Remove auth plugin
-     * apiRegistry.plugins.remove(AuthPlugin);
-     * ```
-     */
-    remove<T extends ApiPluginBase>(pluginClass: PluginClass<T>): void;
-
-    /**
-     * Check if a plugin class is registered.
-     *
-     * @template T - Plugin type
-     * @param pluginClass - Plugin class to check
-     * @returns True if plugin class is registered
-     *
-     * @example
-     * ```typescript
-     * if (apiRegistry.plugins.has(AuthPlugin)) {
-     *   console.log('Auth plugin is active');
-     * }
-     * ```
-     */
-    has<T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean;
-
-    /**
-     * Get all registered plugins in execution order.
-     *
-     * @returns Readonly array of plugins in FIFO order
-     *
-     * @example
-     * ```typescript
-     * const plugins = apiRegistry.plugins.getAll();
-     * console.log(`${plugins.length} plugins registered`);
-     * ```
-     */
-    getAll(): readonly ApiPluginBase[];
-
-    /**
-     * Get a plugin instance by class reference.
-     * Returns undefined if plugin is not registered.
-     *
-     * @template T - Plugin type
-     * @param pluginClass - Plugin class to retrieve
-     * @returns Plugin instance or undefined
-     *
-     * @example
-     * ```typescript
-     * const auth = apiRegistry.plugins.getPlugin(AuthPlugin);
-     * if (auth) {
-     *   console.log('Auth plugin found');
-     * }
-     * ```
-     */
-    getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined;
-  };
 }

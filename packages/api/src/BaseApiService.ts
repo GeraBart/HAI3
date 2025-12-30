@@ -62,7 +62,6 @@ export abstract class BaseApiService {
     protocols.forEach((protocol) => {
       protocol.initialize(
         this.config,
-        () => ({}), // Empty mock map (OCP/DIP - services unaware of mocking)
         () => this.getPluginsInOrder(), // Plugins
         () => this.getMergedPluginsInOrder() // Class-based plugins (merged global + service)
       );

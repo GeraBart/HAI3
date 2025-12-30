@@ -69,18 +69,19 @@ When user runs `/openspec:apply`, execute:
 ### 3.1 Create Service
 File: src/screensets/{screenset}/api/{Name}ApiService.ts
 ```typescript
-import { BaseApiService, RestProtocol, MockPlugin, apiRegistry } from '@hai3/react';
-import { SCREENSET_ID } from '../ids';
+import { BaseApiService, RestProtocol, RestMockPlugin, apiRegistry } from '@hai3/react';
 
 class {Name}ApiService extends BaseApiService {
   constructor() {
-    super({ baseURL: '/api/v1/{domain}' }, new RestProtocol());
+    // Create protocol instance
+    const restProtocol = new RestProtocol();
 
-    // For development/testing, register service-specific mocks
-    // NOTE: MockPlugin should be registered per-service for vertical slice compliance
-    // WARNING: Avoid global MockPlugin registration if screenset mocks need to be self-contained
-    if (process.env.NODE_ENV === 'development') {
-      this.plugins.add(new MockPlugin({
+    super({ baseURL: '/api/v1/{domain}' }, restProtocol);
+
+    // Register protocol-specific mock plugin in development
+    // NOTE: Mocks are registered on the protocol instance, not the service
+    if (import.meta.env.DEV) {
+      restProtocol.plugins.add(new RestMockPlugin({
         mockMap: {
           'GET /api/v1/{domain}/endpoint': () => ({ data: 'mock data' }),
           'PUT /api/v1/{domain}/endpoint': (body) => ({ ...body, updatedAt: new Date() }),
@@ -309,7 +310,7 @@ export const {domain}MockMap = {
 Import ./api/{Name}ApiService for side effect.
 Register slice with registerSlice({domain}Slice.reducer).
 Call init{Domain}Effects() in screenset initialization.
-NOTE: Mock configuration is handled in service constructor via MockPlugin.
+NOTE: Mock plugins are registered on protocol instances in service constructor.
 
 ### 3.9 Component Usage Example
 ```typescript

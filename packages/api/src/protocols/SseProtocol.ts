@@ -9,14 +9,13 @@ import { assign } from 'lodash';
 import type {
   ApiProtocol,
   ApiServiceConfig,
-  MockMap,
   SseProtocolConfig,
   ApiPluginBase,
-  ApiRequestContext,
-  ShortCircuitResponse,
-  ApiResponseContext,
+  SsePluginHooks,
+  SseConnectContext,
+  EventSourceLike,
 } from '../types';
-import { isShortCircuit } from '../types';
+import { isSseShortCircuit } from '../types';
 
 /**
  * SSE Protocol Implementation
@@ -24,11 +23,100 @@ import { isShortCircuit } from '../types';
  */
 export class SseProtocol implements ApiProtocol {
   private baseConfig!: Readonly<ApiServiceConfig>;
-  private connections: Map<string, EventSource | 'short-circuit'> = new Map();
+  private connections: Map<string, EventSource> = new Map();
   private readonly config: SseProtocolConfig;
   private _getPlugins!: () => ReadonlyArray<ApiPluginBase>;
   // Class-based plugins used for generic plugin chain execution
   private _getClassPlugins!: () => ReadonlyArray<ApiPluginBase>;
+
+  /** Global plugins shared across all SseProtocol instances */
+  private static _globalPlugins: Set<SsePluginHooks> = new Set();
+
+  /** Instance-specific plugins */
+  private _instancePlugins: Set<SsePluginHooks> = new Set();
+
+  /**
+   * Global plugin management namespace
+   * Plugins registered here apply to all SseProtocol instances
+   */
+  public static readonly globalPlugins = {
+    /**
+     * Add a global SSE plugin
+     * @param plugin - Plugin instance implementing SsePluginHooks
+     */
+    add(plugin: SsePluginHooks): void {
+      SseProtocol._globalPlugins.add(plugin);
+    },
+
+    /**
+     * Remove a global SSE plugin
+     * Calls destroy() if available
+     * @param plugin - Plugin instance to remove
+     */
+    remove(plugin: SsePluginHooks): void {
+      if (SseProtocol._globalPlugins.has(plugin)) {
+        SseProtocol._globalPlugins.delete(plugin);
+        plugin.destroy();
+      }
+    },
+
+    /**
+     * Check if a global plugin is registered
+     * @param plugin - Plugin instance to check
+     */
+    has(plugin: SsePluginHooks): boolean {
+      return SseProtocol._globalPlugins.has(plugin);
+    },
+
+    /**
+     * Get all global plugins
+     */
+    getAll(): readonly SsePluginHooks[] {
+      return Array.from(SseProtocol._globalPlugins);
+    },
+
+    /**
+     * Clear all global plugins
+     * Calls destroy() on each plugin if available
+     */
+    clear(): void {
+      SseProtocol._globalPlugins.forEach((plugin) => plugin.destroy());
+      SseProtocol._globalPlugins.clear();
+    },
+  };
+
+  /**
+   * Instance plugin management namespace
+   * Plugins registered here apply only to this SseProtocol instance
+   */
+  public readonly plugins = {
+    /**
+     * Add an instance SSE plugin
+     * @param plugin - Plugin instance implementing SsePluginHooks
+     */
+    add: (plugin: SsePluginHooks): void => {
+      this._instancePlugins.add(plugin);
+    },
+
+    /**
+     * Remove an instance SSE plugin
+     * Calls destroy() if available
+     * @param plugin - Plugin instance to remove
+     */
+    remove: (plugin: SsePluginHooks): void => {
+      if (this._instancePlugins.has(plugin)) {
+        this._instancePlugins.delete(plugin);
+        plugin.destroy();
+      }
+    },
+
+    /**
+     * Get all instance plugins
+     */
+    getAll: (): readonly SsePluginHooks[] => {
+      return Array.from(this._instancePlugins);
+    },
+  };
 
   constructor(config: Readonly<SseProtocolConfig> = {}) {
     this.config = assign({}, config);
@@ -39,7 +127,6 @@ export class SseProtocol implements ApiProtocol {
    */
   initialize(
     baseConfig: Readonly<ApiServiceConfig>,
-    _getMockMap: () => Readonly<MockMap>,
     getPlugins: () => ReadonlyArray<ApiPluginBase>,
     _getClassPlugins: () => ReadonlyArray<ApiPluginBase>
   ): void {
@@ -69,32 +156,45 @@ export class SseProtocol implements ApiProtocol {
    * Cleanup protocol resources
    */
   cleanup(): void {
-    // Close all active connections (skip 'short-circuit' entries)
+    // Close all active connections
     this.connections.forEach((conn) => {
-      if (conn !== 'short-circuit') {
-        conn.close();
-      }
+      conn.close();
     });
     this.connections.clear();
+
+    // Cleanup instance plugins
+    this._instancePlugins.forEach((plugin) => plugin.destroy());
+    this._instancePlugins.clear();
   }
 
   /**
-   * Execute plugin chain for request lifecycle
-   * Iterates through all class-based plugins and calls onRequest hooks
+   * Get all plugins in execution order (global first, then instance).
+   * @private
+   */
+  private getPluginsInOrder(): SsePluginHooks[] {
+    return [
+      ...Array.from(SseProtocol._globalPlugins),
+      ...Array.from(this._instancePlugins),
+    ];
+  }
+
+  /**
+   * Execute SSE plugin chain for connection lifecycle
+   * Iterates through all SSE-specific plugins and calls onConnect hooks
    *
-   * @param context - Request context
+   * @param context - SSE connection context
    * @returns Modified context or short-circuit response
    */
   private async executePluginChainAsync(
-    context: ApiRequestContext
-  ): Promise<ApiRequestContext | ShortCircuitResponse> {
+    context: SseConnectContext
+  ): Promise<SseConnectContext | { shortCircuit: EventSourceLike }> {
     let currentContext = context;
 
-    for (const plugin of this.getClassBasedPlugins()) {
-      if (plugin.onRequest) {
-        const result = await plugin.onRequest(currentContext);
+    for (const plugin of this.getPluginsInOrder()) {
+      if (plugin.onConnect) {
+        const result = await plugin.onConnect(currentContext);
 
-        if (isShortCircuit(result)) {
+        if (isSseShortCircuit(result)) {
           return result;
         }
 
@@ -107,7 +207,7 @@ export class SseProtocol implements ApiProtocol {
 
   /**
    * Connect to SSE stream
-   * Returns connection ID for cleanup
+   * Pure implementation - uses plugin-provided EventSource or creates real one
    *
    * @param url - SSE endpoint URL (relative to baseURL)
    * @param onMessage - Callback for each SSE message
@@ -121,58 +221,60 @@ export class SseProtocol implements ApiProtocol {
   ): Promise<string> {
     const connectionId = this.generateId();
 
-    // Build request context for plugin chain
-    const context: ApiRequestContext = {
-      method: 'GET',
-      url,
+    // Build full URL for plugins (baseURL + relative url)
+    const fullUrl = this.baseConfig?.baseURL
+      ? `${this.baseConfig.baseURL}${url}`.replace(/\/+/g, '/').replace(':/', '://')
+      : url;
+
+    // 1. Build SSE connection context for plugin chain
+    const context: SseConnectContext = {
+      url: fullUrl,
       headers: {},
-      body: undefined,
     };
 
-    // Execute plugin chain - allows any plugin to short-circuit
+    // 2. Execute plugin chain - allows plugins to short-circuit with mock EventSource
     const result = await this.executePluginChainAsync(context);
 
-    // Check if any plugin short-circuited the request
-    if (isShortCircuit(result)) {
-      // Simulate streaming from short-circuit response
-      await this.simulateStreamFromShortCircuit(
-        connectionId,
-        result.shortCircuit,
-        onMessage,
-        onComplete
-      );
-      return connectionId;
+    // 3. Determine which EventSource to use
+    let eventSource: EventSourceLike;
+
+    if (isSseShortCircuit(result)) {
+      // Plugin provided mock EventSource
+      eventSource = result.shortCircuit;
+    } else {
+      // Create real EventSource
+      const withCredentials = this.config.withCredentials ?? true;
+      eventSource = new EventSource(fullUrl, { withCredentials });
     }
 
-    // Establish real SSE connection
-    this.establishRealConnection(connectionId, url, onMessage, onComplete);
+    // 4. Attach handlers - same code path for both mock and real
+    this.attachHandlers(connectionId, eventSource, onMessage, onComplete);
+
     return connectionId;
   }
 
   /**
-   * Establish real SSE connection to server
-   * Extracted for clarity and separation from plugin-based short-circuit flow
+   * Attach event handlers to EventSource (mock or real)
+   * Same implementation for both paths - ensures consistency
    *
    * @param connectionId - Generated connection ID
-   * @param url - SSE endpoint URL (relative to baseURL)
+   * @param eventSource - EventSource to attach handlers to (mock or real)
    * @param onMessage - Callback for each SSE message
    * @param onComplete - Optional callback when stream completes
    */
-  private establishRealConnection(
+  private attachHandlers(
     connectionId: string,
-    url: string,
+    eventSource: EventSourceLike,
     onMessage: (event: MessageEvent) => void,
     onComplete?: () => void
   ): void {
-    const withCredentials = this.config.withCredentials ?? true;
-    const fullUrl = `${this.baseConfig.baseURL}${url}`;
+    // Store connection
+    this.connections.set(connectionId, eventSource as EventSource);
 
-    const eventSource = new EventSource(fullUrl, {
-      withCredentials,
-    });
-
+    // Attach message handler
     eventSource.onmessage = onMessage;
 
+    // Attach error handler
     eventSource.onerror = (error) => {
       console.error('SSE error:', error);
       this.disconnect(connectionId);
@@ -183,82 +285,6 @@ export class SseProtocol implements ApiProtocol {
       if (onComplete) onComplete();
       this.disconnect(connectionId);
     });
-
-    this.connections.set(connectionId, eventSource);
-  }
-
-  /**
-   * Simulate SSE streaming from short-circuit response
-   * Works with any plugin's short-circuit response, not just MockPlugin
-   * Breaks response content into word-by-word chunks
-   */
-  private async simulateStreamFromShortCircuit(
-    connectionId: string,
-    response: ApiResponseContext,
-    onMessage: (event: MessageEvent) => void,
-    onComplete?: () => void
-  ): Promise<void> {
-    // Mark as short-circuit connection
-    this.connections.set(connectionId, 'short-circuit');
-
-    // Extract content using generic extraction (no plugin knowledge)
-    const content = this.extractStreamContent(response.data);
-
-    // Stream the content word by word
-    await this.streamContent(connectionId, content, onMessage, onComplete);
-  }
-
-  /**
-   * Stream content word by word with SSE-style chunks
-   * Used by simulateStreamFromShortCircuit to simulate realistic streaming
-   */
-  private async streamContent(
-    connectionId: string,
-    content: string,
-    onMessage: (event: MessageEvent) => void,
-    onComplete?: () => void
-  ): Promise<void> {
-    // Split content into words for streaming simulation
-    const words = content.split(' ');
-
-    // Stream word by word with delays
-    for (let i = 0; i < words.length; i++) {
-      // Check if connection was disconnected
-      if (!this.connections.has(connectionId)) {
-        return;
-      }
-
-      // Create SSE-style chunk
-      const chunk = {
-        id: `chatcmpl-short-circuit-${Date.now()}-${i}`,
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        model: 'gpt-3.5-turbo',
-        choices: [
-          {
-            index: 0,
-            delta: {
-              content: words[i] + (i < words.length - 1 ? ' ' : ''),
-            },
-            finish_reason: i === words.length - 1 ? 'stop' : null,
-          },
-        ],
-      };
-
-      // Create MessageEvent
-      const event = new MessageEvent('message', {
-        data: JSON.stringify(chunk),
-      });
-
-      onMessage(event);
-
-      // Add delay between chunks (50ms per word)
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
-    // Stream complete
-    if (onComplete) onComplete();
-    this.disconnect(connectionId);
   }
 
   /**
@@ -269,10 +295,7 @@ export class SseProtocol implements ApiProtocol {
   disconnect(connectionId: string): void {
     const connection = this.connections.get(connectionId);
     if (connection) {
-      // Only close if it's a real EventSource (not 'short-circuit')
-      if (connection !== 'short-circuit') {
-        connection.close();
-      }
+      connection.close();
       this.connections.delete(connectionId);
     }
   }
@@ -284,68 +307,4 @@ export class SseProtocol implements ApiProtocol {
     return `sse-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  /**
-   * Extract streamable content from short-circuit response data.
-   * Handles multiple response formats without knowledge of which plugin produced it.
-   *
-   * @param data - Response data from short-circuit
-   * @returns Streamable content as string
-   */
-  private extractStreamContent(data: unknown): string {
-    // Handle null/undefined
-    if (data == null) {
-      return '';
-    }
-
-    // Case 1: Plain string - stream directly
-    if (typeof data === 'string') {
-      return data;
-    }
-
-    // Case 2: Binary data - not supported for SSE
-    if (data instanceof ArrayBuffer || data instanceof Uint8Array || data instanceof Blob) {
-      return '[Binary data not supported for SSE streaming]';
-    }
-
-    // Case 3: OpenAI-style chat completion (common mock format)
-    if (this.isChatCompletion(data)) {
-      return data.choices?.[0]?.message?.content ?? '';
-    }
-
-    // Case 4: SSE content wrapper { content: string }
-    if (this.isSseContent(data)) {
-      return data.content;
-    }
-
-    // Case 5: Fallback - JSON serialize with circular reference protection
-    try {
-      return JSON.stringify(data);
-    } catch {
-      return '[Unserializable data]';
-    }
-  }
-
-  /**
-   * Type guard for OpenAI chat completion format
-   */
-  private isChatCompletion(data: unknown): data is { choices?: Array<{ message?: { content?: string } }> } {
-    return (
-      typeof data === 'object' &&
-      data !== null &&
-      'choices' in data &&
-      Array.isArray((data as { choices: unknown }).choices)
-    );
-  }
-
-  /**
-   * Type guard for SSE content wrapper format
-   */
-  private isSseContent(data: unknown): data is { content: string } {
-    return (
-      typeof data === 'object' &&
-      data !== null &&
-      'content' in data &&
-      typeof (data as { content: unknown }).content === 'string'
-    );
-  }
 }

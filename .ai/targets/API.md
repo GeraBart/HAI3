@@ -8,25 +8,25 @@
 
 ## SCOPE
 - Core API infrastructure: packages/api/src/**
-  - plugins/  -> request and response interceptors (ApiPluginBase, ApiPlugin, MockPlugin)
-  - protocols/ -> communication protocols (RestProtocol, SseProtocol)
+  - plugins/  -> request and response interceptors (ApiPluginBase, ApiPlugin, RestMockPlugin, SseMockPlugin)
+  - protocols/ -> communication protocols (RestProtocol, SseProtocol) with protocol-specific plugin systems
   - apiRegistry.ts -> service registry (read-only)
   - BaseApiService -> abstract base class
 - DEPRECATED: src/api/ (deleted - API services now in screensets)
 
 ## CRITICAL RULES
-- One domain service per backend domain (no entity-based services).
-- Services self-register using apiRegistry.register(ServiceClass) with class reference (registry source file must never be edited).
-- All calls go through typed service methods (no raw get("/url")).
-- Mock data configured via apiRegistry.plugins.add(new MockPlugin({ mockMap })) or per-service plugins.
-- All services extend BaseApiService (no module augmentation needed with class-based registration).
-- VERTICAL SLICE ARCHITECTURE: Screenset services should use per-service plugins to maintain isolation.
+- REQUIRED: One domain service per backend domain (no entity-based services).
+- REQUIRED: Services self-register using apiRegistry.register(ServiceClass) with class reference.
+- REQUIRED: All calls go through typed service methods (no raw get("/url")).
+- REQUIRED: Mock data configured via protocol-specific plugins on protocol instances.
+- REQUIRED: All services extend BaseApiService.
+- REQUIRED: Screenset services use per-service plugins to maintain isolation.
 
 ## STOP CONDITIONS
-- Editing BaseApiService or apiRegistry.ts.
-- Calling APIs directly inside React components.
-- Adding generic helpers like get("/endpoint").
-- Creating UserService, InvoiceService, or other entity-style services.
+- STOP: Editing BaseApiService or apiRegistry.ts.
+- STOP: Calling APIs directly inside React components.
+- STOP: Adding generic helpers like get("/endpoint").
+- STOP: Creating UserService, InvoiceService, or other entity-style services.
 
 ## ADDING A SERVICE (DEPRECATED)
 - FORBIDDEN: Creating services in packages/uicore/src/api/services/.
@@ -34,20 +34,26 @@
 - REQUIRED: Create services in src/screensets/*/api/. See SCREENSETS.md.
 
 ## USAGE RULES
-- Access only via apiRegistry.getService(ServiceClass).methodName().
-- Type inference from class constructor reference (no module augmentation needed).
-- No direct axios or fetch usage outside BaseApiService.
+- REQUIRED: Access only via apiRegistry.getService(ServiceClass).methodName().
+- REQUIRED: Type inference from class constructor reference (no module augmentation).
+- FORBIDDEN: Direct axios or fetch usage outside BaseApiService.
 
 ## PLUGIN RULES
 - REQUIRED: Extend ApiPluginBase (no config) or ApiPlugin<TConfig> (with config) to create plugins.
-- REQUIRED: Use namespaced API (apiRegistry.plugins.add, service.plugins.add).
+- REQUIRED: Use namespaced API (protocol.plugins.add, RestProtocol.globalPlugins.add).
 - REQUIRED: Plugins are identified by class reference (instanceof), not string names.
-- REQUIRED: MockPlugin is self-contained (all config in constructor).
-- PREFERRED: Register MockPlugin per-service for vertical slice compliance.
-- ALLOWED: Global MockPlugin for cross-cutting mocks (e.g., auth simulation).
+- REQUIRED: Mock plugins are protocol-specific (RestMockPlugin, SseMockPlugin).
+- PREFERRED: Register mock plugins on protocol instances in service constructor.
+- ALLOWED: Global plugins via RestProtocol.globalPlugins / SseProtocol.globalPlugins.
 - FORBIDDEN: String-based plugin names for identification.
 - FORBIDDEN: Mock-specific methods on apiRegistry (registerMocks, setMockMode).
-- FORBIDDEN: Global MockPlugin with screenset-specific mocks (breaks vertical slices).
+- FORBIDDEN: Generic MockPlugin class (use protocol-specific mock plugins).
+
+## PROTOCOL-SPECIFIC PLUGINS
+- REQUIRED: RestProtocol plugins implement RestPluginHooks (onRequest, onResponse, destroy).
+- REQUIRED: SseProtocol plugins implement SsePluginHooks (onConnect, onEvent, onDisconnect, destroy).
+- REQUIRED: Use RestMockPlugin for REST mocks, SseMockPlugin for SSE mocks.
+- REQUIRED: Plugin execution order is FIFO for requests, LIFO for responses.
 
 ## MOCK DATA RULES
 - REQUIRED: Use lodash for all string, array, and object operations in mock data factories.
@@ -56,6 +62,6 @@
 ## PRE-DIFF CHECKLIST
 - [ ] Service class created extending BaseApiService.
 - [ ] Service registered with apiRegistry.register(ServiceClass).
-- [ ] App mocks configured via MockPlugin if needed.
+- [ ] Protocol-specific mocks configured (RestMockPlugin, SseMockPlugin) if needed.
 - [ ] No edits to apiRegistry.ts.
 - [ ] No raw get("/url") calls.

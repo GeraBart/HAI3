@@ -1,55 +1,60 @@
 /**
- * MockPlugin - Intercepts API requests and returns mock data
+ * RestMockPlugin - REST-specific mock plugin
  *
- * Uses short-circuit to skip the actual HTTP request when a matching mock is found.
+ * Intercepts REST requests and returns mock data via short-circuit.
+ * Protocol-specific replacement for generic MockPlugin.
  *
  * SDK Layer: L1 (Zero dependencies)
  */
 
 import {
-  ApiPlugin,
-  ApiRequestContext,
-  ApiResponseContext,
-  ShortCircuitResponse,
-} from '../types';
-import type {
-  JsonValue,
-  MockMap,
-  MockResponseFactory,
+  RestPluginWithConfig,
+  type RestRequestContext,
+  type RestShortCircuitResponse,
+  type JsonValue,
+  type JsonCompatible,
+  type MockResponseFactory,
 } from '../types';
 
 /**
- * MockPlugin Configuration
+ * REST Mock Configuration
  */
-export interface MockPluginConfig {
-  /** Mock response map */
-  mockMap: Readonly<MockMap>;
+export interface RestMockConfig {
+  /** Mock response map: 'METHOD /path' -> response factory */
+  mockMap: Readonly<Record<string, MockResponseFactory<JsonValue, JsonCompatible>>>;
   /** Simulated network delay in ms */
   delay?: number;
 }
 
 /**
- * MockPlugin Implementation
+ * RestMockPlugin Implementation
  *
- * Intercepts requests and returns mock data via short-circuit.
+ * Intercepts REST requests and returns mock data via short-circuit.
  * Supports exact matches and URL patterns with :params.
  *
  * @example
  * ```typescript
- * const mockPlugin = new MockPlugin({
+ * const mockPlugin = new RestMockPlugin({
  *   mockMap: {
  *     'GET /users': () => [{ id: '1', name: 'John' }],
  *     'GET /users/:id': () => ({ id: '1', name: 'John' }),
+ *     'POST /users': (body) => ({ id: '2', ...body }),
  *   },
  *   delay: 100,
  * });
+ *
+ * // Register globally
+ * RestProtocol.globalPlugins.add(mockPlugin);
+ *
+ * // Or per-instance
+ * restProtocol.plugins.add(mockPlugin);
  * ```
  */
-export class MockPlugin extends ApiPlugin<MockPluginConfig> {
+export class RestMockPlugin extends RestPluginWithConfig<RestMockConfig> {
   /** Current mock map (can be updated via setMockMap) */
-  private currentMockMap: Readonly<MockMap>;
+  private currentMockMap: Readonly<Record<string, MockResponseFactory<JsonValue, JsonCompatible>>>;
 
-  constructor(config: MockPluginConfig) {
+  constructor(config: RestMockConfig) {
     super(config);
     this.currentMockMap = config.mockMap;
   }
@@ -57,17 +62,17 @@ export class MockPlugin extends ApiPlugin<MockPluginConfig> {
   /**
    * Update mock map dynamically.
    */
-  setMockMap(mockMap: Readonly<MockMap>): void {
+  setMockMap(mockMap: Readonly<Record<string, MockResponseFactory<JsonValue, JsonCompatible>>>): void {
     this.currentMockMap = mockMap;
   }
 
   /**
-   * Intercept request and return mock if available.
-   * Returns ShortCircuitResponse to skip HTTP request.
+   * Intercept REST request and return mock if available.
+   * Returns RestShortCircuitResponse to skip HTTP request.
    */
   async onRequest(
-    context: ApiRequestContext
-  ): Promise<ApiRequestContext | ShortCircuitResponse> {
+    context: RestRequestContext
+  ): Promise<RestRequestContext | RestShortCircuitResponse> {
     const mockFactory = this.findMockFactory(context.method, context.url);
 
     if (mockFactory) {
@@ -79,13 +84,13 @@ export class MockPlugin extends ApiPlugin<MockPluginConfig> {
       // Get mock data from factory
       const mockData = mockFactory(context.body as JsonValue);
 
-      // Return short-circuit response (skips HTTP request)
+      // Return REST short-circuit response (skips HTTP request)
       return {
         shortCircuit: {
           status: 200,
           headers: { 'x-hai3-short-circuit': 'true' },
           data: mockData,
-        } as ApiResponseContext,
+        },
       };
     }
 

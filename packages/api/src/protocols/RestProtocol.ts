@@ -11,12 +11,13 @@ import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import type {
   ApiProtocol,
   ApiServiceConfig,
-  MockMap,
   RestProtocolConfig,
   ApiPluginBase,
   ApiRequestContext,
   ApiResponseContext,
   ShortCircuitResponse,
+  RestPluginHooks,
+  HttpMethod,
 } from '../types';
 import { isShortCircuit } from '../types';
 
@@ -51,11 +52,97 @@ export class RestProtocol implements ApiProtocol {
   /** REST-specific config */
   private restConfig: RestProtocolConfig;
 
-  /** Callback to get plugins */
+  /** Callback to get legacy plugins (for backward compatibility) */
   private getPlugins: () => ReadonlyArray<ApiPluginBase> = () => [];
 
-  /** Callback to get class-based plugins */
-  private getClassPlugins: () => ReadonlyArray<ApiPluginBase> = () => [];
+  /** Global plugins shared across all RestProtocol instances */
+  private static _globalPlugins: Set<RestPluginHooks> = new Set();
+
+  /** Instance-specific plugins */
+  private _instancePlugins: Set<RestPluginHooks> = new Set();
+
+  /**
+   * Global plugin management namespace
+   * Plugins registered here apply to all RestProtocol instances
+   */
+  public static readonly globalPlugins = {
+    /**
+     * Add a global REST plugin
+     * @param plugin - Plugin instance implementing RestPluginHooks
+     */
+    add(plugin: RestPluginHooks): void {
+      RestProtocol._globalPlugins.add(plugin);
+    },
+
+    /**
+     * Remove a global REST plugin
+     * Calls destroy() if available
+     * @param plugin - Plugin instance to remove
+     */
+    remove(plugin: RestPluginHooks): void {
+      if (RestProtocol._globalPlugins.has(plugin)) {
+        RestProtocol._globalPlugins.delete(plugin);
+        plugin.destroy();
+      }
+    },
+
+    /**
+     * Check if a global plugin is registered
+     * @param plugin - Plugin instance to check
+     */
+    has(plugin: RestPluginHooks): boolean {
+      return RestProtocol._globalPlugins.has(plugin);
+    },
+
+    /**
+     * Get all global plugins
+     */
+    getAll(): readonly RestPluginHooks[] {
+      return Array.from(RestProtocol._globalPlugins);
+    },
+
+    /**
+     * Clear all global plugins
+     * Calls destroy() on each plugin if available
+     */
+    clear(): void {
+      RestProtocol._globalPlugins.forEach((plugin) => plugin.destroy());
+      RestProtocol._globalPlugins.clear();
+    },
+  };
+
+  /**
+   * Instance plugin management namespace
+   * Plugins registered here apply only to this RestProtocol instance
+   */
+  public readonly plugins = {
+    /**
+     * Add an instance REST plugin
+     * @param plugin - Plugin instance implementing RestPluginHooks
+     */
+    add: (plugin: RestPluginHooks): void => {
+      this._instancePlugins.add(plugin);
+    },
+
+    /**
+     * Remove an instance REST plugin
+     * Calls destroy() if available
+     * @param plugin - Plugin instance to remove
+     */
+    remove: (plugin: RestPluginHooks): void => {
+      if (this._instancePlugins.has(plugin)) {
+        this._instancePlugins.delete(plugin);
+        plugin.destroy();
+      }
+    },
+
+    /**
+     * Get all instance plugins
+     */
+    getAll: (): readonly RestPluginHooks[] => {
+      return Array.from(this._instancePlugins);
+    },
+  };
 
   constructor(restConfig: RestProtocolConfig = {}) {
     this.restConfig = { ...DEFAULT_REST_CONFIG, ...restConfig };
@@ -70,15 +157,13 @@ export class RestProtocol implements ApiProtocol {
    */
   initialize(
     config: Readonly<ApiServiceConfig>,
-    _getMockMap: () => Readonly<MockMap>,
     getPlugins: () => ReadonlyArray<ApiPluginBase>,
-    getClassPlugins: () => ReadonlyArray<ApiPluginBase>
+    _getClassPlugins: () => ReadonlyArray<ApiPluginBase>
   ): void {
     this.config = config;
-    // _getMockMap is part of the interface but not used by RestProtocol
-    // MockPlugin handles its own mock map via constructor
     this.getPlugins = getPlugins;
-    this.getClassPlugins = getClassPlugins;
+    // _getClassPlugins is part of the interface but not used by RestProtocol
+    // Protocol-level plugins are accessed via getPluginsInOrder()
 
     // Create axios instance
     this.client = axios.create({
@@ -96,8 +181,24 @@ export class RestProtocol implements ApiProtocol {
    * Cleanup protocol resources.
    */
   cleanup(): void {
+    // Cleanup instance plugins
+    this._instancePlugins.forEach((plugin) => plugin.destroy());
+    this._instancePlugins.clear();
+
     this.client = null;
     this.config = null;
+  }
+
+  /**
+   * Get all plugins in execution order (global first, then instance).
+   * Used by plugin chain execution to get ordered list of plugins.
+   * @internal
+   */
+  getPluginsInOrder(): RestPluginHooks[] {
+    return [
+      ...Array.from(RestProtocol._globalPlugins),
+      ...Array.from(this._instancePlugins),
+    ];
   }
 
   // ============================================================================
@@ -155,7 +256,7 @@ export class RestProtocol implements ApiProtocol {
    * Execute an HTTP request with plugin chain.
    */
   private async request<T>(
-    method: string,
+    method: HttpMethod,
     url: string,
     data?: unknown,
     params?: Record<string, string>
@@ -164,10 +265,15 @@ export class RestProtocol implements ApiProtocol {
       throw new Error('RestProtocol not initialized. Call initialize() first.');
     }
 
+    // Build full URL for plugins (baseURL + relative url)
+    const fullUrl = this.config?.baseURL
+      ? `${this.config.baseURL}${url}`.replace(/\/+/g, '/').replace(':/', '://')
+      : url;
+
     // Build request context for plugins (pure request data - no serviceName)
     const requestContext: ApiRequestContext = {
       method,
-      url,
+      url: fullUrl,
       headers: { ...this.config?.headers },
       body: data,
     };
@@ -257,7 +363,7 @@ export class RestProtocol implements ApiProtocol {
 
   /**
    * Execute class-based onRequest plugin chain.
-   * Plugins execute in FIFO order (global first, then service-specific).
+   * Plugins execute in FIFO order (global first, then instance).
    * Any plugin can short-circuit by returning { shortCircuit: response }.
    */
   private async executeClassPluginOnRequest(
@@ -265,7 +371,8 @@ export class RestProtocol implements ApiProtocol {
   ): Promise<ApiRequestContext | ShortCircuitResponse> {
     let currentContext: ApiRequestContext = { ...context };
 
-    for (const plugin of this.getClassPlugins()) {
+    // Use protocol-level plugins (global + instance)
+    for (const plugin of this.getPluginsInOrder()) {
       if (plugin.onRequest) {
         const result = await plugin.onRequest(currentContext);
 
@@ -291,7 +398,8 @@ export class RestProtocol implements ApiProtocol {
     _requestContext: ApiRequestContext
   ): Promise<ApiResponseContext> {
     let currentContext: ApiResponseContext = { ...context };
-    const plugins = [...this.getClassPlugins()].reverse();
+    // Use protocol-level plugins (global + instance) in reverse order
+    const plugins = [...this.getPluginsInOrder()].reverse();
 
     for (const plugin of plugins) {
       if (plugin.onResponse) {
@@ -312,7 +420,8 @@ export class RestProtocol implements ApiProtocol {
     context: ApiRequestContext
   ): Promise<Error | ApiResponseContext> {
     let currentResult: Error | ApiResponseContext = error;
-    const plugins = [...this.getClassPlugins()].reverse();
+    // Use protocol-level plugins (global + instance) in reverse order
+    const plugins = [...this.getPluginsInOrder()].reverse();
 
     for (const plugin of plugins) {
       if (plugin.onError) {
