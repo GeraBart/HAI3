@@ -23,14 +23,21 @@ export type {
   ApiProtocol,
   RestProtocolConfig,
   SseProtocolConfig,
+  ApiRequestContext,
+  ApiResponseContext,
+  ShortCircuitResponse,
   ApiPluginRequestContext,
   ApiPluginResponseContext,
-  ApiPlugin,
+  LegacyApiPlugin,
   ApiService,
   ApiServicesMap,
   ServiceConstructor,
   ApiRegistry,
+  PluginClass,
 } from './types';
+
+// Export plugin classes and functions
+export { ApiPluginBase, ApiPlugin, isShortCircuit } from './types';
 
 // Export base service class
 export { BaseApiService } from './BaseApiService';

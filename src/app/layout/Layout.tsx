@@ -9,7 +9,7 @@
 import React, { useEffect } from 'react';
 import { trim } from 'lodash';
 import { useAppDispatch, apiRegistry, setUser, setHeaderLoading, type HeaderUser } from '@hai3/react';
-import { ACCOUNTS_DOMAIN, type ApiUser } from '@/app/api';
+import { AccountsApiService, type ApiUser } from '@/app/api';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { Menu } from './Menu';
@@ -42,22 +42,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     const fetchUser = async () => {
       try {
         // Check if accounts service is registered before trying to use it
-        const hasAccounts = (apiRegistry as { has(domain: string): boolean }).has(ACCOUNTS_DOMAIN);
-        if (!hasAccounts) {
+        if (!apiRegistry.has(AccountsApiService)) {
           // Accounts service not registered - skip user fetch
           return;
         }
 
         dispatch(setHeaderLoading(true));
-        // Get accounts service
-        // Type assertion needed because accounts domain may not be augmented in ApiServicesMap yet
-        type AccountsService = { getCurrentUser?: () => Promise<{ user: ApiUser }> };
-        const accountsService = (apiRegistry as { getService(domain: string): AccountsService | undefined }).getService(ACCOUNTS_DOMAIN);
-        if (accountsService?.getCurrentUser) {
-          const response = await accountsService.getCurrentUser();
-          if (response?.user) {
-            dispatch(setUser(toHeaderUser(response.user)));
-          }
+        // Get accounts service using class-based registration
+        const accountsService = apiRegistry.getService(AccountsApiService);
+        const response = await accountsService.getCurrentUser();
+        if (response?.user) {
+          dispatch(setUser(toHeaderUser(response.user)));
         }
       } catch (error) {
         console.warn('Failed to fetch user:', error);

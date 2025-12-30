@@ -9,9 +9,10 @@ import { assign } from 'lodash';
 import type {
   ApiProtocol,
   ApiServiceConfig,
-  ApiPlugin,
+  LegacyApiPlugin,
   MockMap,
   SseProtocolConfig,
+  ApiPluginBase,
 } from '../types';
 import { MockPlugin } from '../plugins/MockPlugin';
 
@@ -23,7 +24,9 @@ export class SseProtocol implements ApiProtocol {
   private baseConfig!: Readonly<ApiServiceConfig>;
   private connections: Map<string, EventSource | 'mock'> = new Map();
   private readonly config: SseProtocolConfig;
-  private getPlugins!: () => ReadonlyArray<ApiPlugin>;
+  private getPlugins!: () => ReadonlyArray<LegacyApiPlugin>;
+  // Class-based plugins stored for future SSE plugin support
+  private _getClassPlugins!: () => ReadonlyArray<ApiPluginBase>;
 
   constructor(config: Readonly<SseProtocolConfig> = {}) {
     this.config = assign({}, config);
@@ -35,10 +38,21 @@ export class SseProtocol implements ApiProtocol {
   initialize(
     baseConfig: Readonly<ApiServiceConfig>,
     _getMockMap: () => Readonly<MockMap>,
-    getPlugins: () => ReadonlyArray<ApiPlugin>
+    getPlugins: () => ReadonlyArray<LegacyApiPlugin>,
+    _getClassPlugins: () => ReadonlyArray<ApiPluginBase>
   ): void {
     this.baseConfig = baseConfig;
     this.getPlugins = getPlugins;
+    // Class-based plugins not yet used in SSE - will be implemented when needed
+    this._getClassPlugins = _getClassPlugins;
+  }
+
+  /**
+   * Get class-based plugins (for future use).
+   * @internal
+   */
+  getClassBasedPlugins(): ReadonlyArray<ApiPluginBase> {
+    return this._getClassPlugins?.() ?? [];
   }
 
   /**
@@ -118,7 +132,10 @@ export class SseProtocol implements ApiProtocol {
     this.connections.set(connectionId, 'mock');
 
     // Get mock plugin to access mock data
-    const mockPlugin = this.getPlugins().find((p) => p instanceof MockPlugin) as MockPlugin;
+    const mockPlugin = this.getPlugins().find((p) => p instanceof MockPlugin);
+    if (!mockPlugin || !(mockPlugin instanceof MockPlugin)) {
+      throw new Error('MockPlugin not found. Cannot establish SSE mock connection.');
+    }
 
     // Create a RequestConfig to get mock response
     const mockResponse = await mockPlugin.onRequest({

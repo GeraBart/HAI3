@@ -1,14 +1,12 @@
-import { type ScreensetConfig, ScreensetCategory, uikitRegistry, I18nRegistry, Language, apiRegistry, screensetRegistry, i18nRegistry } from '@hai3/react';
-import { ACCOUNTS_DOMAIN } from '@/app/api';
+import { type ScreensetConfig, ScreensetCategory, uikitRegistry, I18nRegistry, Language, screensetRegistry, i18nRegistry } from '@hai3/react';
 import { DEMO_SCREENSET_ID, HELLO_WORLD_SCREEN_ID, CURRENT_THEME_SCREEN_ID, PROFILE_SCREEN_ID, UI_KIT_ELEMENTS_SCREEN_ID } from './ids';
 import { WorldIcon, WORLD_ICON_ID } from './uikit/icons/WorldIcon';
 import { PaletteIcon, PALETTE_ICON_ID } from './uikit/icons/PaletteIcon';
 import { UserIcon, USER_ICON_ID } from './uikit/icons/UserIcon';
 import { ShadcnIcon, SHADCN_ICON_ID } from './uikit/icons/ShadcnIcon';
 
-// Import module augmentation and mocks for accounts service
+// Import module augmentation for accounts service extra fields
 import './api/accounts/extra';
-import { accountsMockMap } from './api/accounts/mocks';
 
 /**
  * Screenset-level translations
@@ -57,13 +55,7 @@ i18nRegistry.registerLoader(
   })
 );
 
-/**
- * Register mock data for accounts service
- * Demo screenset uses the accounts service for the profile screen
- * The screenset owns the mocks and module augmentation (extras)
- * Type assertion needed because ApiServicesMap module augmentation is defined in screenset
- */
-(apiRegistry as { registerMocks(domain: string, mockMap: typeof accountsMockMap): void }).registerMocks(ACCOUNTS_DOMAIN, accountsMockMap);
+// NOTE: Mocks are now registered globally via MockPlugin in main.tsx
 
 /**
  * Register screenset-specific icons

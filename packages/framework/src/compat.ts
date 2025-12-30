@@ -10,7 +10,6 @@
 
 import type { UnknownAction } from '@reduxjs/toolkit';
 import { getStore, type AppDispatch } from '@hai3/state';
-import { apiRegistry } from '@hai3/api';
 import { screensetRegistry as sdkScreensetRegistry } from '@hai3/screensets';
 import { screenActions as screenActionsImport } from './slices';
 import { createThemeRegistry } from './registries/themeRegistry';
@@ -77,16 +76,15 @@ export const navigateToScreen = (screenId: string): void => {
  * Fetch current user from API
  * Returns a thunk action that fetches user data.
  *
- * @deprecated Prefer using api services directly in actions
+ * @deprecated Prefer using api services directly in actions.
+ * With class-based API registration, use: apiRegistry.getService(AccountsApiService).getCurrentUser()
  */
 export const fetchCurrentUser = () => (_dispatch: AppDispatch): void => {
-  // Get accounts service if registered
-  // Type assertion needed because accounts service module augmentation is in deprecated @hai3/uicore
-  try {
-    const accountsService = (apiRegistry as { getService(domain: string): object }).getService(ACCOUNTS_DOMAIN);
-    const service = accountsService as { getCurrentUser?: () => void };
-    service.getCurrentUser?.();
-  } catch {
-    console.warn('fetchCurrentUser: accounts service not registered');
-  }
+  // NOTE: This function cannot work with class-based API registration since
+  // AccountsApiService has been moved to CLI templates. Users should call
+  // their service directly: apiRegistry.getService(AccountsApiService).getCurrentUser()
+  console.warn(
+    'fetchCurrentUser is deprecated. With class-based API registration, use: ' +
+    'apiRegistry.getService(AccountsApiService).getCurrentUser()'
+  );
 };

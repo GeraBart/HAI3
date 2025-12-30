@@ -10,8 +10,9 @@
 import type {
   ApiServiceConfig,
   ApiProtocol,
-  ApiPlugin,
-  MockMap,
+  LegacyApiPlugin,
+  ApiPluginBase,
+  PluginClass,
 } from './types';
 
 /**
@@ -43,8 +44,17 @@ export abstract class BaseApiService {
   /** Registered protocols by constructor name */
   protected readonly protocols: Map<string, ApiProtocol> = new Map();
 
-  /** Registered plugins sorted by priority */
-  protected plugins: ApiPlugin[] = [];
+  /** Registered plugins sorted by priority (legacy system) */
+  protected legacyPlugins: LegacyApiPlugin[] = [];
+
+  /** Global plugins provider (injected by apiRegistry) */
+  private globalPluginsProvider: (() => readonly ApiPluginBase[]) | null = null;
+
+  /** Service-specific plugins (new class-based system) */
+  private servicePlugins: ApiPluginBase[] = [];
+
+  /** Excluded global plugin classes */
+  private excludedPluginClasses: Set<PluginClass> = new Set();
 
   constructor(config: ApiServiceConfig, ...protocols: ApiProtocol[]) {
     this.config = Object.freeze({ ...config });
@@ -53,11 +63,205 @@ export abstract class BaseApiService {
     protocols.forEach((protocol) => {
       protocol.initialize(
         this.config,
-        () => this.getMockMap(),
-        () => this.getPluginsInOrder()
+        () => ({}), // Empty mock map (OCP/DIP - services unaware of mocking)
+        () => this.getPluginsInOrder(), // Legacy plugins
+        () => this.getMergedPluginsInOrder() // Class-based plugins (merged global + service)
       );
       this.protocols.set(protocol.constructor.name, protocol);
     });
+  }
+
+  // ============================================================================
+  // Namespaced Plugin API (Service-Level)
+  // ============================================================================
+
+  /**
+   * Namespaced plugin API for service-level plugin management.
+   * Provides methods to add service-specific plugins, exclude global plugins,
+   * and query plugin state.
+   */
+  readonly plugins = {
+    /**
+     * Add one or more service-specific plugins.
+     * Plugins are executed in FIFO order (first added executes first).
+     * Duplicates of the same class ARE allowed (for different configurations).
+     *
+     * @param plugins - Plugin instances to add
+     *
+     * @example
+     * ```typescript
+     * class MyService extends BaseApiService {
+     *   constructor() {
+     *     super({ baseURL: '/api' }, new RestProtocol());
+     *     this.plugins.add(
+     *       new RateLimitPlugin({ limit: 100 }),
+     *       new RetryPlugin({ maxRetries: 3 })
+     *     );
+     *   }
+     * }
+     * ```
+     */
+    add: (...plugins: ApiPluginBase[]): void => {
+      this.servicePlugins.push(...plugins);
+    },
+
+    /**
+     * Exclude global plugins by class reference.
+     * Prevents specified global plugin classes from executing for this service.
+     *
+     * @param pluginClasses - Plugin classes to exclude
+     *
+     * @example
+     * ```typescript
+     * class HealthService extends BaseApiService {
+     *   constructor() {
+     *     super({ baseURL: '/health' }, new RestProtocol());
+     *     // Health checks don't need auth
+     *     this.plugins.exclude(AuthPlugin);
+     *   }
+     * }
+     * ```
+     */
+    exclude: (...pluginClasses: PluginClass[]): void => {
+      pluginClasses.forEach((cls) => this.excludedPluginClasses.add(cls));
+    },
+
+    /**
+     * Get excluded plugin classes.
+     *
+     * @returns Readonly array of excluded plugin classes
+     *
+     * @example
+     * ```typescript
+     * const excluded = service.plugins.getExcluded();
+     * console.log(`${excluded.length} plugins excluded`);
+     * ```
+     */
+    getExcluded: (): readonly PluginClass[] => {
+      return Array.from(this.excludedPluginClasses);
+    },
+
+    /**
+     * Get all service-specific plugins.
+     * Does NOT include global plugins.
+     *
+     * @returns Readonly array of service plugins in FIFO order
+     *
+     * @example
+     * ```typescript
+     * const plugins = service.plugins.getAll();
+     * console.log(`${plugins.length} service plugins registered`);
+     * ```
+     */
+    getAll: (): readonly ApiPluginBase[] => {
+      return [...this.servicePlugins];
+    },
+
+    /**
+     * Get a plugin instance by class reference.
+     * Searches service-specific plugins first, then global plugins.
+     * Returns undefined if plugin is not found.
+     *
+     * @template T - Plugin type
+     * @param pluginClass - Plugin class to retrieve
+     * @returns Plugin instance or undefined
+     *
+     * @example
+     * ```typescript
+     * const rateLimit = service.plugins.getPlugin(RateLimitPlugin);
+     * if (rateLimit) {
+     *   console.log('Rate limit plugin found');
+     * }
+     *
+     * // Can also find global plugins
+     * const auth = service.plugins.getPlugin(AuthPlugin);
+     * ```
+     */
+    getPlugin: <T extends ApiPluginBase>(
+      pluginClass: new (...args: never[]) => T
+    ): T | undefined => {
+      // Search service plugins first
+      const servicePlugin = this.servicePlugins.find(
+        (p) => p instanceof pluginClass
+      );
+      if (servicePlugin) {
+        return servicePlugin as T;
+      }
+
+      // Then search global plugins
+      const globalPlugins = this.getGlobalPlugins();
+      const globalPlugin = globalPlugins.find(
+        (p) => p instanceof pluginClass
+      );
+      return globalPlugin as T | undefined;
+    },
+  };
+
+  // ============================================================================
+  // Global Plugins Injection (Internal)
+  // ============================================================================
+
+  /**
+   * Set global plugins provider.
+   * Called internally by apiRegistry during service registration.
+   *
+   * @internal
+   */
+  _setGlobalPluginsProvider(provider: () => readonly ApiPluginBase[]): void {
+    this.globalPluginsProvider = provider;
+  }
+
+  /**
+   * Get global plugins from provider.
+   * Returns empty array if no provider is set.
+   * Used by plugins.getPlugin() to search global plugins.
+   *
+   * @internal
+   */
+  private getGlobalPlugins(): readonly ApiPluginBase[] {
+    return this.globalPluginsProvider?.() ?? [];
+  }
+
+  // ============================================================================
+  // Plugin Merging
+  // ============================================================================
+
+  /**
+   * Get merged plugins in FIFO order.
+   * Global plugins come first, followed by service plugins.
+   * Filters out excluded global plugin classes using instanceof.
+   *
+   * @returns Readonly array of merged plugins in execution order
+   *
+   * @internal
+   */
+  protected getMergedPluginsInOrder(): readonly ApiPluginBase[] {
+    // Get global plugins and filter out excluded classes
+    const globalPlugins = this.getGlobalPlugins();
+    const filteredGlobalPlugins = globalPlugins.filter((plugin) => {
+      // Check if plugin matches any excluded class (using instanceof)
+      for (const excludedClass of this.excludedPluginClasses) {
+        if (plugin instanceof excludedClass) {
+          return false; // Exclude this plugin
+        }
+      }
+      return true; // Keep this plugin
+    });
+
+    // Merge: global plugins first (FIFO), then service plugins (FIFO)
+    return [...filteredGlobalPlugins, ...this.servicePlugins];
+  }
+
+  /**
+   * Get merged plugins in reverse order.
+   * Used for response phase processing (onion model).
+   *
+   * @returns Readonly array of merged plugins in reverse execution order
+   *
+   * @internal
+   */
+  protected getMergedPluginsReversed(): readonly ApiPluginBase[] {
+    return [...this.getMergedPluginsInOrder()].reverse();
   }
 
   // ============================================================================
@@ -70,14 +274,14 @@ export abstract class BaseApiService {
    *
    * @param plugin - Plugin instance
    */
-  registerPlugin(plugin: ApiPlugin): void {
+  registerPlugin(plugin: LegacyApiPlugin): void {
     // Check if plugin already registered
-    if (this.hasPlugin(plugin.constructor as new (...args: unknown[]) => ApiPlugin)) {
+    if (this.hasPlugin(plugin.constructor as new (...args: unknown[]) => LegacyApiPlugin)) {
       console.warn(`Plugin "${plugin.name}" is already registered. Skipping.`);
       return;
     }
 
-    this.plugins.push(plugin);
+    this.legacyPlugins.push(plugin);
     this.sortPluginsByPriority();
   }
 
@@ -86,18 +290,18 @@ export abstract class BaseApiService {
    *
    * @param pluginClass - Plugin class (uses name for matching)
    */
-  unregisterPlugin<T extends ApiPlugin>(pluginClass: { readonly name: string; prototype: T }): void {
-    const index = this.plugins.findIndex(
+  unregisterPlugin<T extends LegacyApiPlugin>(pluginClass: { readonly name: string; prototype: T }): void {
+    const index = this.legacyPlugins.findIndex(
       (p) => p.constructor.name === pluginClass.name
     );
 
     if (index !== -1) {
-      const plugin = this.plugins[index];
+      const plugin = this.legacyPlugins[index];
       // Call destroy if available
       if ('destroy' in plugin && typeof plugin.destroy === 'function') {
         (plugin as { destroy: () => void }).destroy();
       }
-      this.plugins.splice(index, 1);
+      this.legacyPlugins.splice(index, 1);
     }
   }
 
@@ -107,31 +311,31 @@ export abstract class BaseApiService {
    * @param pluginClass - Plugin class (uses name for matching)
    * @returns True if registered
    */
-  hasPlugin<T extends ApiPlugin>(pluginClass: { readonly name: string; prototype: T }): boolean {
-    return this.plugins.some((p) => p.constructor.name === pluginClass.name);
+  hasPlugin<T extends LegacyApiPlugin>(pluginClass: { readonly name: string; prototype: T }): boolean {
+    return this.legacyPlugins.some((p) => p.constructor.name === pluginClass.name);
   }
 
   /**
    * Get plugins sorted by priority (high to low).
    * Used for request handling.
    */
-  getPluginsInOrder(): readonly ApiPlugin[] {
-    return [...this.plugins];
+  getPluginsInOrder(): readonly LegacyApiPlugin[] {
+    return [...this.legacyPlugins];
   }
 
   /**
    * Get plugins in reverse priority order (low to high).
    * Used for response handling.
    */
-  getPluginsReversed(): readonly ApiPlugin[] {
-    return [...this.plugins].reverse();
+  getPluginsReversed(): readonly LegacyApiPlugin[] {
+    return [...this.legacyPlugins].reverse();
   }
 
   /**
    * Sort plugins by priority (descending).
    */
   private sortPluginsByPriority(): void {
-    this.plugins.sort((a, b) => {
+    this.legacyPlugins.sort((a, b) => {
       const priorityA = 'priority' in a ? (a as { priority: number }).priority : 0;
       const priorityB = 'priority' in b ? (b as { priority: number }).priority : 0;
       return priorityB - priorityA;
@@ -165,20 +369,6 @@ export abstract class BaseApiService {
   }
 
   // ============================================================================
-  // Mock Map (Override in subclass)
-  // ============================================================================
-
-  /**
-   * Get mock data map for this service.
-   * Override in subclass to provide mock responses.
-   *
-   * @returns Mock response map
-   */
-  protected getMockMap(): Readonly<MockMap> {
-    return {};
-  }
-
-  // ============================================================================
   // Cleanup
   // ============================================================================
 
@@ -191,12 +381,12 @@ export abstract class BaseApiService {
     this.protocols.forEach((protocol) => protocol.cleanup());
     this.protocols.clear();
 
-    // Unregister all plugins
-    [...this.plugins].forEach((plugin) => {
+    // Unregister all legacy plugins
+    [...this.legacyPlugins].forEach((plugin) => {
       if ('destroy' in plugin && typeof plugin.destroy === 'function') {
         (plugin as { destroy: () => void }).destroy();
       }
     });
-    this.plugins = [];
+    this.legacyPlugins = [];
   }
 }

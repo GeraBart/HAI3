@@ -87,10 +87,7 @@ export interface ApiServiceConfig {
  * Global configuration for all API services.
  */
 export interface ApiServicesConfig {
-  /** Whether to use mock API */
-  useMockApi: boolean;
-  /** Simulated delay for mock responses (ms) */
-  mockDelay?: number;
+  // Empty - mock config removed (OCP/DIP - now in MockPluginConfig)
 }
 
 // ============================================================================
@@ -107,12 +104,14 @@ export interface ApiProtocol {
    *
    * @param config - Base service configuration
    * @param getMockMap - Function to access mock response map
-   * @param getPlugins - Function to access registered plugins
+   * @param getPlugins - Function to access registered legacy plugins
+   * @param getClassPlugins - Function to access class-based plugins (merged global + service)
    */
   initialize(
     config: Readonly<ApiServiceConfig>,
     getMockMap: () => Readonly<MockMap>,
-    getPlugins: () => ReadonlyArray<ApiPlugin>
+    getPlugins: () => ReadonlyArray<LegacyApiPlugin>,
+    getClassPlugins: () => ReadonlyArray<ApiPluginBase>
   ): void;
 
   /**
@@ -151,7 +150,7 @@ export interface SseProtocolConfig {
 
 /**
  * API Plugin Request Context
- * Context passed to plugins during request lifecycle.
+ * @deprecated Use ApiRequestContext instead
  */
 export interface ApiPluginRequestContext {
   /** HTTP method */
@@ -166,7 +165,7 @@ export interface ApiPluginRequestContext {
 
 /**
  * API Plugin Response Context
- * Context passed to plugins during response lifecycle.
+ * @deprecated Use ApiResponseContext instead
  */
 export interface ApiPluginResponseContext {
   /** HTTP status code */
@@ -178,12 +177,210 @@ export interface ApiPluginResponseContext {
 }
 
 /**
- * API Plugin Interface
+ * API Request Context
+ * Pure request data passed to plugins during request lifecycle.
+ * Contains only request information - no service-specific metadata.
+ * Plugins use dependency injection for service-specific behavior.
+ *
+ * Note: Extends ApiPluginRequestContext for backward compatibility during migration.
+ */
+export interface ApiRequestContext extends ApiPluginRequestContext {
+  /** HTTP method */
+  readonly method: string;
+  /** Request URL */
+  readonly url: string;
+  /** Request headers */
+  readonly headers: Record<string, string>;
+  /** Request body */
+  readonly body?: unknown;
+}
+
+/**
+ * API Response Context
+ * Response data passed to plugins during response lifecycle.
+ *
+ * Note: Extends ApiPluginResponseContext for backward compatibility during migration.
+ */
+export interface ApiResponseContext extends ApiPluginResponseContext {
+  /** HTTP status code */
+  readonly status: number;
+  /** Response headers */
+  readonly headers: Record<string, string>;
+  /** Response data */
+  readonly data: unknown;
+}
+
+/**
+ * Short Circuit Response
+ * Returned by plugins to skip HTTP request and provide immediate response.
+ *
+ * @example
+ * ```typescript
+ * class MockPlugin extends ApiPlugin<MockPluginConfig> {
+ *   async onRequest(ctx: ApiRequestContext): Promise<ApiRequestContext | ShortCircuitResponse> {
+ *     const mockData = this.findMock(ctx.url);
+ *     if (mockData) {
+ *       return {
+ *         shortCircuit: {
+ *           status: 200,
+ *           headers: { 'x-hai3-short-circuit': 'true' },
+ *           data: mockData
+ *         }
+ *       };
+ *     }
+ *     return ctx;
+ *   }
+ * }
+ * ```
+ */
+export interface ShortCircuitResponse {
+  /** Response to return immediately, skipping HTTP request */
+  readonly shortCircuit: ApiResponseContext;
+}
+
+/**
+ * API Plugin Base Class
+ * Abstract base class for all API plugins.
+ * Non-generic class used for storage in arrays and maps.
+ *
+ * @example
+ * ```typescript
+ * class LoggingPlugin extends ApiPluginBase {
+ *   onRequest(ctx) {
+ *     console.log(`Request: ${ctx.method} ${ctx.url}`);
+ *     return ctx;
+ *   }
+ *
+ *   onResponse(ctx) {
+ *     console.log(`Response: ${ctx.status}`);
+ *     return ctx;
+ *   }
+ * }
+ * ```
+ */
+export abstract class ApiPluginBase {
+  /**
+   * Called before request is sent.
+   * Can modify the request context or short-circuit with immediate response.
+   *
+   * @param context - Request context
+   * @returns Modified request context, short-circuit response, or Promise
+   */
+  onRequest?(
+    context: ApiRequestContext
+  ): ApiRequestContext | ShortCircuitResponse | Promise<ApiRequestContext | ShortCircuitResponse>;
+
+  /**
+   * Called after response is received.
+   * Can modify the response context.
+   *
+   * @param context - Response context
+   * @returns Modified response context (or Promise)
+   */
+  onResponse?(
+    context: ApiResponseContext
+  ): ApiResponseContext | Promise<ApiResponseContext>;
+
+  /**
+   * Called when an error occurs.
+   * Can transform the error or provide a recovery response.
+   *
+   * @param error - The error that occurred
+   * @param context - Request context at time of error
+   * @returns Modified error, recovery response, or Promise
+   */
+  onError?(
+    error: Error,
+    context: ApiRequestContext
+  ): Error | ApiResponseContext | Promise<Error | ApiResponseContext>;
+
+  /**
+   * Called when plugin is removed or registry is reset.
+   * Use for cleanup of resources.
+   */
+  destroy?(): void;
+}
+
+/**
+ * API Plugin Generic Class
+ * Generic abstract class extending ApiPluginBase with typed configuration.
+ * Use this when your plugin needs configuration passed via constructor.
+ *
+ * @template TConfig - Configuration type (defaults to void for no config)
+ *
+ * @example
+ * ```typescript
+ * interface AuthConfig {
+ *   getToken: () => string;
+ * }
+ *
+ * class AuthPlugin extends ApiPlugin<AuthConfig> {
+ *   onRequest(ctx) {
+ *     ctx.headers['Authorization'] = `Bearer ${this.config.getToken()}`;
+ *     return ctx;
+ *   }
+ * }
+ *
+ * // With config
+ * apiRegistry.plugins.add(new AuthPlugin({ getToken: () => 'token' }));
+ *
+ * // Without config (void)
+ * class LoggingPlugin extends ApiPlugin<void> {
+ *   constructor() { super(void 0); }
+ *   onRequest(ctx) { console.log('Request'); return ctx; }
+ * }
+ * ```
+ */
+export abstract class ApiPlugin<TConfig = void> extends ApiPluginBase {
+  constructor(protected readonly config: TConfig) {
+    super();
+  }
+}
+
+/**
+ * Plugin Class Type
+ * Type for plugin class references (abstract constructors).
+ * Used for plugin identification and storage.
+ *
+ * @template T - Plugin type (defaults to ApiPluginBase)
+ *
+ * @example
+ * ```typescript
+ * const pluginClass: PluginClass<AuthPlugin> = AuthPlugin;
+ * apiRegistry.plugins.has(pluginClass);
+ * ```
+ */
+export type PluginClass<T extends ApiPluginBase = ApiPluginBase> = abstract new (...args: never[]) => T;
+
+/**
+ * Short Circuit Type Guard
+ * Checks if a plugin result is a short-circuit response.
+ *
+ * @param result - Plugin onRequest result
+ * @returns True if result is a short-circuit response
+ *
+ * @example
+ * ```typescript
+ * const result = await plugin.onRequest?.(ctx);
+ * if (isShortCircuit(result)) {
+ *   return result.shortCircuit;
+ * }
+ * ```
+ */
+export function isShortCircuit(
+  result: ApiRequestContext | ShortCircuitResponse | undefined
+): result is ShortCircuitResponse {
+  return result !== undefined && 'shortCircuit' in result;
+}
+
+/**
+ * API Plugin Interface (Legacy)
+ * @deprecated Use ApiPluginBase or ApiPlugin<TConfig> class instead
  * Interface for plugins that modify API behavior.
  *
  * @example
  * ```typescript
- * class LoggingPlugin implements ApiPlugin {
+ * class LoggingPlugin implements LegacyApiPlugin {
  *   name = 'logging';
  *
  *   onRequest(ctx) {
@@ -198,7 +395,7 @@ export interface ApiPluginResponseContext {
  * }
  * ```
  */
-export interface ApiPlugin {
+export interface LegacyApiPlugin {
   /** Unique plugin name */
   name: string;
 
@@ -340,36 +537,40 @@ export type ServiceConstructor<T = BaseApiService> = new () => T;
  * @example
  * ```typescript
  * // Register a service
- * apiRegistry.register('accounts', AccountsApiService);
+ * apiRegistry.register(AccountsApiService);
  *
  * // Get a service (type-safe)
- * const accounts = apiRegistry.getService('accounts');
+ * const accounts = apiRegistry.getService(AccountsApiService);
  * const user = await accounts.getCurrentUser();
  * ```
  */
 export interface ApiRegistry {
   /**
-   * Register an API service.
-   * Type-safe: domain must be in ApiServicesMap.
+   * Register an API service by class reference.
    *
-   * @param domain - Service domain identifier
-   * @param serviceClass - Service constructor
+   * @template T - Service type extending BaseApiService
+   * @param serviceClass - Service constructor (no-arg)
    */
-  register<K extends string & keyof ApiServicesMap>(
-    domain: K,
-    serviceClass: ServiceConstructor<ApiServicesMap[K]>
-  ): void;
+  register<T extends BaseApiService>(serviceClass: new () => T): void;
 
   /**
-   * Register mock data for a service.
+   * Get service by class reference.
+   * Returns typed service instance.
    *
-   * @param domain - Service domain identifier
-   * @param mockMap - Mock response map
+   * @template T - Service type extending BaseApiService
+   * @param serviceClass - Service constructor
+   * @returns The service instance
    */
-  registerMocks<K extends string & keyof ApiServicesMap>(
-    domain: K,
-    mockMap: Readonly<MockMap>
-  ): void;
+  getService<T extends BaseApiService>(serviceClass: new () => T): T;
+
+  /**
+   * Check if service is registered.
+   *
+   * @template T - Service type extending BaseApiService
+   * @param serviceClass - Service constructor
+   * @returns True if service exists
+   */
+  has<T extends BaseApiService>(serviceClass: new () => T): boolean;
 
   /**
    * Initialize all registered services.
@@ -379,40 +580,159 @@ export interface ApiRegistry {
   initialize(config?: ApiServicesConfig): void;
 
   /**
-   * Get service by domain.
-   * Type is automatically inferred from ApiServicesMap.
-   *
-   * @param domain - Service domain identifier
-   * @returns The service instance
-   */
-  getService<K extends string & keyof ApiServicesMap>(domain: K): ApiServicesMap[K];
-
-  /**
-   * Check if service is registered.
-   *
-   * @param domain - Service domain identifier
-   * @returns True if service exists
-   */
-  has<K extends string & keyof ApiServicesMap>(domain: K): boolean;
-
-  /**
-   * Get all registered service domains.
-   *
-   * @returns Array of domain identifiers
-   */
-  getDomains(): string[];
-
-  /**
-   * Set mock mode dynamically.
-   *
-   * @param useMockApi - Whether to use mock API
-   */
-  setMockMode(useMockApi: boolean): void;
-
-  /**
    * Get current configuration.
    *
    * @returns Current API configuration
    */
   getConfig(): Readonly<ApiServicesConfig>;
+
+  /**
+   * Namespaced plugin API for global plugins.
+   * Plugins registered here apply to all services unless excluded.
+   */
+  readonly plugins: {
+    /**
+     * Add one or more global plugins.
+     * Plugins are executed in FIFO order (first added executes first).
+     * Throws if a plugin of the same class is already registered.
+     *
+     * @param plugins - Plugin instances to add
+     * @throws Error if plugin class is already registered
+     *
+     * @example
+     * ```typescript
+     * class LoggingPlugin extends ApiPlugin<void> {
+     *   constructor() { super(void 0); }
+     *   onRequest(ctx) {
+     *     console.log(`${ctx.method} ${ctx.url}`);
+     *     return ctx;
+     *   }
+     * }
+     *
+     * class AuthPlugin extends ApiPlugin<{ getToken: () => string }> {
+     *   onRequest(ctx) {
+     *     ctx.headers['Authorization'] = `Bearer ${this.config.getToken()}`;
+     *     return ctx;
+     *   }
+     * }
+     *
+     * // Add plugins in FIFO order
+     * apiRegistry.plugins.add(
+     *   new LoggingPlugin(),
+     *   new AuthPlugin({ getToken: () => 'token' })
+     * );
+     * ```
+     */
+    add(...plugins: ApiPluginBase[]): void;
+
+    /**
+     * Add a plugin before another plugin by class reference.
+     * Throws if target plugin class is not registered.
+     * Throws if plugin class is already registered.
+     *
+     * @template T - Target plugin type
+     * @param plugin - Plugin instance to add
+     * @param before - Target plugin class to insert before
+     * @throws Error if target plugin class not found
+     * @throws Error if plugin class already registered
+     *
+     * @example
+     * ```typescript
+     * // Add logging plugin
+     * apiRegistry.plugins.add(new LoggingPlugin());
+     *
+     * // Add metrics plugin before logging
+     * apiRegistry.plugins.addBefore(new MetricsPlugin(), LoggingPlugin);
+     * // Execution order: MetricsPlugin -> LoggingPlugin
+     * ```
+     */
+    addBefore<T extends ApiPluginBase>(plugin: ApiPluginBase, before: PluginClass<T>): void;
+
+    /**
+     * Add a plugin after another plugin by class reference.
+     * Throws if target plugin class is not registered.
+     * Throws if plugin class is already registered.
+     *
+     * @template T - Target plugin type
+     * @param plugin - Plugin instance to add
+     * @param after - Target plugin class to insert after
+     * @throws Error if target plugin class not found
+     * @throws Error if plugin class already registered
+     *
+     * @example
+     * ```typescript
+     * // Add logging plugin
+     * apiRegistry.plugins.add(new LoggingPlugin());
+     *
+     * // Add auth plugin after logging
+     * apiRegistry.plugins.addAfter(new AuthPlugin({ getToken }), LoggingPlugin);
+     * // Execution order: LoggingPlugin -> AuthPlugin
+     * ```
+     */
+    addAfter<T extends ApiPluginBase>(plugin: ApiPluginBase, after: PluginClass<T>): void;
+
+    /**
+     * Remove a plugin by class reference.
+     * Calls destroy() on the plugin if available.
+     * Throws if plugin class is not registered.
+     *
+     * @template T - Plugin type
+     * @param pluginClass - Plugin class to remove
+     * @throws Error if plugin class not registered
+     *
+     * @example
+     * ```typescript
+     * // Remove auth plugin
+     * apiRegistry.plugins.remove(AuthPlugin);
+     * ```
+     */
+    remove<T extends ApiPluginBase>(pluginClass: PluginClass<T>): void;
+
+    /**
+     * Check if a plugin class is registered.
+     *
+     * @template T - Plugin type
+     * @param pluginClass - Plugin class to check
+     * @returns True if plugin class is registered
+     *
+     * @example
+     * ```typescript
+     * if (apiRegistry.plugins.has(AuthPlugin)) {
+     *   console.log('Auth plugin is active');
+     * }
+     * ```
+     */
+    has<T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean;
+
+    /**
+     * Get all registered plugins in execution order.
+     *
+     * @returns Readonly array of plugins in FIFO order
+     *
+     * @example
+     * ```typescript
+     * const plugins = apiRegistry.plugins.getAll();
+     * console.log(`${plugins.length} plugins registered`);
+     * ```
+     */
+    getAll(): readonly ApiPluginBase[];
+
+    /**
+     * Get a plugin instance by class reference.
+     * Returns undefined if plugin is not registered.
+     *
+     * @template T - Plugin type
+     * @param pluginClass - Plugin class to retrieve
+     * @returns Plugin instance or undefined
+     *
+     * @example
+     * ```typescript
+     * const auth = apiRegistry.plugins.getPlugin(AuthPlugin);
+     * if (auth) {
+     *   console.log('Auth plugin found');
+     * }
+     * ```
+     */
+    getPlugin<T extends ApiPluginBase>(pluginClass: new (...args: never[]) => T): T | undefined;
+  };
 }

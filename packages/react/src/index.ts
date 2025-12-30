@@ -188,6 +188,9 @@ export {
   RestProtocol,
   SseProtocol,
   MockPlugin,
+  ApiPluginBase,
+  ApiPlugin,
+  isShortCircuit,
 
   // I18n
   i18nRegistry,
@@ -285,6 +288,11 @@ export type {
   ApiProtocol,
   SseProtocolConfig,
   RestProtocolConfig,
+  // Plugin context types (class-based plugin system)
+  ApiRequestContext,
+  ApiResponseContext,
+  ShortCircuitResponse,
+  PluginClass,
 
   // Backward compatibility type aliases
   ScreensetConfig,

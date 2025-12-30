@@ -10,7 +10,6 @@ import {
   registerSlice,
   I18nRegistry,
   Language,
-  apiRegistry,
   screensetRegistry,
   i18nRegistry,
 } from '@hai3/react';
@@ -20,12 +19,11 @@ import _blankSlice from './slices/_blankSlice';
 import { initialize_BlankEffects } from './effects/_blankEffects';
 
 // Import for side effect - register API service
-import { _BLANK_DOMAIN } from './api/_blankApiService';
 import './api/_blankApiService';
-import { _blankMockMap } from './api/mocks';
 
-// Register mock data for API service
-apiRegistry.registerMocks(_BLANK_DOMAIN, _blankMockMap);
+// NOTE: Mocks are now registered globally via MockPlugin in main.tsx
+// If this screenset needs mocks, add them to the global mockMap in main.tsx
+// or create a screenset-specific MockPlugin registration here.
 
 /**
  * Screenset-level translations

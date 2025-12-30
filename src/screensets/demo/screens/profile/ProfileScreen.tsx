@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation, TextLoader, useScreenTranslations, apiRegistry, I18nRegistry, Language } from '@hai3/react';
 import { Button, Card, CardContent, CardFooter } from '@hai3/uikit';
-import { ACCOUNTS_DOMAIN, type ApiUser } from '@/app/api';
+import { AccountsApiService, type ApiUser } from '@/app/api';
 import { PROFILE_SCREEN_ID } from "../../ids";
 import { DEMO_SCREENSET_ID } from "../../ids";
 
@@ -71,22 +71,17 @@ export const ProfileScreen: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Get accounts service
-      const hasAccounts = (apiRegistry as { has(domain: string): boolean }).has(ACCOUNTS_DOMAIN);
-      if (!hasAccounts) {
+      // Get accounts service using class-based registration
+      if (!apiRegistry.has(AccountsApiService)) {
         setError('Accounts service not registered');
         setLoading(false);
         return;
       }
 
-      type AccountsService = { getCurrentUser?: () => Promise<{ user: ApiUser }> };
-      const accountsService = (apiRegistry as { getService(domain: string): AccountsService | undefined }).getService(ACCOUNTS_DOMAIN);
-
-      if (accountsService?.getCurrentUser) {
-        const response = await accountsService.getCurrentUser();
-        if (response?.user) {
-          setUser(response.user);
-        }
+      const accountsService = apiRegistry.getService(AccountsApiService);
+      const response = await accountsService.getCurrentUser();
+      if (response?.user) {
+        setUser(response.user);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch user');

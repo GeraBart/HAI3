@@ -3,10 +3,7 @@
  * Domain-specific API service for this screenset
  */
 
-import { BaseApiService, RestProtocol, apiRegistry, type MockMap } from '@hai3/react';
-import { _BLANK_SCREENSET_ID } from '../ids';
-
-export const _BLANK_DOMAIN = `${_BLANK_SCREENSET_ID}:api` as const;
+import { BaseApiService, RestProtocol, apiRegistry } from '@hai3/react';
 
 /**
  * API request/response types
@@ -17,19 +14,12 @@ export const _BLANK_DOMAIN = `${_BLANK_SCREENSET_ID}:api` as const;
  * _blank API Service
  * Extends BaseApiService with domain-specific methods
  */
-export class _blankApiService extends BaseApiService {
+export class _BlankApiService extends BaseApiService {
   constructor() {
     super(
       { baseURL: '/api/_blank' },
       new RestProtocol()
     );
-  }
-
-  /**
-   * Get mock map from registry
-   */
-  protected getMockMap(): MockMap {
-    return apiRegistry.getMockMap(_BLANK_DOMAIN);
   }
 
   /**
@@ -42,12 +32,5 @@ export class _blankApiService extends BaseApiService {
    */
 }
 
-// Register API service
-apiRegistry.register(_BLANK_DOMAIN, _blankApiService);
-
-// Module augmentation - extends uicore ApiServicesMap
-declare module '@hai3/react' {
-  interface ApiServicesMap {
-    [_BLANK_DOMAIN]: _blankApiService;
-  }
-}
+// Register API service using class-based registration
+apiRegistry.register(_BlankApiService);

@@ -1,15 +1,18 @@
 /**
  * MockPlugin - Intercepts API requests and returns mock data
  *
- * High priority plugin (100) that short-circuits the request chain
- * when a matching mock is found.
+ * Uses short-circuit to skip the actual HTTP request when a matching mock is found.
  *
  * SDK Layer: L1 (Zero dependencies)
  */
 
-import type {
+import {
   ApiPlugin,
-  ApiPluginRequestContext,
+  ApiRequestContext,
+  ApiResponseContext,
+  ShortCircuitResponse,
+} from '../types';
+import type {
   JsonValue,
   MockMap,
   MockResponseFactory,
@@ -28,7 +31,7 @@ export interface MockPluginConfig {
 /**
  * MockPlugin Implementation
  *
- * Intercepts requests and returns mock data.
+ * Intercepts requests and returns mock data via short-circuit.
  * Supports exact matches and URL patterns with :params.
  *
  * @example
@@ -42,52 +45,39 @@ export interface MockPluginConfig {
  * });
  * ```
  */
-export class MockPlugin implements ApiPlugin {
-  /** Plugin name */
-  readonly name = 'MockPlugin';
-
-  /** Priority (high = executes first) */
-  readonly priority = 100;
-
-  /** Mock response map */
-  private mockMap: Readonly<MockMap>;
-
-  /** Simulated network delay */
-  private delay: number;
-
-  constructor(config: MockPluginConfig) {
-    this.mockMap = config.mockMap;
-    this.delay = config.delay ?? 0;
-  }
-
+export class MockPlugin extends ApiPlugin<MockPluginConfig> {
   /**
-   * Update mock map.
+   * Update mock map dynamically.
    */
   setMockMap(mockMap: Readonly<MockMap>): void {
-    this.mockMap = mockMap;
+    (this.config as { mockMap: Readonly<MockMap> }).mockMap = mockMap;
   }
 
   /**
    * Intercept request and return mock if available.
+   * Returns ShortCircuitResponse to skip HTTP request.
    */
   async onRequest(
-    context: ApiPluginRequestContext
-  ): Promise<ApiPluginRequestContext & { __mockResponse?: unknown }> {
+    context: ApiRequestContext
+  ): Promise<ApiRequestContext | ShortCircuitResponse> {
     const mockFactory = this.findMockFactory(context.method, context.url);
 
     if (mockFactory) {
       // Simulate network delay
-      if (this.delay > 0) {
+      if (this.config.delay && this.config.delay > 0) {
         await this.simulateDelay();
       }
 
       // Get mock data from factory
       const mockData = mockFactory(context.body as JsonValue);
 
-      // Return context with mock response (short-circuits chain)
+      // Return short-circuit response (skips HTTP request)
       return {
-        ...context,
-        __mockResponse: mockData,
+        shortCircuit: {
+          status: 200,
+          headers: { 'x-hai3-short-circuit': 'true' },
+          data: mockData,
+        } as ApiResponseContext,
       };
     }
 
@@ -103,15 +93,16 @@ export class MockPlugin implements ApiPlugin {
     url: string
   ): MockResponseFactory<unknown, unknown> | undefined {
     const mockKey = `${method.toUpperCase()} ${url}`;
+    const mockMap = this.config.mockMap;
 
     // Try exact match first
-    const exactMatch = this.mockMap[mockKey];
+    const exactMatch = mockMap[mockKey];
     if (exactMatch) {
       return exactMatch as MockResponseFactory<unknown, unknown>;
     }
 
     // Try pattern matching (:param replacement)
-    for (const [key, factory] of Object.entries(this.mockMap)) {
+    for (const [key, factory] of Object.entries(mockMap)) {
       const [keyMethod, keyUrl] = key.split(' ', 2);
 
       if (
@@ -152,7 +143,7 @@ export class MockPlugin implements ApiPlugin {
    * Simulate network delay.
    */
   private simulateDelay(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, this.delay));
+    return new Promise((resolve) => setTimeout(resolve, this.config.delay ?? 0));
   }
 
   /**

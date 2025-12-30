@@ -9,89 +9,222 @@
 
 import type {
   ApiRegistry as IApiRegistry,
-  ApiServicesMap,
   ApiServicesConfig,
-  MockMap,
-  ServiceConstructor,
+  ApiPluginBase,
+  PluginClass,
 } from './types';
 import { BaseApiService } from './BaseApiService';
-import { MockPlugin } from './plugins/MockPlugin';
 
 /**
  * Default API configuration.
  */
 const DEFAULT_CONFIG: ApiServicesConfig = {
-  useMockApi: false,
-  mockDelay: 100,
+  // Empty - mock config removed (OCP/DIP - now in MockPluginConfig)
 };
 
 /**
  * ApiRegistry Implementation
  *
  * Central registry for all API service instances.
- * Type-safe via module augmentation of ApiServicesMap.
+ * Type-safe via class-based registration.
  *
  * @example
  * ```typescript
- * // Register a service
- * apiRegistry.register('accounts', AccountsApiService);
+ * // Register a service by class
+ * apiRegistry.register(AccountsApiService);
  *
- * // Initialize with mock mode
- * apiRegistry.initialize({ useMockApi: true });
+ * // Initialize
+ * apiRegistry.initialize();
  *
  * // Get service (type-safe)
- * const accounts = apiRegistry.getService('accounts');
+ * const accounts = apiRegistry.getService(AccountsApiService);
  * ```
  */
 class ApiRegistryImpl implements IApiRegistry {
-  /** Service classes (not instances) */
-  private serviceClasses: Map<string, ServiceConstructor> = new Map();
-
-  /** Service instances */
-  private services: Map<string, BaseApiService> = new Map();
-
-  /** Mock data maps by domain */
-  private mockMaps: Map<string, Readonly<MockMap>> = new Map();
+  /** Service instances by class constructor */
+  private services: Map<new () => BaseApiService, BaseApiService> = new Map();
 
   /** Configuration */
   private config: ApiServicesConfig = { ...DEFAULT_CONFIG };
 
-  /** Initialization state */
-  private initialized = false;
+  /** Global plugins storage (FIFO order) */
+  private globalPlugins: ApiPluginBase[] = [];
+
+  /** Namespaced plugin API */
+  readonly plugins = {
+    /**
+     * Add one or more global plugins.
+     * Plugins are executed in FIFO order (first added executes first).
+     * Throws if a plugin of the same class is already registered.
+     */
+    add: (...plugins: ApiPluginBase[]): void => {
+      for (const plugin of plugins) {
+        // Check for duplicate plugin class via instanceof
+        const isDuplicate = this.globalPlugins.some(
+          (existing) => plugin.constructor === existing.constructor
+        );
+
+        if (isDuplicate) {
+          throw new Error(
+            `Plugin class ${plugin.constructor.name} is already registered. ` +
+            `Global plugins do not allow duplicate classes.`
+          );
+        }
+
+        // Append to array (FIFO order)
+        this.globalPlugins.push(plugin);
+      }
+    },
+
+    /**
+     * Get all registered plugins in execution order.
+     * Returns readonly array to prevent external modification.
+     */
+    getAll: (): readonly ApiPluginBase[] => {
+      return this.globalPlugins;
+    },
+
+    /**
+     * Check if a plugin class is registered.
+     * Uses instanceof to match plugin class.
+     */
+    has: <T extends ApiPluginBase>(pluginClass: PluginClass<T>): boolean => {
+      return this.globalPlugins.some((plugin) => plugin instanceof pluginClass);
+    },
+
+    /**
+     * Get a plugin instance by class reference.
+     * Returns undefined if plugin is not registered.
+     */
+    getPlugin: <T extends ApiPluginBase>(
+      pluginClass: new (...args: never[]) => T
+    ): T | undefined => {
+      const plugin = this.globalPlugins.find((p) => p instanceof pluginClass);
+      return plugin as T | undefined;
+    },
+
+    /**
+     * Add a plugin before another plugin by class reference.
+     * Throws if target plugin class is not found.
+     * Throws if plugin class is already registered (duplicate).
+     */
+    addBefore: <T extends ApiPluginBase>(
+      plugin: ApiPluginBase,
+      before: PluginClass<T>
+    ): void => {
+      // Check for duplicate plugin class
+      const isDuplicate = this.globalPlugins.some(
+        (existing) => plugin.constructor === existing.constructor
+      );
+
+      if (isDuplicate) {
+        throw new Error(
+          `Plugin class ${plugin.constructor.name} is already registered. ` +
+          `Global plugins do not allow duplicate classes.`
+        );
+      }
+
+      // Find target plugin index by class (using instanceof)
+      const targetIndex = this.globalPlugins.findIndex(
+        (p) => p instanceof before
+      );
+
+      if (targetIndex === -1) {
+        throw new Error(
+          `Target plugin class ${before.name} not found. ` +
+          `Cannot insert ${plugin.constructor.name} before a non-existent plugin.`
+        );
+      }
+
+      // Insert before target
+      this.globalPlugins.splice(targetIndex, 0, plugin);
+    },
+
+    /**
+     * Add a plugin after another plugin by class reference.
+     * Throws if target plugin class is not found.
+     * Throws if plugin class is already registered (duplicate).
+     */
+    addAfter: <T extends ApiPluginBase>(
+      plugin: ApiPluginBase,
+      after: PluginClass<T>
+    ): void => {
+      // Check for duplicate plugin class
+      const isDuplicate = this.globalPlugins.some(
+        (existing) => plugin.constructor === existing.constructor
+      );
+
+      if (isDuplicate) {
+        throw new Error(
+          `Plugin class ${plugin.constructor.name} is already registered. ` +
+          `Global plugins do not allow duplicate classes.`
+        );
+      }
+
+      // Find target plugin index by class (using instanceof)
+      const targetIndex = this.globalPlugins.findIndex(
+        (p) => p instanceof after
+      );
+
+      if (targetIndex === -1) {
+        throw new Error(
+          `Target plugin class ${after.name} not found. ` +
+          `Cannot insert ${plugin.constructor.name} after a non-existent plugin.`
+        );
+      }
+
+      // Insert after target (targetIndex + 1)
+      this.globalPlugins.splice(targetIndex + 1, 0, plugin);
+    },
+
+    /**
+     * Remove a plugin by class reference.
+     * Calls destroy() if the plugin has that method.
+     * Throws if plugin is not registered.
+     */
+    remove: <T extends ApiPluginBase>(pluginClass: PluginClass<T>): void => {
+      // Find plugin by class (using instanceof)
+      const pluginIndex = this.globalPlugins.findIndex(
+        (p) => p instanceof pluginClass
+      );
+
+      if (pluginIndex === -1) {
+        throw new Error(
+          `Plugin class ${pluginClass.name} is not registered. ` +
+          `Cannot remove a non-existent plugin.`
+        );
+      }
+
+      // Get the plugin instance
+      const plugin = this.globalPlugins[pluginIndex];
+
+      // Call destroy() if available
+      if (plugin?.destroy) {
+        plugin.destroy();
+      }
+
+      // Remove from globalPlugins array
+      this.globalPlugins.splice(pluginIndex, 1);
+    },
+  };
 
   // ============================================================================
   // Registration
   // ============================================================================
 
   /**
-   * Register an API service class.
-   * Service is instantiated on initialize().
+   * Register an API service by class reference.
+   * Service is instantiated immediately.
    */
-  register<K extends string & keyof ApiServicesMap>(
-    domain: K,
-    serviceClass: ServiceConstructor<ApiServicesMap[K]>
-  ): void {
-    this.serviceClasses.set(domain, serviceClass as ServiceConstructor);
+  register<T extends BaseApiService>(serviceClass: new () => T): void {
+    // Instantiate service
+    const service = new serviceClass();
 
-    // If already initialized, instantiate immediately
-    if (this.initialized) {
-      this.instantiateService(domain);
-    }
-  }
+    // Inject global plugins provider (Task 11: OCP/DIP compliant)
+    service._setGlobalPluginsProvider(() => this.plugins.getAll());
 
-  /**
-   * Register mock data for a service domain.
-   */
-  registerMocks<K extends string & keyof ApiServicesMap>(
-    domain: K,
-    mockMap: Readonly<MockMap>
-  ): void {
-    this.mockMaps.set(domain, mockMap);
-
-    // If mock mode is active, update the service's mock plugin
-    if (this.initialized && this.config.useMockApi) {
-      this.updateServiceMockPlugin(domain);
-    }
+    // Store with class as key
+    this.services.set(serviceClass, service);
   }
 
   // ============================================================================
@@ -99,46 +232,12 @@ class ApiRegistryImpl implements IApiRegistry {
   // ============================================================================
 
   /**
-   * Initialize all registered services.
+   * Initialize the registry with configuration.
+   * Services are already instantiated during register().
    */
   initialize(config?: ApiServicesConfig): void {
     if (config) {
       this.config = { ...DEFAULT_CONFIG, ...config };
-    }
-
-    // Instantiate all registered services
-    this.serviceClasses.forEach((_serviceClass, domain) => {
-      this.instantiateService(domain);
-    });
-
-    this.initialized = true;
-
-    // Enable mock mode if configured
-    if (this.config.useMockApi) {
-      this.enableMockMode();
-    }
-  }
-
-  /**
-   * Instantiate a service by domain.
-   */
-  private instantiateService(domain: string): void {
-    const ServiceClass = this.serviceClasses.get(domain);
-    if (!ServiceClass) {
-      return;
-    }
-
-    // Check if already instantiated
-    if (this.services.has(domain)) {
-      return;
-    }
-
-    const service = new ServiceClass();
-    this.services.set(domain, service);
-
-    // If mock mode is active, register mock plugin
-    if (this.config.useMockApi) {
-      this.updateServiceMockPlugin(domain);
     }
   }
 
@@ -147,94 +246,27 @@ class ApiRegistryImpl implements IApiRegistry {
   // ============================================================================
 
   /**
-   * Get service by domain.
-   * Type is automatically inferred from ApiServicesMap.
+   * Get service by class reference.
+   * Returns typed service instance.
+   * Throws if service is not registered.
    */
-  getService<K extends string & keyof ApiServicesMap>(domain: K): ApiServicesMap[K] {
-    const service = this.services.get(domain);
+  getService<T extends BaseApiService>(serviceClass: new () => T): T {
+    const service = this.services.get(serviceClass);
 
     if (!service) {
       throw new Error(
-        `Service "${domain}" not found. Did you forget to call apiRegistry.register() and apiRegistry.initialize()?`
+        `Service not found. Did you forget to call apiRegistry.register(${serviceClass.name})?`
       );
     }
 
-    return service as ApiServicesMap[K];
+    return service as T;
   }
 
   /**
    * Check if service is registered.
    */
-  has<K extends string & keyof ApiServicesMap>(domain: K): boolean {
-    return this.services.has(domain);
-  }
-
-  /**
-   * Get all registered service domains.
-   */
-  getDomains(): string[] {
-    return Array.from(this.services.keys());
-  }
-
-  // ============================================================================
-  // Mock Mode
-  // ============================================================================
-
-  /**
-   * Set mock mode dynamically.
-   */
-  setMockMode(useMockApi: boolean): void {
-    const wasEnabled = this.config.useMockApi;
-    this.config.useMockApi = useMockApi;
-
-    if (useMockApi && !wasEnabled) {
-      this.enableMockMode();
-    } else if (!useMockApi && wasEnabled) {
-      this.disableMockMode();
-    }
-  }
-
-  /**
-   * Enable mock mode on all services.
-   */
-  private enableMockMode(): void {
-    this.services.forEach((_service, domain) => {
-      this.updateServiceMockPlugin(domain);
-    });
-  }
-
-  /**
-   * Disable mock mode on all services.
-   */
-  private disableMockMode(): void {
-    this.services.forEach((service) => {
-      if (service instanceof BaseApiService) {
-        service.unregisterPlugin(MockPlugin);
-      }
-    });
-  }
-
-  /**
-   * Update mock plugin on a service.
-   */
-  private updateServiceMockPlugin(domain: string): void {
-    const service = this.services.get(domain);
-    if (!(service instanceof BaseApiService)) {
-      return;
-    }
-
-    const mockMap = this.mockMaps.get(domain) ?? {};
-
-    // Remove existing mock plugin if present
-    service.unregisterPlugin(MockPlugin);
-
-    // Register new mock plugin with current mock map
-    service.registerPlugin(
-      new MockPlugin({
-        mockMap,
-        delay: this.config.mockDelay,
-      })
-    );
+  has<T extends BaseApiService>(serviceClass: new () => T): boolean {
+    return this.services.has(serviceClass);
   }
 
   // ============================================================================
@@ -246,14 +278,6 @@ class ApiRegistryImpl implements IApiRegistry {
    */
   getConfig(): Readonly<ApiServicesConfig> {
     return { ...this.config };
-  }
-
-  /**
-   * Get mock map for a domain.
-   * Used by services to access their mock data.
-   */
-  getMockMap(domain: string): Readonly<MockMap> {
-    return this.mockMaps.get(domain) ?? {};
   }
 
   // ============================================================================
@@ -275,10 +299,18 @@ class ApiRegistryImpl implements IApiRegistry {
     });
 
     this.services.clear();
-    this.serviceClasses.clear();
-    this.mockMaps.clear();
+
+    // Call destroy() on each global plugin
+    this.globalPlugins.forEach((plugin) => {
+      if (plugin?.destroy) {
+        plugin.destroy();
+      }
+    });
+
+    // Clear globalPlugins array
+    this.globalPlugins = [];
+
     this.config = { ...DEFAULT_CONFIG };
-    this.initialized = false;
   }
 }
 
