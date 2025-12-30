@@ -2,28 +2,34 @@
 
 ## Problem Statement
 
-The HAI3 API layer needs a flexible plugin architecture that allows cross-cutting concerns (logging, authentication, mocking, telemetry) to be applied across API services. The current implementation has revealed three architectural violations that must be corrected:
+The HAI3 API layer needs a flexible plugin architecture that allows cross-cutting concerns (logging, authentication, mocking, telemetry) to be applied across API services. The current implementation has revealed architectural issues that require a new approach:
 
-1. **SSE Protocol has direct knowledge of MockPlugin** - Violates Open/Closed Principle (OCP) and Dependency Inversion Principle (DIP)
-2. **MockPlugin is designed for global registration** - Violates vertical slice architecture principles for screensets
-3. **Type safety shortcuts** - ESLint exceptions may have been used instead of proper typing
+1. **Protocol-specific concerns mixed with generic plugin system** - REST and SSE have fundamentally different request/response models
+2. **MockPlugin trying to be protocol-agnostic** - Leads to complex logic and unclear responsibilities
+3. **Centralized plugin registry** - Makes protocol-level customization difficult
+
+**Corrective Update (Post-Implementation Review):**
+Based on implementation review, the architecture is being refactored to a protocol-specific plugin model where each protocol manages its own plugin type and mocking stays in plugins but is protocol-aware.
 
 ## User-Facing Behavior
 
-### Plugin Registration
-- Global plugins registered via `apiRegistry.plugins.add()` apply to all services
-- Service-level plugins registered via `service.plugins.add()` apply only to that service
-- Services can exclude global plugins via `service.plugins.exclude(PluginClass)`
+### Protocol-Level Plugin Registration
+- **Global**: `RestProtocol.globalPlugins.add(...)` applies to all REST services
+- **Global**: `SseProtocol.globalPlugins.add(...)` applies to all SSE services
+- **Instance**: `restProtocol.plugins.add(...)` for service-specific plugins
+- Type-safe: Each protocol only accepts its own plugin type
 
 ### Mock Mode
-- Mocking is handled by MockPlugin instances registered per-service or per-screenset
-- Screensets can register their own services with their own MockPlugin configurations
-- No global mock coordination is required - each service is self-contained
+- **REST**: `RestMockPlugin` returns fake responses via `{ shortCircuit: RestResponseContext }`
+- **SSE**: `SseMockPlugin` returns fake EventSource via `{ shortCircuit: EventSourceLike }`
+- Each mock plugin is honest about what it does - no cross-protocol logic
+- Per-service mocking remains the preferred pattern for vertical slice compliance
 
 ### Short-Circuit Pattern
-- Any plugin can short-circuit a request by returning `{ shortCircuit: ApiResponseContext }`
-- Protocols execute the plugin chain generically without knowing specific plugin types
-- The short-circuit pattern works uniformly for all plugins, not just MockPlugin
+- Protocol-specific short-circuit types prevent type confusion
+- REST: `{ shortCircuit: RestResponseContext }` - returns response data
+- SSE: `{ shortCircuit: EventSourceLike }` - returns mock event source
+- Type guards: `isRestShortCircuit()`, `isSseShortCircuit()`
 
 ## Non-Goals
 
@@ -32,31 +38,45 @@ The HAI3 API layer needs a flexible plugin architecture that allows cross-cuttin
 - Complex dependency graph with topological sorting
 - Async `destroy()` hooks
 - String-based plugin naming or identification
+- Centralized `apiRegistry.plugins.*` namespace (moved to protocol level)
 
 ## Requirements
 
 ### Functional Requirements
 
-#### FR-1: Per-Service Mock Configuration
-MockPlugin must support per-service registration, not just global registration:
-- Each service can have its own MockPlugin instance with its own mock map
-- Screensets can register services with mocks without affecting other screensets
-- No global mock map coordination is required
+#### FR-1: Protocol-Specific Plugin Hooks
+Each protocol defines its own plugin hook interfaces:
+- `RestPluginHooks`: `onRequest`, `onResponse`
+- `SsePluginHooks`: `onConnect`, `onEvent`
+- `WsPluginHooks`: `onConnect`, `onMessage` (future)
 
-#### FR-2: Protocol Plugin Agnosticism (OCP/DIP Compliance)
-Protocols must not have direct knowledge of specific plugin implementations:
-- Protocols invoke the plugin chain generically
-- Short-circuit detection uses the `isShortCircuit()` type guard
-- No `instanceof MockPlugin` checks in protocol code
-- Protocols are closed for modification, open for extension
+#### FR-2: Protocol-Specific Short-Circuit Types
+Short-circuit responses are protocol-specific:
+- REST: `{ shortCircuit: RestResponseContext }` - complete response
+- SSE: `{ shortCircuit: EventSourceLike }` - mock event source to use
+- Type guards prevent accidental cross-protocol usage
 
-#### FR-3: Type Safety
-All plugin-related code must use proper TypeScript typing:
-- No ESLint disable comments for type-related rules
-- Proper type guards instead of type assertions where possible
-- Generic plugin execution chain with type-safe short-circuit handling
+#### FR-3: Protocol-Level Plugin Management
+Plugin registration moves from central registry to protocol level:
+- `RestProtocol.globalPlugins.add(plugin)` for global REST plugins
+- `SseProtocol.globalPlugins.add(plugin)` for global SSE plugins
+- `protocol.plugins.add(plugin)` for instance-specific plugins
+- Plugin resolution: global plugins first, then instance plugins
 
-#### FR-4: Vertical Slice Architecture Support
+#### FR-4: Pure SseProtocol
+SseProtocol becomes pure - no mock simulation logic:
+- Single branch: "did plugin short-circuit?" -> use provided EventSource, else create real one
+- Same code path after getting the source (attaching handlers)
+- All mock simulation logic moves to `SseMockPlugin`
+
+#### FR-5: Protocol-Specific Mock Plugins
+Mock plugins are protocol-aware and self-contained:
+- `RestMockPlugin extends RestPluginWithConfig<RestMockConfig>`
+- `SseMockPlugin extends SsePluginWithConfig<SseMockConfig>`
+- SseMockPlugin creates and returns a fake EventSource
+- Each is honest about what protocol it supports
+
+#### FR-6: Vertical Slice Architecture Support
 The plugin system must support vertical slice architecture:
 - Screensets must have zero footprint outside their folder
 - Each screenset can register its own services with its own mock configuration
@@ -64,9 +84,11 @@ The plugin system must support vertical slice architecture:
 
 ### Non-Functional Requirements
 
-#### NFR-1: Backward Compatibility
-- Existing service registrations must continue to work
-- Legacy plugin system (`LegacyApiPlugin`) remains supported during migration
+#### NFR-1: Type Safety
+All plugin-related code must use proper TypeScript typing:
+- No ESLint disable comments for type-related rules
+- Proper type guards instead of type assertions where possible
+- Protocol-specific generics prevent cross-protocol type errors
 
 #### NFR-2: Performance
 - Plugin chain execution should add minimal overhead
@@ -74,16 +96,17 @@ The plugin system must support vertical slice architecture:
 
 ## Scenarios / User Journeys
 
-### Scenario 1: Screenset with Self-Contained Mocks
+### Scenario 1: REST Service with Protocol-Specific Mock Plugin
 
 ```typescript
 // screensets/billing/services/BillingApiService.ts
 class BillingApiService extends BaseApiService {
   constructor() {
-    super({ baseURL: '/api/billing' }, new RestProtocol());
+    const restProtocol = new RestProtocol();
+    super({ baseURL: '/api/billing' }, restProtocol);
 
-    // Register service-level MockPlugin with screenset-specific mocks
-    this.plugins.add(new MockPlugin({
+    // Register protocol-specific mock plugin
+    restProtocol.plugins.add(new RestMockPlugin({
       mockMap: {
         'GET /api/billing/invoices': () => mockInvoices,
         'POST /api/billing/payment': (body) => mockPaymentResult(body),
@@ -94,86 +117,164 @@ class BillingApiService extends BaseApiService {
 }
 ```
 
-### Scenario 2: Protocol Executing Plugin Chain Without Plugin Knowledge
+### Scenario 2: SSE Service with Protocol-Specific Mock Plugin
 
 ```typescript
-// RestProtocol executes plugins generically
-private async executeClassPluginOnRequest(
-  context: ApiRequestContext
-): Promise<ApiRequestContext | ShortCircuitResponse> {
-  for (const plugin of this.getClassPlugins()) {
-    if (plugin.onRequest) {
-      const result = await plugin.onRequest(currentContext);
+// screensets/chat/services/ChatStreamService.ts
+class ChatStreamService extends BaseApiService {
+  constructor() {
+    const sseProtocol = new SseProtocol();
+    super({ baseURL: '/api/chat' }, sseProtocol);
 
-      // Generic short-circuit detection - no instanceof checks
-      if (isShortCircuit(result)) {
-        return result;
-      }
-
-      currentContext = result;
-    }
+    // Register SSE-specific mock plugin that returns fake EventSource
+    sseProtocol.plugins.add(new SseMockPlugin({
+      mockStreams: {
+        '/api/chat/stream': () => createMockEventSource([
+          { event: 'message', data: 'Hello' },
+          { event: 'message', data: ' World' },
+          { event: 'done', data: '' },
+        ]),
+      },
+      delay: 50, // delay between events
+    }));
   }
-  return currentContext;
 }
 ```
 
-### Scenario 3: SSE Protocol Generic Mock Handling
+### Scenario 3: Cross-Cutting REST Plugin (Global)
 
 ```typescript
-// SseProtocol must NOT do this:
-// BAD: const mockPlugin = this.getPlugins().find(p => p instanceof MockPlugin);
+// Register auth plugin globally for all REST services
+RestProtocol.globalPlugins.add(new AuthRestPlugin({
+  getToken: () => localStorage.getItem('token'),
+}));
 
-// SseProtocol should use generic plugin chain:
-// GOOD: Execute onRequest for all plugins, check for short-circuit
-connect(url, onMessage, onComplete) {
-  const context = { method: 'GET', url, headers: {} };
-  const result = await this.executePluginOnRequest(context);
+// Later, any REST service will have auth applied
+apiRegistry.register(BillingApiService); // Auth plugin runs for all requests
+```
 
-  if (isShortCircuit(result)) {
-    // Handle short-circuit generically
-    this.simulateStreamFromResponse(result.shortCircuit, onMessage, onComplete);
+### Scenario 4: Pure SseProtocol Implementation
+
+```typescript
+// SseProtocol is now pure - single branch logic
+class SseProtocol {
+  connect(url: string, onMessage: (event: MessageEvent) => void): string {
+    const connectionId = this.generateId();
+
+    // Execute plugin chain
+    const context: SseConnectContext = { url, headers: {} };
+    const result = await this.executePluginChain(context);
+
+    // Single branch: did plugin provide EventSource?
+    const eventSource = isSseShortCircuit(result)
+      ? result.shortCircuit  // Use plugin-provided EventSource
+      : new EventSource(url); // Create real EventSource
+
+    // Same code path for both - just attach handlers
+    this.attachHandlers(connectionId, eventSource, onMessage);
     return connectionId;
   }
-
-  // Real SSE connection
-  // ...
 }
+```
+
+### Scenario 5: Cross-Cutting Plugin Implementing Multiple Protocols
+
+```typescript
+// For plugins that need to work across protocols
+class TelemetryPlugin extends ApiPluginBase implements RestPluginHooks, SsePluginHooks {
+  // REST hooks
+  onRequest(ctx: RestRequestContext) {
+    this.trackRequest('REST', ctx.url);
+    return ctx;
+  }
+
+  onResponse(response: RestResponseContext) {
+    this.trackResponse('REST', response.status);
+    return response;
+  }
+
+  // SSE hooks
+  onConnect(ctx: SseConnectContext) {
+    this.trackRequest('SSE', ctx.url);
+    return ctx;
+  }
+
+  onEvent(event: MessageEvent) {
+    this.trackEvent('SSE', event.type);
+    return event;
+  }
+}
+
+// Register with both protocols
+RestProtocol.globalPlugins.add(telemetryPlugin);
+SseProtocol.globalPlugins.add(telemetryPlugin);
 ```
 
 ## Error Cases
 
 ### EC-1: Plugin Type Errors
-- Compile-time: TypeScript errors for incorrect plugin return types
+- Compile-time: TypeScript errors when registering wrong plugin type with protocol
+- Example: `SseProtocol.globalPlugins.add(new RestMockPlugin(...))` - compile error
 - No runtime type assertions needed
 
 ### EC-2: Missing Mock Configuration
-- If MockPlugin is not registered and no real endpoint exists, normal HTTP error occurs
+- If mock plugin is not registered and no real endpoint exists, normal HTTP/SSE error occurs
 - No special handling required - follows standard error flow
 
 ### EC-3: Duplicate Global Plugin
-- `apiRegistry.plugins.add()` throws if plugin class already registered
-- Service-level plugins allow duplicates (different configurations)
+- `RestProtocol.globalPlugins.add()` throws if plugin class already registered
+- `SseProtocol.globalPlugins.add()` throws if plugin class already registered
+- Instance-level plugins allow duplicates (different configurations)
+
+### EC-4: Cross-Protocol Plugin Registration
+- Cross-cutting plugins must implement correct hook interface for each protocol
+- Registering plugin with protocol it doesn't support results in compile-time error
 
 ## Acceptance Criteria
 
-### AC-1: Per-Service MockPlugin Registration
-- [ ] MockPlugin can be registered on individual services via `service.plugins.add()`
-- [ ] Each service can have its own mock map
-- [ ] Screensets can register their own services with their own mocks
-- [ ] No global mock coordination needed
+### AC-1: Protocol-Specific Plugin Hooks
+- [ ] `RestPluginHooks` interface defines `onRequest`, `onResponse`
+- [ ] `SsePluginHooks` interface defines `onConnect`, `onEvent`
+- [ ] Each protocol only accepts plugins implementing its hook interface
 
-### AC-2: Protocol OCP/DIP Compliance
-- [ ] SseProtocol does NOT use `instanceof MockPlugin`
-- [ ] RestProtocol does NOT use `instanceof MockPlugin`
-- [ ] All protocols use `isShortCircuit()` type guard for short-circuit detection
-- [ ] Protocols execute plugin chain generically without plugin-specific knowledge
+### AC-2: Protocol-Specific Short-Circuit Types
+- [ ] REST short-circuit returns `{ shortCircuit: RestResponseContext }`
+- [ ] SSE short-circuit returns `{ shortCircuit: EventSourceLike }`
+- [ ] `isRestShortCircuit()` type guard correctly narrows REST short-circuit
+- [ ] `isSseShortCircuit()` type guard correctly narrows SSE short-circuit
 
-### AC-3: Type Safety
-- [ ] No `eslint-disable` comments for type-related rules in api package
-- [ ] Proper TypeScript typing for all plugin-related code
-- [ ] Type guards used instead of type assertions where possible
+### AC-3: Protocol-Level Plugin Management
+- [ ] `RestProtocol.globalPlugins.add()` registers global REST plugins
+- [ ] `SseProtocol.globalPlugins.add()` registers global SSE plugins
+- [ ] `protocol.plugins.add()` registers instance-specific plugins
+- [ ] Plugin resolution order: global first, then instance
+- [ ] `apiRegistry.plugins.*` namespace is removed
 
-### AC-4: Vertical Slice Support
-- [ ] Screensets can be fully self-contained with their own mock configuration
+### AC-4: Pure SseProtocol
+- [ ] SseProtocol has NO mock simulation logic
+- [ ] SseProtocol has single branch: short-circuit EventSource vs real EventSource
+- [ ] Same handler attachment code path for both mock and real
+- [ ] All mock streaming logic is in `SseMockPlugin`
+
+### AC-5: Protocol-Specific Mock Plugins
+- [ ] `RestMockPlugin` extends `RestPluginWithConfig<RestMockConfig>`
+- [ ] `SseMockPlugin` extends `SsePluginWithConfig<SseMockConfig>`
+- [ ] `SseMockPlugin` returns `EventSourceLike` for short-circuit
+- [ ] No cross-protocol mock logic in either plugin
+
+### AC-6: Class Hierarchy
+- [ ] `ApiPluginBase` is the base class with `destroy()` lifecycle
+- [ ] `RestPlugin extends ApiPluginBase implements RestPluginHooks`
+- [ ] `SsePlugin extends ApiPluginBase implements SsePluginHooks`
+- [ ] `RestPluginWithConfig<T>` and `SsePluginWithConfig<T>` provide config support
+- [ ] Cross-cutting plugins extend `ApiPluginBase` and implement multiple hook interfaces
+
+### AC-7: Vertical Slice Support
+- [ ] Screensets can register protocol-specific plugins on their services
 - [ ] No global mock state that screensets need to contribute to
 - [ ] Screenset services work independently of global plugin state
+
+### AC-8: Type Safety
+- [ ] No `eslint-disable` comments for type-related rules in api package
+- [ ] Protocol-specific generics prevent cross-protocol type errors
+- [ ] Type guards used instead of type assertions where possible

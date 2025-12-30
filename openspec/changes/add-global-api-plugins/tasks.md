@@ -2521,6 +2521,692 @@ grep -rn "legacySelectors" packages/
 
 ---
 
+## Protocol-Specific Plugin Architecture (Corrective Update v2)
+
+The following tasks implement the protocol-specific plugin architecture that supersedes the previous generic approach. These tasks should be executed after the original tasks are completed.
+
+---
+
+### 54. Add Protocol-Specific Hook Interfaces
+
+**Goal**: Define protocol-specific plugin hook interfaces
+
+**Files**:
+- `packages/api/src/types.ts` (modified)
+
+**Changes**:
+- Add `RestPluginHooks` interface with `onRequest`, `onResponse`, `onError`
+- Add `SsePluginHooks` interface with `onConnect`, `onEvent`, `onDisconnect`
+- Add `RestRequestContext` type (method, url, headers, body)
+- Add `SseConnectContext` type (url, headers)
+
+**Traceability**:
+- FR-1: Protocol-Specific Plugin Hooks (spec.md)
+- AC-1: Protocol-Specific Plugin Hooks (spec.md)
+- New Type Definitions section (design.md)
+
+**Validation**:
+- [ ] `RestPluginHooks` interface exported
+- [ ] `SsePluginHooks` interface exported
+- [ ] `RestRequestContext` type exported
+- [ ] `SseConnectContext` type exported
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 1 (ApiPluginBase must exist)
+
+---
+
+### 55. Add Protocol-Specific Short-Circuit Types
+
+**Goal**: Define protocol-specific short-circuit response types
+
+**Files**:
+- `packages/api/src/types.ts` (modified)
+
+**Changes**:
+- Add `RestResponseContext` type (status, headers, data)
+- Add `RestShortCircuitResponse` type ({ shortCircuit: RestResponseContext })
+- Add `EventSourceLike` interface (matching EventSource API)
+- Add `SseShortCircuitResponse` type ({ shortCircuit: EventSourceLike })
+- Add `isRestShortCircuit()` type guard
+- Add `isSseShortCircuit()` type guard
+
+**Traceability**:
+- FR-2: Protocol-Specific Short-Circuit Types (spec.md)
+- AC-2: Protocol-Specific Short-Circuit Types (spec.md)
+- New Type Definitions section (design.md)
+
+**Validation**:
+- [ ] `RestShortCircuitResponse` type exported
+- [ ] `SseShortCircuitResponse` type exported
+- [ ] `EventSourceLike` interface exported
+- [ ] `isRestShortCircuit()` correctly identifies REST short-circuit
+- [ ] `isSseShortCircuit()` correctly identifies SSE short-circuit
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 54
+
+---
+
+### 56. Add Protocol-Specific Plugin Convenience Classes
+
+**Goal**: Create convenience classes for each protocol
+
+**Files**:
+- `packages/api/src/types.ts` (modified)
+
+**Changes**:
+- Add `RestPlugin extends ApiPluginBase implements RestPluginHooks`
+- Add `RestPluginWithConfig<T> extends ApiPluginBase implements RestPluginHooks`
+- Add `SsePlugin extends ApiPluginBase implements SsePluginHooks`
+- Add `SsePluginWithConfig<T> extends ApiPluginBase implements SsePluginHooks`
+
+**Traceability**:
+- AC-6: Class Hierarchy (spec.md)
+- New Type Definitions section (design.md)
+
+**Validation**:
+- [ ] `RestPlugin` class exported
+- [ ] `RestPluginWithConfig<T>` class exported
+- [ ] `SsePlugin` class exported
+- [ ] `SsePluginWithConfig<T>` class exported
+- [ ] Config accessible via `this.config` in WithConfig variants
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 54, 55
+
+---
+
+### 57. Add Plugin Management to RestProtocol
+
+**Goal**: Add global and instance plugin management to RestProtocol
+
+**Files**:
+- `packages/api/src/protocols/RestProtocol.ts` (modified)
+
+**Changes**:
+- Add `private static _globalPlugins: Set<RestPluginHooks>`
+- Add `static readonly globalPlugins` namespace with add/remove/has/getAll/clear
+- Add `private _instancePlugins: Set<RestPluginHooks>`
+- Add `readonly plugins` namespace with add/remove/getAll
+- Add `private getPluginsInOrder(): RestPluginHooks[]` method
+- Update plugin chain execution to use `getPluginsInOrder()`
+
+**Traceability**:
+- FR-3: Protocol-Level Plugin Management (spec.md)
+- AC-3: Protocol-Level Plugin Management (spec.md)
+- Protocol-Level Plugin Management section (design.md)
+
+**Validation**:
+- [ ] `RestProtocol.globalPlugins.add()` registers global plugin
+- [ ] `RestProtocol.globalPlugins.remove()` removes and calls destroy
+- [ ] `restProtocol.plugins.add()` registers instance plugin
+- [ ] Plugin resolution: global first, then instance
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 54, 55, 56
+
+---
+
+### 58. Add Plugin Management to SseProtocol
+
+**Goal**: Add global and instance plugin management to SseProtocol
+
+**Files**:
+- `packages/api/src/protocols/SseProtocol.ts` (modified)
+
+**Changes**:
+- Add `private static _globalPlugins: Set<SsePluginHooks>`
+- Add `static readonly globalPlugins` namespace with add/remove/has/getAll/clear
+- Add `private _instancePlugins: Set<SsePluginHooks>`
+- Add `readonly plugins` namespace with add/remove/getAll
+- Add `private getPluginsInOrder(): SsePluginHooks[]` method
+
+**Traceability**:
+- FR-3: Protocol-Level Plugin Management (spec.md)
+- AC-3: Protocol-Level Plugin Management (spec.md)
+- Protocol-Level Plugin Management section (design.md)
+
+**Validation**:
+- [ ] `SseProtocol.globalPlugins.add()` registers global plugin
+- [ ] `SseProtocol.globalPlugins.remove()` removes and calls destroy
+- [ ] `sseProtocol.plugins.add()` registers instance plugin
+- [ ] Plugin resolution: global first, then instance
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 54, 55, 56
+
+---
+
+### 59. Create MockEventSource Class
+
+**Goal**: Implement EventSourceLike for SSE mocking
+
+**Files**:
+- `packages/api/src/mocks/MockEventSource.ts` (new)
+
+**Changes**:
+- Create `MockEventSource` class implementing `EventSourceLike`
+- Constructor accepts events array and optional delay
+- Async event emission with abort support
+- Proper readyState management (CONNECTING -> OPEN -> CLOSED)
+- Support for addEventListener/removeEventListener
+- Export from package
+
+**Traceability**:
+- AC-5: Protocol-Specific Mock Plugins (spec.md)
+- MockEventSource implementation (design.md)
+
+**Validation**:
+- [ ] `MockEventSource` implements `EventSourceLike`
+- [ ] Events emit asynchronously with configured delay
+- [ ] `close()` aborts event emission
+- [ ] readyState transitions correctly
+- [ ] onopen, onmessage, onerror handlers work
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 55 (EventSourceLike interface)
+
+---
+
+### 60. Create RestMockPlugin
+
+**Goal**: Create protocol-specific REST mock plugin
+
+**Files**:
+- `packages/api/src/plugins/RestMockPlugin.ts` (new)
+
+**Changes**:
+- Create `RestMockConfig` interface (mockMap, delay)
+- Create `RestMockPlugin extends RestPluginWithConfig<RestMockConfig>`
+- Implement `onRequest` that returns `RestShortCircuitResponse` for matching URLs
+- Support URL pattern matching (e.g., 'GET /api/users')
+- Export from package
+
+**Traceability**:
+- FR-5: Protocol-Specific Mock Plugins (spec.md)
+- AC-5: Protocol-Specific Mock Plugins (spec.md)
+- Protocol-Specific Mock Plugins section (design.md)
+
+**Validation**:
+- [ ] `RestMockPlugin` extends `RestPluginWithConfig<RestMockConfig>`
+- [ ] Returns `RestShortCircuitResponse` for matching requests
+- [ ] Non-matching requests pass through unchanged
+- [ ] Delay is applied before returning mock response
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 55, 56
+
+---
+
+### 61. Create SseMockPlugin
+
+**Goal**: Create protocol-specific SSE mock plugin
+
+**Files**:
+- `packages/api/src/plugins/SseMockPlugin.ts` (new)
+
+**Changes**:
+- Create `SseMockEvent` interface (event, data)
+- Create `SseMockConfig` interface (mockStreams map, delay)
+- Create `SseMockPlugin extends SsePluginWithConfig<SseMockConfig>`
+- Implement `onConnect` that returns `SseShortCircuitResponse` with MockEventSource
+- Export from package
+
+**Traceability**:
+- FR-5: Protocol-Specific Mock Plugins (spec.md)
+- AC-5: Protocol-Specific Mock Plugins (spec.md)
+- Protocol-Specific Mock Plugins section (design.md)
+
+**Validation**:
+- [ ] `SseMockPlugin` extends `SsePluginWithConfig<SseMockConfig>`
+- [ ] Returns `SseShortCircuitResponse` with `MockEventSource` for matching URLs
+- [ ] Non-matching connections pass through unchanged
+- [ ] MockEventSource emits configured events
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 55, 56, 59
+
+---
+
+### 62. Purify SseProtocol - Remove Mock Simulation Logic
+
+**Goal**: Remove all mock simulation logic from SseProtocol
+
+**Files**:
+- `packages/api/src/protocols/SseProtocol.ts` (modified)
+
+**Changes**:
+- Remove `extractStreamContent()` method
+- Remove `isChatCompletion()` type guard
+- Remove `isSseContent()` type guard
+- Remove `simulateMockStream()` / `simulateStreamFromShortCircuit()` method
+- Remove any mock-related imports
+- Remove ConnectionState 'short-circuit' handling
+
+**Traceability**:
+- FR-4: Pure SseProtocol (spec.md)
+- AC-4: Pure SseProtocol (spec.md)
+- Pure SseProtocol Implementation section (design.md)
+
+**Validation**:
+- [ ] No `extractStreamContent` in SseProtocol
+- [ ] No `simulateMockStream` / `simulateStreamFromShortCircuit` in SseProtocol
+- [ ] No mock-related type guards in SseProtocol
+- [ ] SseProtocol imports only protocol-specific types
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 58
+
+---
+
+### 63. Implement Pure SseProtocol connect() Method
+
+**Goal**: Implement single-branch connect logic using protocol-specific short-circuit
+
+**Files**:
+- `packages/api/src/protocols/SseProtocol.ts` (modified)
+
+**Changes**:
+- Update `connect()` method to:
+  1. Build `SseConnectContext`
+  2. Execute plugin chain via `getPluginsInOrder()`
+  3. Check for short-circuit using `isSseShortCircuit()`
+  4. If short-circuit: use provided EventSource
+  5. If not: create real EventSource
+  6. Call `attachHandlers()` for both paths
+- Create `attachHandlers(connectionId, source, onMessage, onComplete)` method
+- Same code path for mock and real EventSource
+
+**Traceability**:
+- FR-4: Pure SseProtocol (spec.md)
+- AC-4: Pure SseProtocol (spec.md)
+- Scenario 4: Pure SseProtocol Implementation (spec.md)
+- Pure SseProtocol Implementation section (design.md)
+
+**Validation**:
+- [ ] connect() uses `isSseShortCircuit()` type guard
+- [ ] Short-circuit path uses plugin-provided EventSource
+- [ ] Real path creates new EventSource
+- [ ] Same `attachHandlers()` for both paths
+- [ ] onEvent hooks run for incoming messages
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 58, 62
+
+---
+
+### 64. Remove apiRegistry.plugins Namespace
+
+**Goal**: Remove centralized plugin registry from apiRegistry
+
+**Files**:
+- `packages/api/src/types.ts` (modified)
+- `packages/api/src/apiRegistry.ts` (modified)
+
+**Changes**:
+- Remove `plugins` property from `ApiRegistry` interface
+- Remove `plugins` implementation from apiRegistry
+- Remove `globalPlugins` storage
+- Remove all plugin-related methods from apiRegistry
+- Update any code that references `apiRegistry.plugins`
+
+**Traceability**:
+- AC-3: Protocol-Level Plugin Management - apiRegistry.plugins.* removed (spec.md)
+- Removing apiRegistry.plugins Namespace section (design.md)
+
+**Validation**:
+- [ ] `apiRegistry.plugins` does NOT exist
+- [ ] No global plugin storage in apiRegistry
+- [ ] All plugin management via protocol-level APIs
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 57, 58
+
+---
+
+### 65. Delete Generic MockPlugin
+
+**Goal**: Remove the generic MockPlugin class that tried to work across protocols
+
+**Files**:
+- `packages/api/src/plugins/MockPlugin.ts` (deleted)
+- `packages/api/src/index.ts` (modified)
+
+**Changes**:
+- Delete `MockPlugin.ts` file entirely
+- Remove `MockPlugin` export from index.ts
+- Update any remaining references to use `RestMockPlugin` or `SseMockPlugin`
+
+**Traceability**:
+- AC-5: Protocol-Specific Mock Plugins (spec.md)
+- Migration Plan Phase 5 (design.md)
+
+**Validation**:
+- [ ] `MockPlugin.ts` file does NOT exist
+- [ ] `MockPlugin` is NOT exported
+- [ ] All usages migrated to protocol-specific plugins
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 60, 61
+
+---
+
+### 66. Update BaseApiService for Protocol-Level Plugins
+
+**Goal**: Update BaseApiService to work with protocol-level plugin management
+
+**Files**:
+- `packages/api/src/BaseApiService.ts` (modified)
+
+**Changes**:
+- Remove `_setGlobalPluginsProvider()` method (no longer needed)
+- Remove `globalPluginsProvider` field
+- Remove `servicePlugins` field (plugins now on protocol)
+- Remove `plugins` namespace from BaseApiService (moved to protocol)
+- Services access plugins via `this.protocol(RestProtocol).plugins`
+
+**Traceability**:
+- FR-3: Protocol-Level Plugin Management (spec.md)
+- Removing apiRegistry.plugins Namespace section (design.md)
+
+**Validation**:
+- [ ] BaseApiService has NO plugin management
+- [ ] No `_setGlobalPluginsProvider` method
+- [ ] No `plugins` namespace on service
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 57, 58, 64
+
+---
+
+### 67. Update Package Exports for Protocol-Specific Plugins
+
+**Goal**: Export all new protocol-specific types and classes
+
+**Files**:
+- `packages/api/src/index.ts` (modified)
+
+**Changes**:
+- Export protocol-specific hook interfaces:
+  - `RestPluginHooks`, `SsePluginHooks`
+- Export protocol-specific context types:
+  - `RestRequestContext`, `RestResponseContext`, `SseConnectContext`
+- Export protocol-specific short-circuit types:
+  - `RestShortCircuitResponse`, `SseShortCircuitResponse`, `EventSourceLike`
+- Export convenience classes:
+  - `RestPlugin`, `RestPluginWithConfig`, `SsePlugin`, `SsePluginWithConfig`
+- Export mock plugins:
+  - `RestMockPlugin`, `RestMockConfig`, `SseMockPlugin`, `SseMockConfig`, `SseMockEvent`
+- Export MockEventSource class
+- Export type guards:
+  - `isRestShortCircuit`, `isSseShortCircuit`
+- Remove old exports:
+  - Remove generic `ShortCircuitResponse`
+  - Remove generic `isShortCircuit`
+  - Remove `MockPlugin`
+
+**Traceability**:
+- AC-1 through AC-6 (spec.md)
+
+**Validation**:
+- [ ] All protocol-specific types importable from '@hai3/api'
+- [ ] Old generic types NOT exported
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 54-66
+
+---
+
+### 68. Update Command Templates for Protocol-Specific Plugins
+
+**Goal**: Update AI command templates to use protocol-specific plugin registration
+
+**Files**:
+- `packages/api/commands/hai3-new-api-service.md` (modified)
+- `packages/api/commands/hai3-new-api-service.framework.md` (modified)
+- `packages/api/commands/hai3-new-api-service.react.md` (modified)
+
+**Changes**:
+- Update mock registration examples:
+  - OLD: `this.plugins.add(new MockPlugin(...))`
+  - NEW: `restProtocol.plugins.add(new RestMockPlugin(...))`
+- Show protocol instance creation in constructor
+- Show protocol-level plugin registration
+- Add example for SSE services with `SseMockPlugin`
+
+**Traceability**:
+- Scenario 1, 2: Protocol-Specific Mock Plugins (spec.md)
+
+**Validation**:
+- [ ] No generic `MockPlugin` in templates
+- [ ] REST services use `RestMockPlugin`
+- [ ] SSE services use `SseMockPlugin`
+- [ ] Protocol instance created and plugins added to it
+- [ ] File follows AI.md format rules
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 67
+
+---
+
+### 69. Update .ai/targets/API.md for Protocol-Specific Plugins
+
+**Goal**: Update API guidelines to reflect protocol-specific plugin architecture
+
+**Files**:
+- `.ai/targets/API.md` (modified)
+
+**Changes**:
+- Update PLUGIN RULES section:
+  - "REQUIRED: Use protocol-specific plugin classes (RestPlugin, SsePlugin)"
+  - "REQUIRED: Register plugins via RestProtocol.globalPlugins or protocol.plugins"
+  - "REQUIRED: Use protocol-specific mock plugins (RestMockPlugin, SseMockPlugin)"
+  - "FORBIDDEN: Generic MockPlugin (deleted)"
+  - "FORBIDDEN: apiRegistry.plugins namespace (removed)"
+- Update examples to show protocol-level registration
+- Document cross-cutting plugin pattern
+
+**Traceability**:
+- All acceptance criteria (spec.md)
+
+**Validation**:
+- [ ] PLUGIN RULES updated for protocol-specific approach
+- [ ] No references to generic MockPlugin
+- [ ] No references to apiRegistry.plugins
+- [ ] File stays under 100 lines
+- [ ] ASCII only, no unicode
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 68
+
+---
+
+### 70. Integration Test - Protocol-Specific REST Plugin Chain
+
+**Goal**: Verify REST protocol plugin chain works correctly
+
+**Files**:
+- `packages/api/src/__tests__/restPlugins.integration.test.ts` (new)
+
+**Test Cases**:
+```typescript
+describe('RestProtocol plugins', () => {
+  it('should execute global plugins for all instances');
+  it('should execute instance plugins only for that instance');
+  it('should execute global plugins before instance plugins');
+  it('should short-circuit with RestMockPlugin');
+  it('should run onResponse hooks after short-circuit');
+  it('should not allow wrong plugin type');
+});
+```
+
+**Traceability**:
+- AC-1, AC-2, AC-3, AC-5 (spec.md)
+
+**Validation**:
+- [ ] All test cases pass
+- [ ] Plugin execution order verified
+- [ ] Short-circuit behavior verified
+- [ ] Type safety verified at compile time
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 57, 60, 67
+
+---
+
+### 71. Integration Test - Protocol-Specific SSE Plugin Chain
+
+**Goal**: Verify SSE protocol plugin chain works correctly
+
+**Files**:
+- `packages/api/src/__tests__/ssePlugins.integration.test.ts` (new)
+
+**Test Cases**:
+```typescript
+describe('SseProtocol plugins', () => {
+  it('should execute global plugins for all instances');
+  it('should execute instance plugins only for that instance');
+  it('should short-circuit with SseMockPlugin returning MockEventSource');
+  it('should emit events from MockEventSource');
+  it('should run onEvent hooks for each event');
+  it('should use same handler attachment for mock and real');
+});
+```
+
+**Traceability**:
+- AC-1, AC-2, AC-4, AC-5 (spec.md)
+
+**Validation**:
+- [ ] All test cases pass
+- [ ] MockEventSource emits events correctly
+- [ ] Same code path for mock and real verified
+- [ ] Type safety verified at compile time
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 58, 59, 61, 63, 67
+
+---
+
+### 72. Integration Test - Cross-Cutting Plugin
+
+**Goal**: Verify plugins can implement multiple protocol hook interfaces
+
+**Files**:
+- `packages/api/src/__tests__/crossCuttingPlugins.integration.test.ts` (new)
+
+**Test Cases**:
+```typescript
+describe('Cross-cutting plugins', () => {
+  it('should allow plugin implementing both RestPluginHooks and SsePluginHooks');
+  it('should register same plugin instance with both protocols');
+  it('should execute REST hooks for REST requests');
+  it('should execute SSE hooks for SSE connections');
+});
+```
+
+**Traceability**:
+- Scenario 5: Cross-Cutting Plugin (spec.md)
+- AC-6: Class Hierarchy (spec.md)
+
+**Validation**:
+- [ ] Cross-cutting plugin compiles
+- [ ] Same instance works for both protocols
+- [ ] Correct hooks called for each protocol
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 57, 58, 67
+
+---
+
+### 73. Final Protocol-Specific Architecture Validation
+
+**Goal**: Verify all protocol-specific architecture requirements are met
+
+**Commands**:
+```bash
+# Verify no generic MockPlugin
+grep -rn "class MockPlugin" packages/api/src/
+# Expected: 0 results (only RestMockPlugin, SseMockPlugin)
+
+# Verify no apiRegistry.plugins
+grep -rn "apiRegistry\.plugins" packages/
+
+# Verify no mock simulation in SseProtocol
+grep -rn "extractStreamContent\|simulateMockStream" packages/api/src/protocols/
+
+# Verify protocol-specific type guards
+grep -rn "isRestShortCircuit\|isSseShortCircuit" packages/api/src/
+```
+
+**Traceability**:
+- All acceptance criteria (spec.md)
+
+**Validation**:
+- [ ] No generic `MockPlugin` class exists
+- [ ] No `apiRegistry.plugins` references
+- [ ] No mock simulation logic in SseProtocol
+- [ ] Protocol-specific type guards in use
+- [ ] TypeScript compiles without errors
+- [ ] All tests pass
+
+**Performance Benchmarks** (optional but recommended):
+Run comparative benchmarks to quantify overhead reduction:
+```bash
+# Create simple benchmark script to measure:
+# 1. Plugin chain execution time (10,000 iterations)
+# 2. Memory allocation per request
+# 3. Type guard evaluation time
+
+# Compare:
+# - Generic approach (isShortCircuit + instanceof checks)
+# - Protocol-specific approach (isSseShortCircuit only)
+```
+
+Expected improvements:
+- Reduced type checking overhead (protocol-specific guards are simpler)
+- No cross-protocol type checks
+- Smaller bundle size (no generic MockPlugin code for unused protocols)
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 54-72
+
+---
+
 ## Parallelizable Work
 
 - Tasks 1, 3, 5 can run in parallel (independent type definitions)
@@ -2558,6 +3244,25 @@ grep -rn "legacySelectors" packages/
 - Tasks 48, 49, 50, 51 can run in parallel (independent deprecation removals in framework)
 - Task 52 depends on Task 49 (CLI templates depend on setApplyFunction removal)
 - Task 53 depends on Tasks 46-52 (final validation after all removals)
+
+### Protocol-Specific Plugin Architecture Tasks Parallelization (54-73)
+- Task 54 depends on Task 1 (ApiPluginBase must exist)
+- Task 55 depends on Task 54 (hook interfaces needed for short-circuit types)
+- Task 56 depends on Tasks 54, 55 (convenience classes need hooks and short-circuit types)
+- Tasks 57, 58 can run in parallel after Task 56 (protocol plugin management)
+- Task 59 depends on Task 55 (MockEventSource needs EventSourceLike interface)
+- Task 60 depends on Tasks 55, 56 (RestMockPlugin needs types and convenience classes)
+- Task 61 depends on Tasks 55, 56, 59 (SseMockPlugin needs types, classes, and MockEventSource)
+- Task 62 depends on Task 58 (remove mock logic after plugin management added)
+- Task 63 depends on Tasks 58, 62 (pure connect after cleanup)
+- Task 64 depends on Tasks 57, 58 (remove apiRegistry.plugins after protocol plugins work)
+- Task 65 depends on Tasks 60, 61 (delete generic MockPlugin after protocol-specific ones exist)
+- Task 66 depends on Tasks 57, 58, 64 (update BaseApiService after plugins moved to protocols)
+- Task 67 depends on Tasks 54-66 (exports after all types created)
+- Task 68 depends on Task 67 (command templates after exports)
+- Task 69 depends on Task 68 (API.md after templates)
+- Tasks 70, 71, 72 can run in parallel after Task 67 (integration tests)
+- Task 73 depends on Tasks 54-72 (final validation)
 
 ## Estimated Effort
 
@@ -2601,7 +3306,28 @@ grep -rn "legacySelectors" packages/
 
 **Subtotal Deprecation Tasks**: ~5 hours
 
-**Total**: ~27 hours
+### Protocol-Specific Plugin Architecture Tasks (54-73)
+- Tasks 54-56: 2 hours (protocol-specific types and convenience classes)
+- Tasks 57-58: 2 hours (protocol plugin management)
+- Task 59: 1 hour (MockEventSource implementation)
+- Tasks 60-61: 1.5 hours (protocol-specific mock plugins)
+- Tasks 62-63: 2 hours (purify SseProtocol)
+- Task 64: 30 minutes (remove apiRegistry.plugins)
+- Task 65: 30 minutes (delete generic MockPlugin)
+- Task 66: 1 hour (update BaseApiService)
+- Task 67: 30 minutes (update exports)
+- Tasks 68-69: 1 hour (update documentation)
+- Tasks 70-72: 2 hours (integration tests)
+- Task 73: 15 minutes (final validation)
+
+**Subtotal Protocol-Specific Tasks**: ~14 hours
+
+**Grand Total**: ~41 hours
+
+> **Note**: Tasks 33-45 (original corrective tasks) are SUPERSEDED by Tasks 54-73.
+> The original corrective tasks attempted to make protocols generic.
+> The new tasks implement protocol-specific plugin architecture instead.
+> Subtract ~8 hours for superseded tasks, effective total: ~33 hours.
 
 ## Success Criteria
 
@@ -2673,29 +3399,83 @@ grep -rn "legacySelectors" packages/
 - [ ] `hai3-quick-ref.md` Registry section updated
 - [ ] No orphaned ApiServicesMap module augmentation in codebase
 
-### Corrective Implementation (Post-Review)
+### Corrective Implementation (Post-Review) - SUPERSEDED
 
-#### Protocol OCP/DIP Compliance
-- [ ] SseProtocol does NOT import MockPlugin
-- [ ] SseProtocol does NOT use `instanceof MockPlugin`
-- [ ] SseProtocol uses `isShortCircuit()` type guard for short-circuit detection
-- [ ] SseProtocol has generic `executePluginChainAsync()` method
-- [ ] SseProtocol has `extractStreamContent()` method with type guards
-- [ ] `extractStreamContent()` handles: string, OpenAI format, SSE content wrapper, fallback JSON
-- [ ] `simulateMockStream` renamed to `simulateStreamFromShortCircuit`
-- [ ] Stream simulation works with any short-circuit response, not just MockPlugin
-- [ ] SseProtocol follows same pattern as RestProtocol for plugin chain execution
+> **Note**: The following criteria are SUPERSEDED by Protocol-Specific Plugin Architecture below.
+> These were for the generic approach that has been replaced.
 
-#### Per-Service MockPlugin Pattern
-- [ ] Documentation shows per-service MockPlugin registration
-- [ ] Command templates include per-service MockPlugin examples
+#### Protocol OCP/DIP Compliance (SUPERSEDED)
+- [x] ~~SseProtocol does NOT import MockPlugin~~ (superseded by protocol-specific plugins)
+- [x] ~~SseProtocol does NOT use `instanceof MockPlugin`~~ (superseded)
+- [x] ~~SseProtocol uses `isShortCircuit()` type guard~~ (replaced by `isSseShortCircuit()`)
+- [x] ~~SseProtocol has generic `executePluginChainAsync()` method~~ (superseded)
+- [x] ~~SseProtocol has `extractStreamContent()` method~~ (REMOVED - not needed with protocol-specific approach)
+
+### Protocol-Specific Plugin Architecture (Tasks 54-73)
+
+#### Protocol-Specific Types
+- [ ] `RestPluginHooks` interface exported with `onRequest`, `onResponse`, `onError`
+- [ ] `SsePluginHooks` interface exported with `onConnect`, `onEvent`, `onDisconnect`
+- [ ] `RestRequestContext`, `RestResponseContext` types exported
+- [ ] `SseConnectContext` type exported
+- [ ] `EventSourceLike` interface exported (matches EventSource API)
+- [ ] `RestShortCircuitResponse` type exported ({ shortCircuit: RestResponseContext })
+- [ ] `SseShortCircuitResponse` type exported ({ shortCircuit: EventSourceLike })
+
+#### Protocol-Specific Type Guards
+- [ ] `isRestShortCircuit()` correctly identifies REST short-circuit (checks for `status`)
+- [ ] `isSseShortCircuit()` correctly identifies SSE short-circuit (checks for `readyState`)
+
+#### Protocol-Specific Convenience Classes
+- [ ] `RestPlugin extends ApiPluginBase implements RestPluginHooks`
+- [ ] `RestPluginWithConfig<T>` provides config support for REST plugins
+- [ ] `SsePlugin extends ApiPluginBase implements SsePluginHooks`
+- [ ] `SsePluginWithConfig<T>` provides config support for SSE plugins
+
+#### Protocol-Level Plugin Management
+- [ ] `RestProtocol.globalPlugins.add()` registers global REST plugins
+- [ ] `RestProtocol.globalPlugins.remove()` removes and calls destroy
+- [ ] `restProtocol.plugins.add()` registers instance REST plugins
+- [ ] `SseProtocol.globalPlugins.add()` registers global SSE plugins
+- [ ] `SseProtocol.globalPlugins.remove()` removes and calls destroy
+- [ ] `sseProtocol.plugins.add()` registers instance SSE plugins
+- [ ] Plugin resolution: global plugins first, then instance plugins
+- [ ] Each protocol only accepts its own plugin type (type-safe)
+
+#### Protocol-Specific Mock Plugins
+- [ ] `RestMockPlugin extends RestPluginWithConfig<RestMockConfig>`
+- [ ] `RestMockPlugin.onRequest()` returns `RestShortCircuitResponse` for matches
+- [ ] `SseMockPlugin extends SsePluginWithConfig<SseMockConfig>`
+- [ ] `SseMockPlugin.onConnect()` returns `SseShortCircuitResponse` with `MockEventSource`
+- [ ] `MockEventSource` implements `EventSourceLike`
+- [ ] `MockEventSource` emits events asynchronously with configurable delay
+- [ ] Generic `MockPlugin` class DELETED
+
+#### Pure SseProtocol
+- [ ] SseProtocol has NO mock simulation logic
+- [ ] SseProtocol has NO `extractStreamContent()` method
+- [ ] SseProtocol has NO `simulateMockStream()` method
+- [ ] SseProtocol `connect()` uses single branch: short-circuit EventSource vs real EventSource
+- [ ] SseProtocol `attachHandlers()` same code path for mock and real EventSource
+- [ ] SseProtocol runs `onEvent` hooks for incoming messages
+
+#### Removed APIs
+- [ ] `apiRegistry.plugins` namespace does NOT exist
+- [ ] `service.plugins` namespace does NOT exist (moved to protocol)
+- [ ] `_setGlobalPluginsProvider()` does NOT exist (not needed)
+- [ ] Generic `isShortCircuit()` type guard REMOVED (replaced by protocol-specific guards)
+- [ ] Generic `ShortCircuitResponse` type REMOVED (replaced by protocol-specific types)
+
+#### Per-Service Mock Pattern (RETAINED)
+- [ ] Documentation shows per-service protocol mock plugin registration
+- [ ] Command templates include protocol-specific mock plugin examples
 - [ ] Vertical slice architecture compliance documented
-- [ ] Warning against global MockPlugin for screensets included
+- [ ] Services access plugins via protocol: `restProtocol.plugins.add(...)`
 
 #### Type Safety
 - [ ] No eslint-disable comments for @typescript-eslint rules in api package
-- [ ] Type assertions minimized and properly documented
-- [ ] Type guards used instead of instanceof where appropriate
+- [ ] Protocol-specific generics prevent cross-protocol type errors
+- [ ] Registering wrong plugin type causes compile-time error
 - [ ] ESLint passes without type-related errors
 
 ### Clean Break Policy - No Deprecation (Decision 11)
@@ -2727,3 +3507,408 @@ grep -rn "legacySelectors" packages/
 - [ ] `grep -rn "@deprecated" packages/react/src/` returns 0 results
 - [ ] TypeScript compiles without errors
 - [ ] All tests pass
+
+---
+
+## Real-World Validation with Chat Screenset
+
+The following tasks use the chat screenset at `~/Dev/chat/` as a real-world test case for the protocol-specific plugin architecture. This screenset uses both REST (CRUD operations) and SSE (streaming completions) protocols, making it ideal for validating the new design.
+
+### Prerequisites
+
+**IMPORTANT**: The chat screenset is located outside the HAI3 repository at `~/Dev/chat/`. Before starting tasks 74-80:
+
+1. **Verify chat screenset exists**:
+   ```bash
+   ls -la ~/Dev/chat/api/ChatApiService.ts
+   ```
+
+2. **Verify it uses the old API patterns** (to confirm it needs refactoring):
+   ```bash
+   grep -n "CHAT_DOMAIN\|ApiServicesMap\|getMockMap" ~/Dev/chat/api/ChatApiService.ts
+   ```
+
+3. **Ensure HAI3 packages are linked** for local development:
+   ```bash
+   # In ~/Dev/chat/
+   npm link @hai3/api @hai3/react
+   ```
+
+If the chat screenset is not available, these validation tasks can be skipped - the automated tests (Tasks 70-72) provide sufficient coverage. However, manual testing with a real screenset is strongly recommended before release.
+
+---
+
+### 74. Refactor ChatApiService to Class-Based Registration
+
+**Goal**: Update ChatApiService to use class-based registration pattern
+
+**Files**:
+- `~/Dev/chat/api/ChatApiService.ts` (modified)
+
+**Changes**:
+- Remove `CHAT_DOMAIN` string constant
+- Remove `declare module '@hai3/react' { interface ApiServicesMap }` augmentation
+- Change `apiRegistry.register(CHAT_DOMAIN, ChatApiService)` to `apiRegistry.register(ChatApiService)`
+- Remove `getMockMap()` method (mocks now via plugins)
+- Update imports to use new types
+
+**Before**:
+```typescript
+export const CHAT_DOMAIN = `${CHAT_SCREENSET_ID}:chat` as const;
+
+export class ChatApiService extends BaseApiService {
+  protected getMockMap(): MockMap {
+    return apiRegistry.getMockMap(CHAT_DOMAIN);
+  }
+}
+
+declare module '@hai3/react' {
+  interface ApiServicesMap {
+    [CHAT_DOMAIN]: ChatApiService;
+  }
+}
+
+apiRegistry.register(CHAT_DOMAIN, ChatApiService);
+```
+
+**After**:
+```typescript
+export class ChatApiService extends BaseApiService {
+  constructor() {
+    super(
+      { baseURL: '/api/chat' },
+      new RestProtocol({ timeout: 30000 }),
+      new SseProtocol({ withCredentials: true })
+    );
+  }
+}
+
+apiRegistry.register(ChatApiService);
+```
+
+**Traceability**:
+- Decision 1: Class-Based Service Registration (design.md)
+- Scenario: Class-Based Service Registration (spec.md)
+
+**Validation**:
+- [ ] No `CHAT_DOMAIN` string constant
+- [ ] No module augmentation
+- [ ] Class-based registration: `apiRegistry.register(ChatApiService)`
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 54-58 (protocol-specific types and management)
+
+---
+
+### 75. Create RestMockPlugin for Chat REST Endpoints
+
+**Goal**: Create protocol-specific mock plugin for Chat REST endpoints
+
+**Files**:
+- `~/Dev/chat/api/ChatRestMockPlugin.ts` (new)
+- `~/Dev/chat/api/mocks.ts` (modified - extract REST mocks)
+
+**Changes**:
+- Create `ChatRestMockPlugin extends RestPluginWithConfig<RestMockConfig>`
+- Move REST mock map entries from `chatMockMap` to plugin config:
+  - `POST /completions` - non-streaming completion
+  - `GET /threads` - list threads
+  - `GET /messages` - list messages
+  - `GET /contexts` - list contexts
+  - `POST /threads` - create thread
+  - `POST /messages` - create message
+  - `PATCH /threads/:id` - update thread
+  - `DELETE /threads/:id` - delete thread
+- Plugin returns `RestShortCircuitResponse` for matching requests
+
+**Implementation**:
+```typescript
+import { RestPluginWithConfig, RestRequestContext, RestShortCircuitResponse } from '@hai3/api';
+import type { RestMockConfig } from '@hai3/api';
+
+export class ChatRestMockPlugin extends RestPluginWithConfig<RestMockConfig> {
+  onRequest(ctx: RestRequestContext): RestRequestContext | RestShortCircuitResponse {
+    const mock = this.findMock(ctx);
+    if (mock) {
+      return { shortCircuit: { status: 200, headers: {}, data: mock } };
+    }
+    return ctx;
+  }
+}
+
+// Usage in ChatApiService constructor:
+// this.protocol(RestProtocol).plugins.add(new ChatRestMockPlugin({ mockMap, delay: 100 }));
+```
+
+**Traceability**:
+- FR-5: Protocol-Specific Mock Plugins (spec.md)
+- Scenario: Per-service MockPlugin (spec.md)
+- Decision 14: Protocol-Specific Architecture (design.md)
+
+**Validation**:
+- [ ] `ChatRestMockPlugin` extends `RestPluginWithConfig`
+- [ ] Returns `RestShortCircuitResponse` for matching requests
+- [ ] All REST endpoints from original mockMap are covered
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 60 (RestMockPlugin base class)
+
+---
+
+### 76. Create SseMockPlugin for Chat Streaming Endpoint
+
+**Goal**: Create protocol-specific mock plugin for Chat SSE streaming
+
+**Files**:
+- `~/Dev/chat/api/ChatSseMockPlugin.ts` (new)
+- `~/Dev/chat/api/mocks.ts` (modified - extract SSE mocks)
+
+**Changes**:
+- Create `ChatSseMockPlugin extends SsePluginWithConfig<SseMockConfig>`
+- Create `ChatMockEventSource` implementing `EventSourceLike`
+- Move SSE mock entry from `chatMockMap`:
+  - `GET /completions/stream` - streaming completion (word-by-word)
+- Plugin returns `SseShortCircuitResponse` with mock EventSource
+- `ChatMockEventSource` simulates word-by-word streaming with configurable delay
+
+**Implementation**:
+```typescript
+import { SsePluginWithConfig, SseConnectContext, SseShortCircuitResponse, EventSourceLike } from '@hai3/api';
+import { mockAssistantResponses } from './mocks';
+
+class ChatMockEventSource implements EventSourceLike {
+  readyState = 0; // CONNECTING
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  onopen: ((event: Event) => void) | null = null;
+
+  constructor(private response: string, private delay: number = 50) {
+    this.startStreaming();
+  }
+
+  private async startStreaming() {
+    this.readyState = 1; // OPEN
+    this.onopen?.(new Event('open'));
+
+    const words = this.response.split(' ');
+    for (const word of words) {
+      await new Promise(r => setTimeout(r, this.delay));
+      const chunk = { choices: [{ delta: { content: word + ' ' } }] };
+      this.onmessage?.(new MessageEvent('message', { data: JSON.stringify(chunk) }));
+    }
+
+    // Send done signal
+    this.onmessage?.(new MessageEvent('message', { data: '[DONE]' }));
+    this.readyState = 2; // CLOSED
+  }
+
+  close() { this.readyState = 2; }
+}
+
+export class ChatSseMockPlugin extends SsePluginWithConfig<SseMockConfig> {
+  onConnect(ctx: SseConnectContext): SseConnectContext | SseShortCircuitResponse {
+    if (ctx.url.includes('/completions/stream')) {
+      const response = mockAssistantResponses[Math.floor(Math.random() * mockAssistantResponses.length)];
+      return { shortCircuit: new ChatMockEventSource(response, this.config.delay) };
+    }
+    return ctx;
+  }
+}
+```
+
+**Traceability**:
+- FR-5: Protocol-Specific Mock Plugins (spec.md)
+- Scenario: SSE Mock Plugin (spec.md)
+- Decision 14: Protocol-Specific Architecture (design.md)
+
+**Validation**:
+- [ ] `ChatSseMockPlugin` extends `SsePluginWithConfig`
+- [ ] `ChatMockEventSource` implements `EventSourceLike`
+- [ ] Returns `SseShortCircuitResponse` for `/completions/stream`
+- [ ] Mock EventSource emits word-by-word with delay
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 61 (SseMockPlugin base class)
+
+---
+
+### 77. Update ChatApiService to Use Protocol-Specific Mock Plugins
+
+**Goal**: Wire up the new mock plugins in ChatApiService
+
+**Files**:
+- `~/Dev/chat/api/ChatApiService.ts` (modified)
+- `~/Dev/chat/api/mocks.ts` (modified - can be simplified/deleted)
+
+**Changes**:
+- Import `ChatRestMockPlugin` and `ChatSseMockPlugin`
+- Add mock plugins to protocol instances in constructor (dev mode only)
+- Remove old `chatMockMap` export if no longer needed
+- Clean up unused mock infrastructure
+
+**Implementation**:
+```typescript
+import { ChatRestMockPlugin } from './ChatRestMockPlugin';
+import { ChatSseMockPlugin } from './ChatSseMockPlugin';
+import { restMockMap, sseMockConfig } from './mocks';
+
+export class ChatApiService extends BaseApiService {
+  constructor() {
+    const restProtocol = new RestProtocol({ timeout: 30000 });
+    const sseProtocol = new SseProtocol({ withCredentials: true });
+
+    super({ baseURL: '/api/chat' }, restProtocol, sseProtocol);
+
+    // Add mock plugins in development
+    if (process.env.NODE_ENV === 'development') {
+      restProtocol.plugins.add(new ChatRestMockPlugin({ mockMap: restMockMap, delay: 100 }));
+      sseProtocol.plugins.add(new ChatSseMockPlugin({ delay: 50 }));
+    }
+  }
+}
+```
+
+**Traceability**:
+- Scenario: Per-service MockPlugin (spec.md)
+- Decision 14: Protocol-Specific Architecture (design.md)
+
+**Validation**:
+- [ ] Mock plugins added to protocol instances
+- [ ] Conditional on development environment
+- [ ] No references to old `apiRegistry.getMockMap()`
+- [ ] TypeScript compiles without errors
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 75, 76
+
+---
+
+### 78. Manual Testing - Chat REST Operations
+
+**Goal**: Validate REST mock plugin with chat screenset
+
+**Files**: None (testing only)
+
+**Test Procedure**:
+1. Start dev server with chat screenset: `npm run dev`
+2. Open browser to chat application
+3. Verify REST operations work with mocks:
+   - [ ] Threads list loads (GET /threads)
+   - [ ] Messages load for thread (GET /messages)
+   - [ ] New thread creation works (POST /threads)
+   - [ ] Thread title update works (PATCH /threads/:id)
+   - [ ] Thread deletion works (DELETE /threads/:id)
+   - [ ] Non-streaming completion works (POST /completions)
+4. Check browser console - no errors
+5. Check network tab - requests intercepted by mock plugin
+
+**Traceability**:
+- AC-5: Per-Service MockPlugin (spec.md)
+- AC-7: Protocol-Specific Mock Plugins (spec.md)
+
+**Validation**:
+- [ ] All REST operations return mock data
+- [ ] No network requests to actual backend
+- [ ] No console errors
+- [ ] Response timing reflects configured delay
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 77
+
+---
+
+### 79. Manual Testing - Chat SSE Streaming
+
+**Goal**: Validate SSE mock plugin with chat screenset streaming
+
+**Files**: None (testing only)
+
+**Test Procedure**:
+1. Start dev server with chat screenset: `npm run dev`
+2. Open browser to chat application
+3. Start a new conversation or continue existing
+4. Send a message to trigger streaming response
+5. Verify SSE streaming behavior:
+   - [ ] Response streams word-by-word (not all at once)
+   - [ ] Streaming delay is visible (~50ms between words)
+   - [ ] Full response appears after streaming completes
+   - [ ] Multiple messages can be sent/streamed
+6. Check browser console - no errors
+7. Verify EventSource mock behavior:
+   - [ ] `onopen` fires at start
+   - [ ] `onmessage` fires for each chunk
+   - [ ] Stream completes with `[DONE]` signal
+
+**Traceability**:
+- AC-7: Protocol-Specific Mock Plugins (spec.md)
+- FR-5: Protocol-Specific Mock Plugins (spec.md)
+
+**Validation**:
+- [ ] SSE streaming works with mock EventSource
+- [ ] Word-by-word streaming visible in UI
+- [ ] No console errors during streaming
+- [ ] Clean completion of stream
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Task 77
+
+---
+
+### 80. Final Integration Validation with Chat Screenset
+
+**Goal**: Comprehensive validation of protocol-specific architecture
+
+**Files**: None (testing only)
+
+**Test Procedure**:
+1. Run full build: `npm run build`
+2. Run type check: `npm run type-check`
+3. Run linting: `npm run lint`
+4. Run architecture check: `npm run arch:check`
+5. Start dev server and perform end-to-end flow:
+   - Create new thread
+   - Send message (triggers SSE streaming)
+   - Wait for response to stream
+   - Send follow-up message
+   - Rename thread
+   - Delete thread
+6. Verify no regressions in existing functionality
+
+**Traceability**:
+- All acceptance criteria (spec.md)
+- All functional requirements (spec.md)
+
+**Validation**:
+- [ ] Build passes
+- [ ] Type check passes
+- [ ] Lint passes
+- [ ] Architecture check passes
+- [ ] End-to-end flow works
+- [ ] Both REST and SSE protocols use correct mock plugins
+- [ ] No cross-protocol mock logic
+
+**Status**: NOT_STARTED
+
+**Dependencies**: Tasks 78, 79
+
+---
+
+## Success Criteria Updates
+
+### Chat Screenset Validation
+- [ ] `ChatApiService` uses class-based registration (no string domain)
+- [ ] `ChatRestMockPlugin` handles all REST endpoints
+- [ ] `ChatSseMockPlugin` handles SSE streaming with `MockEventSource`
+- [ ] Mock plugins added to protocol instances (not service)
+- [ ] Word-by-word streaming visible in chat UI
+- [ ] No references to `apiRegistry.getMockMap()` or `apiRegistry.registerMocks()`
+- [ ] All manual tests pass
