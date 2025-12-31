@@ -4,18 +4,20 @@
  * Framework Layer: L2
  */
 
-import type { ThemeRegistry, ThemeConfig, UikitTheme, ThemeApplyFn } from '../types';
+import type { ThemeRegistry, ThemeConfig, UikitTheme, ThemeApplyFn, ThemesConfig } from '../types';
 
 /**
  * Create a new theme registry instance.
+ *
+ * @param config - Optional configuration for the theme registry
  */
-export function createThemeRegistry(): ThemeRegistry {
+export function createThemeRegistry(config?: ThemesConfig): ThemeRegistry {
   const themes = new Map<string, ThemeConfig>();
   // Store UIKit themes (e.g., @hai3/uikit themes)
   const uikitThemes = new Map<string, UikitTheme>();
   let currentThemeId: string | null = null;
-  // Custom apply function for UIKit themes (set via setApplyFunction)
-  let customApplyFn: ThemeApplyFn | null = null;
+  // Custom apply function for UIKit themes (passed via constructor injection)
+  const customApplyFn: ThemeApplyFn | null = config?.applyFn ?? null;
 
   // Subscription support for React
   const subscribers = new Set<() => void>();
@@ -113,14 +115,6 @@ export function createThemeRegistry(): ThemeRegistry {
      */
     getAll(): ThemeConfig[] {
       return Array.from(themes.values());
-    },
-
-    /**
-     * Set custom apply function for UIKit themes.
-     * @param fn - Function to apply UIKit theme objects (e.g., @hai3/uikit's applyTheme)
-     */
-    setApplyFunction(fn: ThemeApplyFn): void {
-      customApplyFn = fn;
     },
 
     /**

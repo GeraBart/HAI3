@@ -15,7 +15,7 @@
 // ============================================================================
 
 export { createHAI3 } from './createHAI3';
-export { createHAI3App } from './createHAI3App';
+export { createHAI3App, type HAI3AppConfig } from './createHAI3App';
 
 // ============================================================================
 // Plugin Exports
@@ -35,7 +35,7 @@ export {
 // Preset Exports
 // ============================================================================
 
-export { presets, full, minimal, headless } from './presets';
+export { presets, full, minimal, headless, type FullPresetConfig } from './presets';
 
 // ============================================================================
 // Registry Exports
@@ -68,6 +68,7 @@ export type {
   Preset,
   Presets,
   ScreensetsConfig,
+  ThemesConfig,
   NavigateToScreenPayload,
   NavigateToScreensetPayload,
   ShowPopupPayload,

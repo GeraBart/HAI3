@@ -320,12 +320,6 @@ export interface ThemeRegistry {
    */
   register(configOrId: ThemeConfig | string, uikitTheme?: UikitTheme): void;
 
-  /**
-   * Set custom apply function for UIKit themes.
-   * @param fn - Function to apply UIKit theme objects (e.g., @hai3/uikit's applyTheme)
-   */
-  setApplyFunction(fn: ThemeApplyFn): void;
-
   /** Get theme by ID */
   get(id: string): ThemeConfig | undefined;
   /** Get all themes */
@@ -508,6 +502,27 @@ export interface ScreensetsConfig {
   autoDiscover?: boolean;
   /** Glob pattern for screenset discovery */
   globPattern?: string;
+}
+
+/**
+ * Themes Plugin Configuration
+ * Configuration options for the themes plugin.
+ */
+export interface ThemesConfig {
+  /**
+   * Custom apply function for UIKit themes.
+   * Called when a theme is applied to execute theme-specific logic.
+   *
+   * @example
+   * ```typescript
+   * import { applyTheme } from '@hai3/uikit';
+   *
+   * const app = createHAI3()
+   *   .use(themes({ applyFn: applyTheme }))
+   *   .build();
+   * ```
+   */
+  applyFn?: ThemeApplyFn;
 }
 
 // ============================================================================

@@ -4,7 +4,7 @@
  * Framework Layer: L2
  */
 
-import type { HAI3Plugin, Presets } from '../types';
+import type { HAI3Plugin, Presets, ThemesConfig } from '../types';
 import { screensets } from '../plugins/screensets';
 import { themes } from '../plugins/themes';
 import { layout } from '../plugins/layout';
@@ -12,6 +12,14 @@ import { navigation } from '../plugins/navigation';
 import { routing } from '../plugins/routing';
 import { i18n } from '../plugins/i18n';
 import { effects } from '../plugins/effects';
+
+/**
+ * Full preset configuration.
+ */
+export interface FullPresetConfig {
+  /** Configuration for themes plugin */
+  themes?: ThemesConfig;
+}
 
 /**
  * Full preset - All plugins for the complete HAI3 experience.
@@ -25,12 +33,23 @@ import { effects } from '../plugins/effects';
  * - routing (route registry auto-synced from screensets)
  * - i18n (i18n registry, setLanguage action)
  * - effects (effect coordination)
+ *
+ * @param config - Optional preset configuration
+ *
+ * @example
+ * ```typescript
+ * import { applyTheme } from '@hai3/uikit';
+ *
+ * const app = createHAI3()
+ *   .use(full({ themes: { applyFn: applyTheme } }))
+ *   .build();
+ * ```
  */
-export function full(): HAI3Plugin[] {
+export function full(config?: FullPresetConfig): HAI3Plugin[] {
   return [
     effects(),
     screensets({ autoDiscover: true }),
-    themes(),
+    themes(config?.themes),
     layout(),
     routing(),
     navigation(),

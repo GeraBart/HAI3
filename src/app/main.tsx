@@ -24,14 +24,13 @@ apiRegistry.register(AccountsApiService);
 // Initialize API services
 apiRegistry.initialize({});
 
-// Create HAI3 app instance
-const app = createHAI3App();
+// Create HAI3 app instance with theme apply function (constructor injection)
+const app = createHAI3App({
+  themes: { applyFn: applyTheme as ThemeApplyFn },
+});
 
 // Register app-level effects (pass store dispatch)
 registerBootstrapEffects(app.store.dispatch);
-
-// Set the apply function from UI Kit (cast to ThemeApplyFn for compatibility)
-app.themeRegistry.setApplyFunction(applyTheme as ThemeApplyFn);
 
 // Register all themes (default theme first, becomes the default selection)
 app.themeRegistry.register(DEFAULT_THEME_ID, defaultTheme);

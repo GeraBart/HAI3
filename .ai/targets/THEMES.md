@@ -14,7 +14,7 @@
 - Theme shape MUST match the Theme interface from @hai3/framework.
 - Apps define themes in src/themes/**; screensets must not modify themes.
 - Theme application is performed via:
-  - themeRegistry.setApplyFunction(applyTheme).
+  - createHAI3App({ themes: { applyFn: applyTheme } }) (constructor injection).
   - themeRegistry.register(name, theme).
 - Themes must support light and dark variants, use rem units, and meet WCAG contrast >= 4.5:1.
 

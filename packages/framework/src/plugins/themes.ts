@@ -5,7 +5,7 @@
  */
 
 import { eventBus } from '@hai3/state';
-import type { HAI3Plugin, ChangeThemePayload } from '../types';
+import type { HAI3Plugin, ChangeThemePayload, ThemesConfig } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
 // Define theme events for module augmentation
@@ -28,21 +28,24 @@ function changeTheme(payload: ChangeThemePayload): void {
 /**
  * Themes plugin factory.
  *
+ * @param config - Optional themes configuration
  * @returns Themes plugin
  *
  * @example
  * ```typescript
+ * import { applyTheme } from '@hai3/uikit';
+ *
  * const app = createHAI3()
  *   .use(screensets())
- *   .use(themes())
+ *   .use(themes({ applyFn: applyTheme }))
  *   .build();
  *
  * app.actions.changeTheme({ themeId: 'dark' });
  * ```
  */
-export function themes(): HAI3Plugin {
+export function themes(config?: ThemesConfig): HAI3Plugin {
   // Create a new theme registry instance for this plugin
-  const themeRegistry = createThemeRegistry();
+  const themeRegistry = createThemeRegistry(config);
 
   return {
     name: 'themes',
