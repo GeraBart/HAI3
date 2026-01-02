@@ -244,8 +244,6 @@ export async function generateProject(
     'lucide-react': '0.344.0',
     react: '18.3.1',
     'react-dom': '18.3.1',
-    'react-markdown': '10.1.0',
-    'remark-gfm': '4.0.1',
     'tailwindcss-animate': '1.0.7',
   };
 
