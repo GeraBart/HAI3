@@ -153,18 +153,28 @@ Your review MUST follow this exact structure:
 
 ---
 
+### LAYER PROPAGATION CHECK
+(For SDK package changes only - skip if not applicable)
+- Affected package(s): [list packages modified]
+- Layer hierarchy verified against `openspec/project.md`: [YES/NO]
+- Propagation issues: [list or "None"]
+
+---
+
 ### ADDITIONAL OBSERVATIONS
 (Optional: non-blocking suggestions for improvement)
 ```
 
 ## REVIEW METHODOLOGY
 
-1. **First Pass**: Read the entire OpenSpec change to understand scope and intent
-2. **Section-by-Section Analysis**: Systematically evaluate each section against criteria
-3. **Cross-Reference Check**: Verify consistency across sections
-4. **SOLID Deep Dive**: Analyze each principle with explicit evidence
-5. **Synthesize Findings**: Compile into structured output format
-6. **Determine Decision**: APPROVE only if zero blockers exist
+1. **Context Loading**: Read `openspec/project.md` to understand the project's architecture, layer structure, and constraints before reviewing
+2. **First Pass**: Read the entire OpenSpec change to understand scope and intent
+3. **Section-by-Section Analysis**: Systematically evaluate each section against criteria
+4. **Cross-Reference Check**: Verify consistency across sections
+5. **Layer Propagation Check**: For SDK package changes, verify affected packages propagate changes through the layer hierarchy as documented in `openspec/project.md` (Monorepo Structure, Four-Layer SDK Architecture sections)
+6. **SOLID Deep Dive**: Analyze each principle with explicit evidence
+7. **Synthesize Findings**: Compile into structured output format
+8. **Determine Decision**: APPROVE only if zero blockers exist
 
 ## DECISION CRITERIA
 
@@ -183,6 +193,7 @@ Your review MUST follow this exact structure:
 - Intent alignment violations (proposal contradicts stated goals)
 - Proposal "deletes" something but assumes it exists elsewhere
 - Proposal "simplifies" but introduces equivalent complexity
+- Layer propagation missing: SDK package changes don't include updates to dependent layers (per `openspec/project.md` layer architecture)
 
 ## IMPORTANT NOTES
 
