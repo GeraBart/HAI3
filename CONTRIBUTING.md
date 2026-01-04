@@ -114,14 +114,15 @@ Then create a Pull Request on GitHub with:
 
 ## Publishing Packages
 
-HAI3 packages are automatically published to NPM when a PR is merged to the `main` branch. The publishing process is fully automated via GitHub Actions.
+HAI3 packages are **automatically published** to NPM when a PR is merged to the `main` branch. No manual publishing is required.
 
 ### How It Works
 
-1. **Version Bumps**: When you want to publish a package, bump its version in `package.json` as part of your PR
-2. **PR Merge**: When the PR is merged to `main`, the GitHub Actions workflow automatically detects version changes
-3. **NPM Check**: The workflow checks if the new version already exists on NPM (prevents duplicate publishes)
-4. **Publishing**: Packages are published in dependency order:
+1. **Version Bump**: Bump the version in `package.json` as part of your PR
+2. **PR Merge**: When merged to `main`, the workflow detects version changes (works with all merge strategies: merge, squash, rebase)
+3. **NPM Check**: Skips versions that already exist on NPM (safe for re-runs)
+4. **Build**: All packages are built via `npm run build:packages` before publishing
+5. **Publish**: Packages are published in dependency order with retry logic:
    - **Layer 1 (SDK)**: `@hai3/state`, `@hai3/screensets`, `@hai3/api`, `@hai3/i18n`, `@hai3/uikit`
    - **Layer 2 (Framework)**: `@hai3/framework`
    - **Layer 3 (React)**: `@hai3/react`
@@ -159,8 +160,12 @@ The workflow requires an `NPM_TOKEN` secret configured in GitHub Actions:
 
 ### Troubleshooting
 
-**Version Already Exists**: If a version was manually published, the workflow will skip it and log a message. Simply bump to the next version.
+**Version Already Exists**: The workflow skips versions that already exist on NPM and logs "SKIPPING". This is expected behavior - simply bump to the next version if needed.
 
-**Publish Failure**: The workflow includes retry logic with exponential backoff. If all retries fail, check the workflow logs for the specific error and re-run the workflow after fixing the issue.
+**Build Failure**: If `npm run build:packages` fails, the workflow stops before publishing. Check the build logs, fix the issue locally, and create a new PR.
 
-**No Packages Published**: If you merged a PR without version changes, the workflow will complete successfully with a message that no packages need publishing.
+**Publish Failure**: The workflow retries each publish 3 times with exponential backoff (5s, 10s, 20s delays). If all retries fail, check the workflow logs and re-run after fixing the issue.
+
+**No Packages Published**: If your PR had no version changes, the workflow completes successfully with "No packages with version changes to publish."
+
+**Workflow Summary**: After each run, check the GitHub Actions summary for a list of published and skipped packages.
