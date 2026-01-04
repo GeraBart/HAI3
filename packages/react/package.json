@@ -53,6 +53,9 @@
       "optional": false
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "hai3",
     "react",

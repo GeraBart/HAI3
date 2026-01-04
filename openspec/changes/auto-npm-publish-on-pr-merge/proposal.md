@@ -43,9 +43,11 @@ The workflow SHALL run only when a pull request is merged to the `main` branch.
 
 ### REQ-2: Version Change Detection
 
-The workflow SHALL compare each package's `package.json` version field between the merge commit and its parent to detect version bumps.
+The workflow SHALL compare each package's `package.json` version field between the merge commit and the PR's base commit to detect version bumps.
 
 **Priority**: P0 (Critical)
+
+**Note**: The workflow uses `github.event.pull_request.base.sha` (the commit main pointed to before the PR merge) instead of `HEAD~1` to ensure correct detection across all GitHub merge strategies (standard merge, squash merge, and rebase and merge).
 
 ### REQ-3: NPM Registry Check
 

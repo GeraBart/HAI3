@@ -112,11 +112,12 @@ The workflow uses `pull_request.closed` with a condition check for `merged == tr
 
 ### Version Detection Logic
 
-The workflow uses `fetch-depth: 0` (full history) and `git merge-base` to correctly detect version changes for both standard and squash-merged PRs:
+The workflow uses GitHub's PR event data to reliably detect version changes across ALL merge strategies:
 
 ```bash
-# Find the correct base commit (works for standard and squash merges)
-BASE_COMMIT=$(git merge-base HEAD origin/main~1 2>/dev/null || git rev-parse HEAD~1)
+# Use the PR's base commit SHA from GitHub event data
+# This is the commit that main pointed to BEFORE the PR was merged
+BASE_COMMIT="${{ github.event.pull_request.base.sha }}"
 
 # Get changed files between merge commit and base
 git diff "$BASE_COMMIT" --name-only | grep 'packages/.*/package.json'
@@ -125,7 +126,17 @@ git diff "$BASE_COMMIT" --name-only | grep 'packages/.*/package.json'
 git diff "$BASE_COMMIT" -- packages/state/package.json | grep '"version"'
 ```
 
-**Note**: Using `fetch-depth: 0` ensures full git history is available, which is required for `git merge-base` to correctly identify the common ancestor commit in squash-merge scenarios.
+**Why `github.event.pull_request.base.sha` instead of `HEAD~1`:**
+
+| Merge Strategy | HEAD~1 | base.sha |
+|----------------|--------|----------|
+| Standard merge | Previous main tip (correct) | Previous main tip (correct) |
+| Squash merge | Previous main tip (correct) | Previous main tip (correct) |
+| Rebase and merge | Second-to-last PR commit (WRONG) | Previous main tip (correct) |
+
+With "rebase and merge", all PR commits are replayed onto main. `HEAD~1` would be the second-to-last replayed commit, missing version changes in earlier PR commits. Using `base.sha` gives the true previous main tip regardless of merge strategy.
+
+**Note**: Using `fetch-depth: 0` ensures full git history is available for accurate diff comparison against the base commit.
 
 ### NPM Registry Check
 
@@ -207,10 +218,10 @@ jobs:
         run: |
           PACKAGES=()
 
-          # Find the merge base to handle both standard and squash merges
-          # For squash merges, HEAD~1 may not be the correct base
-          BASE_COMMIT=$(git merge-base HEAD origin/main~1 2>/dev/null || git rev-parse HEAD~1)
-          echo "Comparing HEAD against base: $BASE_COMMIT"
+          # Use the PR's base commit SHA - works for ALL merge strategies
+          # (standard merge, squash merge, AND rebase and merge)
+          BASE_COMMIT="${{ github.event.pull_request.base.sha }}"
+          echo "Comparing HEAD against PR base: $BASE_COMMIT"
 
           # Check each package for version changes
           for pkg_dir in packages/*/; do
@@ -235,7 +246,8 @@ jobs:
             echo "packages=[]" >> $GITHUB_OUTPUT
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            JSON_ARRAY=$(printf '%s\n' "${PACKAGES[@]}" | jq -s '.')
+            # Use -c for compact single-line JSON (required for GITHUB_OUTPUT)
+            JSON_ARRAY=$(printf '%s\n' "${PACKAGES[@]}" | jq -sc '.')
             echo "packages=$JSON_ARRAY" >> $GITHUB_OUTPUT
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
@@ -244,6 +256,9 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      skipped: ${{ steps.publish.outputs.skipped }}
 
     steps:
       - name: Checkout code
@@ -263,10 +278,13 @@ jobs:
         run: npm run build:packages
 
       - name: Publish packages in order
+        id: publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           PACKAGES='${{ needs.detect-changes.outputs.packages }}'
+          PUBLISHED_PACKAGES=()
+          SKIPPED_PACKAGES=()
 
           # Retry function with exponential backoff
           publish_with_retry() {
@@ -292,20 +310,7 @@ jobs:
             return 1
           }
 
-          # Define publishing order (layers)
-          declare -A LAYER_ORDER=(
-            ["state"]=1
-            ["screensets"]=1
-            ["api"]=1
-            ["i18n"]=1
-            ["framework"]=2
-            ["react"]=3
-            ["uikit"]=1  # Standalone, can be early
-            ["studio"]=4
-            ["cli"]=5
-          )
-
-          # Sort packages by layer
+          # Sort packages by layer (L1=SDK, L2=Framework, L3=React, L4=Studio, L5=CLI)
           SORTED=$(echo "$PACKAGES" | jq -c 'sort_by(.dir |
             if . == "state" or . == "screensets" or . == "api" or . == "i18n" or . == "uikit" then 1
             elif . == "framework" then 2
@@ -319,7 +324,7 @@ jobs:
           # Publish each package
           for row in $(echo "$SORTED" | jq -r '.[] | @base64'); do
             _jq() {
-              echo ${row} | base64 --decode | jq -r ${1}
+              echo "${row}" | base64 --decode | jq -r "${1}"
             }
 
             NAME=$(_jq '.name')
@@ -334,6 +339,7 @@ jobs:
             # Check if version already exists on NPM
             if npm view "$NAME@$VERSION" version 2>/dev/null; then
               echo "SKIPPING: $NAME@$VERSION already exists on NPM"
+              SKIPPED_PACKAGES+=("{\"name\":\"$NAME\",\"version\":\"$VERSION\",\"reason\":\"already exists on NPM\"}")
               continue
             fi
 
@@ -346,6 +352,7 @@ jobs:
             fi
 
             echo "SUCCESS: Published $NAME@$VERSION"
+            PUBLISHED_PACKAGES+=("{\"name\":\"$NAME\",\"version\":\"$VERSION\"}")
             cd ../..
           done
 
@@ -353,6 +360,21 @@ jobs:
           echo "=========================================="
           echo "All packages published successfully!"
           echo "=========================================="
+
+          # Output results for summary job (use -c for compact single-line JSON)
+          if [ ${#PUBLISHED_PACKAGES[@]} -eq 0 ]; then
+            echo "published=[]" >> $GITHUB_OUTPUT
+          else
+            PUBLISHED_JSON=$(printf '%s\n' "${PUBLISHED_PACKAGES[@]}" | jq -sc '.')
+            echo "published=$PUBLISHED_JSON" >> $GITHUB_OUTPUT
+          fi
+
+          if [ ${#SKIPPED_PACKAGES[@]} -eq 0 ]; then
+            echo "skipped=[]" >> $GITHUB_OUTPUT
+          else
+            SKIPPED_JSON=$(printf '%s\n' "${SKIPPED_PACKAGES[@]}" | jq -sc '.')
+            echo "skipped=$SKIPPED_JSON" >> $GITHUB_OUTPUT
+          fi
 
   summary:
     needs: [detect-changes, publish]
@@ -362,19 +384,32 @@ jobs:
     steps:
       - name: Publish summary
         run: |
+          echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
           if [ "${{ needs.detect-changes.outputs.has_changes }}" != "true" ]; then
-            echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "No packages with version changes to publish." >> $GITHUB_STEP_SUMMARY
           elif [ "${{ needs.publish.result }}" == "success" ]; then
-            echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Successfully published packages:" >> $GITHUB_STEP_SUMMARY
-            echo '${{ needs.detect-changes.outputs.packages }}' | jq -r '.[] | "- \(.name)@\(.version)"' >> $GITHUB_STEP_SUMMARY
+            # Published packages
+            PUBLISHED='${{ needs.publish.outputs.published }}'
+            PUBLISHED_COUNT=$(echo "$PUBLISHED" | jq 'length')
+            if [ "$PUBLISHED_COUNT" -gt 0 ]; then
+              echo "### ✅ Published ($PUBLISHED_COUNT)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "$PUBLISHED" | jq -r '.[] | "- `\(.name)@\(.version)`"' >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            # Skipped packages
+            SKIPPED='${{ needs.publish.outputs.skipped }}'
+            SKIPPED_COUNT=$(echo "$SKIPPED" | jq 'length')
+            if [ "$SKIPPED_COUNT" -gt 0 ]; then
+              echo "### ⏭️ Skipped ($SKIPPED_COUNT)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "$SKIPPED" | jq -r '.[] | "- `\(.name)@\(.version)` - \(.reason)"' >> $GITHUB_STEP_SUMMARY
+            fi
           else
-            echo "## Publish Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Publish failed. Check workflow logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Publish failed. Check workflow logs for details." >> $GITHUB_STEP_SUMMARY
           fi
 ```
 

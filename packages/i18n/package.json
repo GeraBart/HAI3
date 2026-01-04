@@ -33,6 +33,9 @@
     "typescript": "^5.4.2"
   },
   "peerDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "hai3",
     "i18n",

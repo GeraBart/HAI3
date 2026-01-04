@@ -37,6 +37,9 @@
   "peerDependencies": {
     "axios": ">=1.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "hai3",
     "api",
