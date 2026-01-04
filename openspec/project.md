@@ -35,11 +35,11 @@ The framework is built on clean architecture principles with dependency inversio
 
 ### Monorepo Structure
 - **npm workspaces** - Package management
-- **SDK Layer (L1)**: `@hai3/events`, `@hai3/store`, `@hai3/layout`, `@hai3/api`, `@hai3/i18n` - Zero @hai3 dependencies
+- **SDK Layer (L1)**: `@hai3/state`, `@hai3/screensets`, `@hai3/api`, `@hai3/i18n` - Zero @hai3 dependencies
 - **Framework Layer (L2)**: `@hai3/framework` - Plugin-based composition, depends on SDK
 - **React Layer (L3)**: `@hai3/react` - React bindings (HAI3Provider, hooks)
-- **UI Layer**: `@hai3/uikit-contracts`, `@hai3/uikit`, `@hai3/uicore`, `@hai3/studio`
-- **Tooling**: `@hai3/cli`, `@hai3/eslint-config`, `@hai3/depcruise-config`
+- **UI Layer**: `@hai3/uikit`, `@hai3/studio`
+- **Tooling**: `@hai3/cli`
 
 ## Project Conventions
 
@@ -57,7 +57,7 @@ The framework is built on clean architecture principles with dependency inversio
 **Import Rules (CRITICAL):**
 - Same package: Relative paths (`import { Button } from './Button'`)
 - Cross-branch in app: `@/` alias (`import { Layout } from '@/core/layout'`)
-- Cross-package: Workspace names (`import { Layout } from '@hai3/uicore'`)
+- Cross-package: Workspace names (`import { eventBus } from '@hai3/state'`)
 - Package internals: FORBIDDEN from app code
 
 **Forbidden Patterns:**
@@ -79,14 +79,13 @@ React Layer (L3): @hai3/react - HAI3Provider, hooks
   ↓ depends on
 Framework Layer (L2): @hai3/framework - Plugin composition, presets
   ↓ depends on
-SDK Layer (L1): @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
+SDK Layer (L1): @hai3/state, @hai3/screensets, @hai3/api, @hai3/i18n
   (zero @hai3 dependencies - can be used independently)
 ```
 
 **SDK Packages (L1):**
-- `@hai3/events` - Event bus with typed events
-- `@hai3/store` - Redux store factory and slice registration
-- `@hai3/layout` - Layout domain slices (header, footer, menu, sidebar, screen, popup, overlay)
+- `@hai3/state` - Event bus, Redux store factory, and slice registration (consolidated events + store)
+- `@hai3/screensets` - Screenset contracts, registry, and layout domain definitions
 - `@hai3/api` - API service registry with protocol/plugin system
 - `@hai3/i18n` - Internationalization with 36 languages
 
@@ -97,9 +96,7 @@ SDK Layer (L1): @hai3/events, @hai3/store, @hai3/layout, @hai3/api, @hai3/i18n
 - `@hai3/react` - `HAI3Provider`, `useHAI3()`, React-specific hooks
 
 **UI Packages (Separate Layer):**
-- `@hai3/uikit-contracts` - Pure TypeScript interfaces
-- `@hai3/uikit` - React components (NO uicore dependency)
-- `@hai3/uicore` - Legacy compatibility layer (re-exports from SDK/Framework)
+- `@hai3/uikit` - React components built on shadcn/ui
 - `@hai3/studio` - Development overlay (tree-shaken in production)
 
 #### 2. Event-Driven Flux Pattern
@@ -148,7 +145,7 @@ npm run arch:unused   # Unused export detection
 ```
 
 **Build Validation:**
-- Packages MUST build in order: `uikit-contracts` → `uikit` → `uicore` → App
+- Packages MUST build in layer order: SDK → Framework → React → UI → CLI
 - Use `npm run build:packages` to handle dependency order automatically
 
 **Manual Testing:**
@@ -238,7 +235,6 @@ Actions emit events. Effects listen and update slices. Never dispatch slice acti
 - SDK packages (L1) MUST NOT depend on any @hai3 packages
 - Framework (L2) MAY only depend on SDK packages
 - React (L3) MAY only depend on Framework
-- `uikit` MUST NOT depend on `uicore`
 - App code MUST NOT import package internals (`@hai3/*/src/*` is forbidden)
 
 ### Build Order
@@ -246,26 +242,23 @@ Actions emit events. Effects listen and update slices. Never dispatch slice acti
 Packages have strict build dependencies (handled by `npm run build:packages`):
 
 **SDK Layer (L1) - No internal dependencies:**
-1. `@hai3/events`
-2. `@hai3/store`
-3. `@hai3/layout`
-4. `@hai3/api`
-5. `@hai3/i18n`
+1. `@hai3/state`
+2. `@hai3/screensets`
+3. `@hai3/api`
+4. `@hai3/i18n`
 
 **Framework Layer (L2):**
-6. `@hai3/framework` (depends on all SDK packages)
+5. `@hai3/framework` (depends on all SDK packages)
 
 **React Layer (L3):**
-7. `@hai3/react` (depends on framework)
+6. `@hai3/react` (depends on framework)
 
 **UI Layer:**
-8. `@hai3/uikit-contracts` (no dependencies)
-9. `@hai3/uikit` (depends on contracts)
-10. `@hai3/uicore` (depends on SDK + framework)
-11. `@hai3/studio` (depends on uicore)
+7. `@hai3/uikit` (depends on react)
+8. `@hai3/studio` (depends on framework + react)
 
 **Tooling:**
-12. `@hai3/cli` (depends on all)
+9. `@hai3/cli` (depends on all)
 
 Breaking this order causes TypeScript compilation errors.
 
@@ -282,7 +275,7 @@ When adding new events, API services, or extending core types, screensets MUST u
 
 ```typescript
 // For events (SDK layer)
-declare module '@hai3/events' {
+declare module '@hai3/state' {
   interface EventPayloadMap {
     'custom/event': CustomPayload;
   }
@@ -292,13 +285,6 @@ declare module '@hai3/events' {
 declare module '@hai3/api' {
   interface ApiServicesMap {
     myService: MyApiService;
-  }
-}
-
-// Legacy (still works via re-exports)
-declare module '@hai3/uicore' {
-  interface EventPayloadMap {
-    'custom/event': CustomPayload;
   }
 }
 ```
@@ -350,8 +336,8 @@ const headlessApp = createHAI3().use(presets.headless()).build();  // screensets
 
 API services follow a **vertical slice architecture** with clear separation between framework and screenset code:
 
-**Framework Services (uicore package):**
-- Service class definitions in `packages/uicore/src/api/services/`
+**Framework Services (api package):**
+- Service class definitions in `packages/api/src/services/`
 - Core services used by framework itself (AccountsApiService, etc.)
 - Auto-register at module import
 
@@ -366,7 +352,7 @@ API services follow a **vertical slice architecture** with clear separation betw
 - Each screenset owns extensions for services it uses
 
 ```typescript
-// Example: Framework service (in uicore)
+// Example: Framework service (in @hai3/api)
 export const ACCOUNTS_DOMAIN = 'accounts';
 export class AccountsApiService extends BaseApiService {
   constructor() {
@@ -424,7 +410,7 @@ apiRegistry.registerMocks(ACCOUNTS_DOMAIN, accountsMockMap);
 - SSE mocking simulates streaming by splitting responses into word-by-word chunks with 50ms delays
 
 **Key Principles:**
-- Framework services stay in uicore, screenset services stay in screensets
+- Framework services stay in @hai3/api, screenset services stay in screensets
 - Mocks and extensions always belong to the screenset that uses them
 - Intentional duplication enables complete vertical slice independence
 - Each screenset is self-contained with all its API code
