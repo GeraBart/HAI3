@@ -26,20 +26,20 @@
 - [ ] 1.2.1 Define type ID operation method signatures (`parseTypeId`, `isValidTypeId`, `buildTypeId`)
 - [ ] 1.2.2 Define schema registry method signatures (`registerSchema`, `validateInstance`, `getSchema`, `hasSchema`)
 - [ ] 1.2.3 Define query method signatures (`query`, `listAll`)
-- [ ] 1.2.4 Define optional compatibility method signature (`checkCompatibility?`)
+- [ ] 1.2.4 Define required compatibility method signature (`checkCompatibility`) - REQUIRED, not optional
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - Plugin interface definition
 
-### 1.3 Define GtsMetadata Interface and Utilities
+### 1.3 Define TypeMetadata Interface and Utilities
 
-- [ ] 1.3.1 Create `GtsMetadata` interface in `packages/screensets/src/mfe/types/metadata.ts`
+- [ ] 1.3.1 Create `TypeMetadata` interface in `packages/screensets/src/mfe/types/metadata.ts`
 - [ ] 1.3.2 Define `typeId`, `vendor`, `package`, `namespace`, `type`, `version` properties
-- [ ] 1.3.3 Implement `parseGtsTypeId(typeId: string): GtsMetadata` utility function
-- [ ] 1.3.4 Implement `hydrateWithMetadata<T>(typeId, data): T` utility function
-- [ ] 1.3.5 Add validation for GTS type ID format: `gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~`
+- [ ] 1.3.3 Implement `parseTypeId(plugin, typeId: string): TypeMetadata` utility function (uses plugin)
+- [ ] 1.3.4 Implement `hydrateWithMetadata<T>(plugin, typeId, data): T` utility function
+- [ ] 1.3.5 Plugin handles type ID format validation (e.g., GTS: `gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~`)
 - [ ] 1.3.6 Export metadata utilities from `@hai3/screensets`
 
-**Traceability**: Requirement "Type System Plugin Abstraction" - GtsMetadata extraction from type ID
+**Traceability**: Requirement "Type System Plugin Abstraction" - TypeMetadata extraction from type ID
 
 ---
 
@@ -53,19 +53,19 @@
 - [ ] 2.1.2 Implement `parseTypeId()` to parse format `gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~`
 - [ ] 2.1.3 Implement `isValidTypeId()` to validate GTS type ID format
 - [ ] 2.1.4 Implement `buildTypeId()` to construct GTS type IDs
-- [ ] 2.1.5 Implement `registerSchema()` using `GtsStore.register()`
-- [ ] 2.1.6 Implement `validateInstance()` using `GtsStore.validate()`
-- [ ] 2.1.7 Implement `getSchema()` and `hasSchema()` using `GtsStore`
-- [ ] 2.1.8 Implement `query()` using `GtsQuery.search()`
-- [ ] 2.1.9 Implement `listAll()` using `GtsStore.listAll()`
-- [ ] 2.1.10 Implement `checkCompatibility()` using `Gts.checkCompatibility()`
+- [ ] 2.1.5 Implement `registerSchema()` using internal GtsStore
+- [ ] 2.1.6 Implement `validateInstance()` using internal GtsStore
+- [ ] 2.1.7 Implement `getSchema()` and `hasSchema()` using internal GtsStore
+- [ ] 2.1.8 Implement `query()` using GtsQuery
+- [ ] 2.1.9 Implement `listAll()` using internal GtsStore
+- [ ] 2.1.10 Implement `checkCompatibility()` (REQUIRED method) using Gts.checkCompatibility()
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - GTS plugin as default implementation
 
 ### 2.2 Export GTS Plugin
 
-- [ ] 2.2.1 Export `createGtsTypeSystem()` factory function
-- [ ] 2.2.2 Export `gtsTypeSystem` singleton instance
+- [ ] 2.2.1 Export `createGtsPlugin()` factory function
+- [ ] 2.2.2 Export `gtsPlugin` singleton instance
 - [ ] 2.2.3 Configure package.json exports for `@hai3/screensets/plugins/gts`
 - [ ] 2.2.4 Add peer dependency on `@globaltypesystem/gts-ts`
 
@@ -78,7 +78,8 @@
 - [ ] 2.3.3 Test `buildTypeId()` creates correct GTS format
 - [ ] 2.3.4 Test schema registration and validation
 - [ ] 2.3.5 Test query operations
-- [ ] 2.3.6 Test GtsMetadata extraction (vendor, package, namespace, type, version)
+- [ ] 2.3.6 Test TypeMetadata extraction (vendor, package, namespace, type, version)
+- [ ] 2.3.7 Test `checkCompatibility()` returns proper CompatibilityResult
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - GTS plugin as default implementation, GTS type ID validation
 
@@ -86,31 +87,32 @@
 
 ## Phase 3: Internal TypeScript Types
 
-**Goal**: Define internal TypeScript types for MFE architecture, all extending GtsMetadata.
+**Goal**: Define internal TypeScript types for MFE architecture, all extending TypeMetadata.
 
-### 3.1 Define MFE TypeScript Interfaces (extending GtsMetadata)
+### 3.1 Define MFE TypeScript Interfaces (extending TypeMetadata)
 
-- [ ] 3.1.1 Create `MfeDefinition extends GtsMetadata` interface (name, url, entries)
-- [ ] 3.1.2 Create `MfeEntry extends GtsMetadata` interface (path, requiredProperties, optionalProperties, actions, domainActions)
-- [ ] 3.1.3 Create `ExtensionDomain extends GtsMetadata` interface (sharedProperties, actions, extensionsActions, uiMetadataContract)
-- [ ] 3.1.4 Create `Extension extends GtsMetadata` interface (domain, entry, uiMetadata)
-- [ ] 3.1.5 Create `SharedProperty extends GtsMetadata` interface (name, schema)
-- [ ] 3.1.6 Create `Action extends GtsMetadata` interface (name, payloadSchema)
-- [ ] 3.1.7 Create `ActionsChain extends GtsMetadata` interface (target, action, payload, next, fallback)
+- [ ] 3.1.1 Create `MfeDefinition extends TypeMetadata` interface (name, url, entries)
+- [ ] 3.1.2 Create `MfeEntry extends TypeMetadata` interface (path, requiredProperties, optionalProperties, actions, domainActions)
+- [ ] 3.1.3 Create `ExtensionDomain extends TypeMetadata` interface (sharedProperties, actions, extensionsActions, extensionsUiMeta)
+- [ ] 3.1.4 Create `Extension extends TypeMetadata` interface (domain, entry, uiMeta)
+- [ ] 3.1.5 Create `SharedProperty extends TypeMetadata` interface (name, schema)
+- [ ] 3.1.6 Create `Action extends TypeMetadata` interface (name, payloadSchema, target?, payload?)
+- [ ] 3.1.7 Create `ActionsChain extends TypeMetadata` interface (action: Action, next?: ActionsChain, fallback?: ActionsChain) - contains INSTANCES, not references
 - [ ] 3.1.8 Export types from `packages/screensets/src/mfe/types/`
 
-**Traceability**: Requirement "MFE TypeScript Type System" - GtsMetadata interface
+**Traceability**: Requirement "MFE TypeScript Type System" - TypeMetadata interface
 
 ### 3.2 Create GTS JSON Schemas with x-gts-ref
 
 - [ ] 3.2.1 Create schema for `gts.hai3.screensets.mfe.definition.v1~` with `$id` and `x-gts-ref` for entries
 - [ ] 3.2.2 Create schema for `gts.hai3.screensets.mfe.entry.v1~` with `x-gts-ref` for properties and actions
-- [ ] 3.2.3 Create schema for `gts.hai3.screensets.ext.domain.v1~` with `x-gts-ref` for properties and actions
-- [ ] 3.2.4 Create schema for `gts.hai3.screensets.ext.extension.v1~` with `x-gts-ref` for domain and entry
-- [ ] 3.2.5 Create schema for `gts.hai3.screensets.ext.shared_property.v1~`
-- [ ] 3.2.6 Create schema for `gts.hai3.screensets.ext.action.v1~`
-- [ ] 3.2.7 Create schema for `gts.hai3.screensets.ext.actions_chain.v1~` with `$ref` for recursive next/fallback
-- [ ] 3.2.8 Export schemas from `packages/screensets/src/mfe/schemas/gts-schemas.ts`
+- [ ] 3.2.3 Create base schema for `gts.hai3.screensets.ext.domain.v1~` with `extensionsUiMeta` as generic object
+- [ ] 3.2.4 Create derived domain schemas that narrow `extensionsUiMeta` through GTS type inheritance
+- [ ] 3.2.5 Create schema for `gts.hai3.screensets.ext.extension.v1~` with `uiMeta` conforming to domain's `extensionsUiMeta`
+- [ ] 3.2.6 Create schema for `gts.hai3.screensets.ext.shared_property.v1~`
+- [ ] 3.2.7 Create schema for `gts.hai3.screensets.ext.action.v1~`
+- [ ] 3.2.8 Create schema for `gts.hai3.screensets.ext.actions_chain.v1~` with `$ref` for action INSTANCE and recursive next/fallback INSTANCES
+- [ ] 3.2.9 Export schemas from `packages/screensets/src/mfe/schemas/gts-schemas.ts`
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - HAI3 type registration via plugin, x-gts-ref validation in schemas
 
@@ -399,10 +401,12 @@
 
 - [ ] 11.2.1 Update `.ai/targets/SCREENSETS.md` with MFE architecture and Type System plugin
 - [ ] 11.2.2 Create MFE vendor development guide
-- [ ] 11.2.3 Document `TypeSystemPlugin` interface
-- [ ] 11.2.4 Document GTS plugin usage and type schemas
+- [ ] 11.2.3 Document `TypeSystemPlugin` interface (note: checkCompatibility is REQUIRED)
+- [ ] 11.2.4 Document GTS plugin usage (`gtsPlugin`) and type schemas
 - [ ] 11.2.5 Create custom plugin implementation guide
 - [ ] 11.2.6 Create example MFE implementation with GTS plugin
+- [ ] 11.2.7 Document `extensionsUiMeta` inheritance pattern for derived domains
+- [ ] 11.2.8 Document ActionsChain containing Action instances (not type ID references)
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - all scenarios
 

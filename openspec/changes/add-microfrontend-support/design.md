@@ -160,28 +160,53 @@ interface TypeSystemPlugin<TTypeId = string> {
    */
   listAll(): TTypeId[];
 
-  // === Compatibility (Optional) ===
+  // === Compatibility (REQUIRED) ===
 
   /**
    * Check compatibility between two type versions
    */
-  checkCompatibility?(oldTypeId: TTypeId, newTypeId: TTypeId): CompatibilityResult;
+  checkCompatibility(oldTypeId: TTypeId, newTypeId: TTypeId): CompatibilityResult;
+
+  // === Attribute Access (REQUIRED for dynamic schema resolution) ===
+
+  /**
+   * Get an attribute value from a type using property path
+   * Supports GTS attribute selector syntax: typeId@propertyPath
+   * Example: 'gts.hai3.screensets.ext.domain.v1~hai3.layout.sidebar.v1@extensionsUiMeta'
+   */
+  getAttribute(typeId: TTypeId, path: string): AttributeResult;
+}
+
+/**
+ * Result of attribute access
+ */
+interface AttributeResult {
+  /** The type ID that was queried */
+  typeId: string;
+  /** The property path that was accessed */
+  path: string;
+  /** Whether the attribute was found */
+  resolved: boolean;
+  /** The value if resolved */
+  value?: unknown;
+  /** Error message if not resolved */
+  error?: string;
 }
 ```
 
 #### GTS Plugin Implementation
 
-The GTS plugin implements `TypeSystemPlugin` using `@globaltypesystem/gts-ts`:
+The GTS plugin implements `TypeSystemPlugin` using `@globaltypesystem/gts-ts`. Note that GTS-specific names are used inside the plugin implementation itself:
 
 ```typescript
 // packages/screensets/src/mfe/plugins/gts/index.ts
 import { Gts, GtsStore, GtsQuery } from '@globaltypesystem/gts-ts';
 import type { TypeSystemPlugin, ParsedTypeId, ValidationResult } from '../types';
 
-type GtsTypeId = string; // GTS type ID format: gts.namespace.name.version~
+type GtsTypeId = string; // GTS type ID format: gts.vendor.package.namespace.type.vN~
 
-export function createGtsTypeSystem(): TypeSystemPlugin<GtsTypeId> {
-  const store = new GtsStore();
+export function createGtsPlugin(): TypeSystemPlugin<GtsTypeId> {
+  const gtsStore = new GtsStore();
 
   return {
     name: 'gts',
@@ -208,11 +233,11 @@ export function createGtsTypeSystem(): TypeSystemPlugin<GtsTypeId> {
 
     // Schema registry
     registerSchema(typeId: GtsTypeId, schema: JSONSchema): void {
-      store.register(typeId, schema);
+      gtsStore.register(typeId, schema);
     },
 
     validateInstance(typeId: GtsTypeId, instance: unknown): ValidationResult {
-      const result = store.validate(typeId, instance);
+      const result = gtsStore.validate(typeId, instance);
       return {
         valid: result.valid,
         errors: result.errors.map(e => ({
@@ -224,31 +249,44 @@ export function createGtsTypeSystem(): TypeSystemPlugin<GtsTypeId> {
     },
 
     getSchema(typeId: GtsTypeId): JSONSchema | undefined {
-      return store.getSchema(typeId);
+      return gtsStore.getSchema(typeId);
     },
 
     hasSchema(typeId: GtsTypeId): boolean {
-      return store.has(typeId);
+      return gtsStore.has(typeId);
     },
 
     // Query
     query(pattern: string, limit?: number): GtsTypeId[] {
-      return GtsQuery.search(store, pattern, { limit });
+      return GtsQuery.search(gtsStore, pattern, { limit });
     },
 
     listAll(): GtsTypeId[] {
-      return store.listAll();
+      return gtsStore.listAll();
     },
 
-    // Compatibility
+    // Compatibility (REQUIRED)
     checkCompatibility(oldTypeId: GtsTypeId, newTypeId: GtsTypeId) {
-      return Gts.checkCompatibility(store, oldTypeId, newTypeId);
+      return Gts.checkCompatibility(gtsStore, oldTypeId, newTypeId);
+    },
+
+    // Attribute Access (REQUIRED for dynamic schema resolution)
+    getAttribute(typeId: GtsTypeId, path: string): AttributeResult {
+      // GTS supports attribute selector syntax: typeId@path
+      const result = gtsStore.getAttribute(typeId, path);
+      return {
+        typeId,
+        path,
+        resolved: result !== undefined,
+        value: result,
+        error: result === undefined ? `Attribute '${path}' not found in type '${typeId}'` : undefined,
+      };
     },
   };
 }
 
-// Default export for convenience
-export const gtsTypeSystem = createGtsTypeSystem();
+// Default export for convenience - creates a singleton plugin instance
+export const gtsPlugin = createGtsPlugin();
 ```
 
 ### Decision 2: GTS Type ID Format and Registration
@@ -308,18 +346,23 @@ All 7 GTS types with proper `$id`, `$schema`, and `x-gts-ref` references:
     },
     "actions": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" }
+      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
+      "description": "Action type IDs this entry can emit to the domain"
     },
     "domainActions": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" }
+      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
+      "description": "Action type IDs this entry can receive from the domain"
     }
   },
   "required": ["path", "requiredProperties", "actions", "domainActions"]
 }
 ```
 
-**3. Extension Domain Schema:**
+**3. Extension Domain Schema (Base):**
+
+The base `ExtensionDomain` type defines `extensionsUiMeta` as a generic object schema. Derived domain types narrow `extensionsUiMeta` through GTS type inheritance:
+
 ```json
 {
   "$id": "gts://gts.hai3.screensets.ext.domain.v1~",
@@ -332,19 +375,49 @@ All 7 GTS types with proper `$id`, `$schema`, and `x-gts-ref` references:
     },
     "actions": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" }
+      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
+      "description": "Action type IDs domain can emit to extensions"
     },
     "extensionsActions": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" }
+      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
+      "description": "Action type IDs domain can receive from extensions"
     },
-    "uiMetadataContract": { "type": "object" }
+    "extensionsUiMeta": { "type": "object" }
   },
-  "required": ["sharedProperties", "actions", "extensionsActions", "uiMetadataContract"]
+  "required": ["sharedProperties", "actions", "extensionsActions", "extensionsUiMeta"]
+}
+```
+
+**3a. Derived Domain Example (Sidebar Layout):**
+
+Derived domains inherit from base and narrow `extensionsUiMeta` to specific requirements:
+
+```json
+{
+  "$id": "gts://gts.hai3.screensets.ext.domain.v1~hai3.layout.domain.sidebar.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    { "$ref": "gts://gts.hai3.screensets.ext.domain.v1~" }
+  ],
+  "properties": {
+    "extensionsUiMeta": {
+      "type": "object",
+      "properties": {
+        "icon": { "type": "string" },
+        "label": { "type": "string" },
+        "group": { "type": "string" }
+      },
+      "required": ["icon", "label"]
+    }
+  }
 }
 ```
 
 **4. Extension Schema:**
+
+Extensions provide `uiMeta` instances conforming to the domain's `extensionsUiMeta` schema. Runtime validation enforces this constraint using the GTS attribute selector (see Decision 9):
+
 ```json
 {
   "$id": "gts://gts.hai3.screensets.ext.extension.v1~",
@@ -353,9 +426,12 @@ All 7 GTS types with proper `$id`, `$schema`, and `x-gts-ref` references:
   "properties": {
     "domain": { "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~*" },
     "entry": { "x-gts-ref": "gts.hai3.screensets.mfe.entry.v1~*" },
-    "uiMetadata": { "type": "object" }
+    "uiMeta": {
+      "type": "object",
+      "description": "Must conform to the domain's extensionsUiMeta schema. Validated at runtime via plugin.getAttribute(domain, 'extensionsUiMeta')."
+    }
   },
-  "required": ["domain", "entry", "uiMetadata"]
+  "required": ["domain", "entry", "uiMeta"]
 }
 ```
 
@@ -374,53 +450,73 @@ All 7 GTS types with proper `$id`, `$schema`, and `x-gts-ref` references:
 ```
 
 **6. Action Schema:**
+
+Action is an action type with its target, self-identifying type, and optional payload. The `type` field uses `x-gts-ref: "/$id"` to reference the action's own type ID per GTS spec. The `target` field uses JSON Schema `oneOf` with `x-gts-ref` to allow referencing either ExtensionDomain or Extension:
+
 ```json
 {
   "$id": "gts://gts.hai3.screensets.ext.action.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "name": { "type": "string", "minLength": 1 },
-    "payloadSchema": { "type": "object" }
+    "target": {
+      "type": "string",
+      "oneOf": [
+        { "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~*" },
+        { "x-gts-ref": "gts.hai3.screensets.ext.extension.v1~*" }
+      ],
+      "description": "Type ID of the target ExtensionDomain or Extension"
+    },
+    "type": {
+      "x-gts-ref": "/$id",
+      "description": "Self-reference to this action's type ID"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Optional action payload"
+    }
   },
-  "required": ["name", "payloadSchema"]
+  "required": ["target", "type"]
 }
 ```
 
 **7. Actions Chain Schema:**
+
+ActionsChain contains actual Action INSTANCES (objects with target, type, and optional payload). The chain is recursive with embedded objects:
+
 ```json
 {
   "$id": "gts://gts.hai3.screensets.ext.actions_chain.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "target": { "type": "string", "x-gts-ref": "gts.*" },
-    "action": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
-    "payload": { "type": "object" },
+    "action": { "$ref": "gts://gts.hai3.screensets.ext.action.v1~" },
     "next": { "$ref": "gts://gts.hai3.screensets.ext.actions_chain.v1~" },
     "fallback": { "$ref": "gts://gts.hai3.screensets.ext.actions_chain.v1~" }
   },
-  "required": ["target", "action"]
+  "required": ["action"]
 }
 ```
 
+Note: Each `action` in the chain is a full Action instance containing `target` (required), `type` (required), and `payload` (optional).
+
 ### Decision 3: Internal TypeScript Type Definitions
 
-The MFE system uses internal TypeScript interfaces that include `GtsMetadata` extracted from GTS type IDs. This metadata is populated at runtime when types are parsed/registered.
+The MFE system uses internal TypeScript interfaces that include `TypeMetadata` extracted from type IDs via the plugin. This metadata is populated at runtime when types are parsed/registered.
 
-#### GtsMetadata Interface
+#### TypeMetadata Interface
 
-The `GtsMetadata` interface contains data extracted from parsing a GTS type ID:
+The `TypeMetadata` interface contains data extracted from parsing a type ID. The parsing logic is provided by the TypeSystemPlugin:
 
 ```typescript
 // packages/screensets/src/mfe/types/metadata.ts
 
 /**
- * Metadata extracted from a GTS type ID
- * The GTS ID format is: gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~
+ * Metadata extracted from a type ID via plugin
+ * For GTS, the ID format is: gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~
  */
-interface GtsMetadata {
-  /** Full GTS type ID (e.g., "gts.hai3.screensets.mfe.definition.v1~") */
+interface TypeMetadata {
+  /** Full type ID (e.g., "gts.hai3.screensets.mfe.definition.v1~") */
   readonly typeId: string;
   /** Vendor segment (e.g., "hai3") */
   readonly vendor: string;
@@ -438,35 +534,31 @@ interface GtsMetadata {
 }
 
 /**
- * Utility function to parse a GTS type ID into GtsMetadata
+ * Utility function to parse a type ID into TypeMetadata
+ * Uses the plugin's parseTypeId method internally
  */
-function parseGtsTypeId(typeId: string): GtsMetadata {
-  // Example: gts.hai3.screensets.mfe.definition.v1~ ->
-  //   vendor=hai3, package=screensets, namespace=mfe, type=definition, version={major:1}
-  const regex = /^gts\.([^.]+)\.([^.]+)\.([^.]+)\.([^.]+)\.v(\d+)(?:\.(\d+))?~$/;
-  const match = typeId.match(regex);
-
-  if (!match) {
-    throw new Error(`Invalid GTS type ID format: ${typeId}`);
-  }
-
+function parseTypeId(plugin: TypeSystemPlugin, typeId: string): TypeMetadata {
+  const parsed = plugin.parseTypeId(typeId);
+  // Map parsed result to TypeMetadata structure
   return {
     typeId,
-    vendor: match[1],
-    package: match[2],
-    namespace: match[3],
-    type: match[4],
+    vendor: parsed.namespace.split('.')[0] || '',
+    package: parsed.namespace.split('.')[1] || '',
+    namespace: parsed.namespace.split('.')[2] || '',
+    type: parsed.name,
     version: {
-      major: parseInt(match[5], 10),
-      minor: match[6] ? parseInt(match[6], 10) : undefined,
+      major: parseInt(parsed.version.split('.')[0], 10),
+      minor: parsed.version.includes('.')
+        ? parseInt(parsed.version.split('.')[1], 10)
+        : undefined,
     },
   };
 }
 ```
 
-#### TypeScript Interface Definitions with GtsMetadata
+#### TypeScript Interface Definitions with TypeMetadata
 
-All MFE types extend `GtsMetadata` and include domain-specific properties:
+All MFE types extend `TypeMetadata` and include domain-specific properties:
 
 ```typescript
 // packages/screensets/src/mfe/types/index.ts
@@ -475,7 +567,7 @@ All MFE types extend `GtsMetadata` and include domain-specific properties:
  * Represents a deployable MFE unit
  * GTS Type: gts.hai3.screensets.mfe.definition.v1~
  */
-interface MfeDefinition extends GtsMetadata {
+interface MfeDefinition extends TypeMetadata {
   /** Human-readable MFE name */
   name: string;
   /** Base URL for MFE bundle */
@@ -488,7 +580,7 @@ interface MfeDefinition extends GtsMetadata {
  * Defines an entry point with its communication contract
  * GTS Type: gts.hai3.screensets.mfe.entry.v1~
  */
-interface MfeEntry extends GtsMetadata {
+interface MfeEntry extends TypeMetadata {
   /** Path within MFE bundle to entry component */
   path: string;
   /** SharedProperty type IDs that MUST be provided by domain */
@@ -504,29 +596,32 @@ interface MfeEntry extends GtsMetadata {
 /**
  * Defines an extension point (domain) where MFEs can be injected
  * GTS Type: gts.hai3.screensets.ext.domain.v1~
+ *
+ * Base domain defines extensionsUiMeta as generic object.
+ * Derived domains narrow extensionsUiMeta through GTS type inheritance.
  */
-interface ExtensionDomain extends GtsMetadata {
+interface ExtensionDomain extends TypeMetadata {
   /** SharedProperty type IDs provided to extensions */
   sharedProperties: string[];
   /** Action type IDs domain can emit to extensions */
   actions: string[];
   /** Action type IDs domain can receive from extensions */
   extensionsActions: string[];
-  /** JSON Schema for UI metadata extensions must provide */
-  uiMetadataContract: JSONSchema;
+  /** JSON Schema for UI metadata extensions must provide (narrowed in derived domains) */
+  extensionsUiMeta: JSONSchema;
 }
 
 /**
  * Binds an MFE entry to an extension domain
  * GTS Type: gts.hai3.screensets.ext.extension.v1~
  */
-interface Extension extends GtsMetadata {
+interface Extension extends TypeMetadata {
   /** ExtensionDomain type ID to inject into */
   domain: string;
   /** MfeEntry type ID to inject */
   entry: string;
-  /** UI metadata conforming to domain's uiMetadataContract */
-  uiMetadata: Record<string, unknown>;
+  /** UI metadata instance conforming to domain's extensionsUiMeta schema */
+  uiMeta: Record<string, unknown>;
 }
 
 /**
@@ -534,7 +629,7 @@ interface Extension extends GtsMetadata {
  * GTS Type: gts.hai3.screensets.ext.shared_property.v1~
  * Note: No default value - domain provides values at runtime
  */
-interface SharedProperty extends GtsMetadata {
+interface SharedProperty extends TypeMetadata {
   /** Property name for injection */
   name: string;
   /** JSON Schema for property value */
@@ -542,49 +637,52 @@ interface SharedProperty extends GtsMetadata {
 }
 
 /**
- * Defines an action that can be sent between domain and extension
+ * An action type with target, self-identifying type, and optional payload
  * GTS Type: gts.hai3.screensets.ext.action.v1~
+ * The `type` field is a self-reference to the action's own $id per GTS spec
  */
-interface Action extends GtsMetadata {
-  /** Action name for dispatch */
-  name: string;
-  /** JSON Schema for action payload */
-  payloadSchema: JSONSchema;
+interface Action extends TypeMetadata {
+  /** Target type ID (ExtensionDomain or Extension) - REQUIRED, uses x-gts-ref */
+  target: string;
+  /** Self-reference to this action's type ID (uses x-gts-ref: "/$id") - REQUIRED */
+  type: string;
+  /** Optional action payload */
+  payload?: unknown;
 }
 
 /**
  * Defines an orchestrated chain of actions with success/failure branches
  * GTS Type: gts.hai3.screensets.ext.actions_chain.v1~
+ *
+ * Contains actual Action INSTANCES (objects with target, type, payload).
  */
-interface ActionsChain extends GtsMetadata {
-  /** Type ID of target (ExtensionDomain or MfeEntry) */
-  target: string;
-  /** Action type ID to deliver */
-  action: string;
-  /** Action payload conforming to action's payloadSchema */
-  payload?: unknown;
-  /** Chain to execute on success (recursive) */
+interface ActionsChain extends TypeMetadata {
+  /** Action INSTANCE (object with target, type, and optional payload) */
+  action: Action;
+  /** ActionsChain INSTANCE to execute on success (recursive object) */
   next?: ActionsChain;
-  /** Chain to execute on failure (recursive) */
+  /** ActionsChain INSTANCE to execute on failure (recursive object) */
   fallback?: ActionsChain;
 }
 ```
 
-### Decision 4: GtsMetadata Extraction Utility
+### Decision 4: TypeMetadata Extraction Utility
 
-The system provides a utility to extract `GtsMetadata` from type IDs and hydrate runtime objects:
+The system provides a utility to extract `TypeMetadata` from type IDs and hydrate runtime objects:
 
 ```typescript
-// packages/screensets/src/mfe/utils/gts-metadata.ts
+// packages/screensets/src/mfe/utils/metadata.ts
 
 /**
- * Create a typed instance with GtsMetadata from raw data
+ * Create a typed instance with TypeMetadata from raw data
+ * Uses the plugin to parse the type ID
  */
-function hydrateWithMetadata<T extends GtsMetadata>(
+function hydrateWithMetadata<T extends TypeMetadata>(
+  plugin: TypeSystemPlugin,
   typeId: string,
-  data: Omit<T, keyof GtsMetadata>
+  data: Omit<T, keyof TypeMetadata>
 ): T {
-  const metadata = parseGtsTypeId(typeId);
+  const metadata = parseTypeId(plugin, typeId);
   return {
     ...metadata,
     ...data,
@@ -593,13 +691,14 @@ function hydrateWithMetadata<T extends GtsMetadata>(
 
 // Usage example:
 const mfeEntry = hydrateWithMetadata<MfeEntry>(
+  typeSystem,
   'gts.hai3.screensets.mfe.entry.v1~',
   {
     path: '/widgets/chart',
     requiredProperties: ['gts.hai3.screensets.ext.shared_property.v1~:user_context'],
     optionalProperties: [],
-    actions: ['gts.hai3.screensets.ext.action.v1~:data_updated'],
-    domainActions: ['gts.hai3.screensets.ext.action.v1~:refresh'],
+    actions: ['gts.acme.dashboard.ext.action.data_updated.v1~'],
+    domainActions: ['gts.acme.dashboard.ext.action.refresh.v1~'],
   }
 );
 
@@ -639,7 +738,7 @@ const HAI3_TYPE_IDS = {
 function registerHai3Types<TTypeId>(
   plugin: TypeSystemPlugin<TTypeId>
 ): typeof HAI3_TYPE_IDS {
-  // Register each schema with its GTS type ID
+  // Register each schema with its GTS type ID (7 types total)
   plugin.registerSchema(
     HAI3_TYPE_IDS.mfeDefinition as TTypeId,
     mfeGtsSchemas.mfeDefinition
@@ -720,18 +819,18 @@ function createScreensetsOrchestrator<TTypeId = string>(
 }
 
 // Usage with GTS (default)
-import { gtsTypeSystem } from '@hai3/screensets/plugins/gts';
+import { gtsPlugin } from '@hai3/screensets/plugins/gts';
 
 const orchestrator = createScreensetsOrchestrator({
-  typeSystem: gtsTypeSystem,
+  typeSystem: gtsPlugin,
   debug: process.env.NODE_ENV === 'development',
 });
 
 // Usage with custom plugin
-import { customTypeSystem } from './my-custom-plugin';
+import { customPlugin } from './my-custom-plugin';
 
 const orchestratorWithCustomPlugin = createScreensetsOrchestrator({
-  typeSystem: customTypeSystem,
+  typeSystem: customPlugin,
 });
 ```
 
@@ -777,12 +876,12 @@ function createMicrofrontendsPlugin<TTypeId = string>(
 
 // App initialization example
 import { createFramework } from '@hai3/framework';
-import { gtsTypeSystem } from '@hai3/screensets/plugins/gts';
+import { gtsPlugin } from '@hai3/screensets/plugins/gts';
 
 const app = createFramework({
   plugins: [
     createMicrofrontendsPlugin({
-      typeSystem: gtsTypeSystem,
+      typeSystem: gtsPlugin,
       baseDomains: ['sidebar', 'popup', 'screen', 'overlay'],
     }),
   ],
@@ -859,9 +958,95 @@ function validateContract(
 }
 ```
 
-### Decision 9: Isolated State Instances
+### Decision 9: Dynamic uiMeta Validation via Attribute Selector
 
-Each MFE instance runs with its own HAI3 state container. The host also has its own state instance.
+**Problem:** An `Extension` instance has a `domain` field containing a type ID reference (e.g., `gts.hai3.screensets.ext.domain.v1~hai3.layout.domain.sidebar.v1`), and its `uiMeta` property must conform to that domain's `extensionsUiMeta` schema. This cannot be expressed as a static JSON Schema constraint because the domain reference is a dynamic value.
+
+**Solution:** The GTS specification supports **attribute selectors** using the `@` syntax to access properties from type instances:
+
+```
+gts.hai3.screensets.ext.domain.v1~hai3.layout.domain.sidebar.v1@extensionsUiMeta
+```
+
+This allows the orchestrator to resolve the domain's `extensionsUiMeta` schema at runtime.
+
+**Implementation:**
+
+1. **At schema level:** The Extension GTS schema defines `uiMeta` as `"type": "object"` with a description stating it must conform to the domain's `extensionsUiMeta` schema. The actual schema constraint is dynamic and cannot be expressed statically in JSON Schema because it depends on which domain the extension binds to.
+2. **At runtime (registration):** The orchestrator enforces the real constraint by resolving the domain's `extensionsUiMeta` schema and validating `uiMeta` against it:
+
+```typescript
+/**
+ * Validate Extension's uiMeta against its domain's extensionsUiMeta schema
+ */
+function validateExtensionUiMeta(
+  plugin: TypeSystemPlugin,
+  extension: Extension
+): ValidationResult {
+  // 1. Get the domain's extensionsUiMeta schema using attribute selector
+  const schemaResult = plugin.getAttribute(extension.domain, 'extensionsUiMeta');
+
+  if (!schemaResult.resolved) {
+    return {
+      valid: false,
+      errors: [{
+        path: 'domain',
+        message: `Cannot resolve extensionsUiMeta from domain '${extension.domain}'`,
+        keyword: 'x-gts-attr',
+      }],
+    };
+  }
+
+  // 2. The resolved value is the JSON Schema for uiMeta
+  const extensionsUiMetaSchema = schemaResult.value as JSONSchema;
+
+  // 3. Create a temporary type for validation
+  const tempTypeId = `${extension.typeId}:uiMeta:validation`;
+  plugin.registerSchema(tempTypeId, extensionsUiMetaSchema);
+
+  // 4. Validate extension.uiMeta against the resolved schema
+  const result = plugin.validateInstance(tempTypeId, extension.uiMeta);
+
+  // 5. Transform errors to include context
+  return {
+    valid: result.valid,
+    errors: result.errors.map(e => ({
+      ...e,
+      path: `uiMeta.${e.path}`,
+      message: `uiMeta validation failed against ${extension.domain}@extensionsUiMeta: ${e.message}`,
+    })),
+  };
+}
+```
+
+**Why GTS Attribute Selector:**
+- Native GTS feature from the specification: "Append `@` to the identifier and provide a property path"
+- Implemented in `@globaltypesystem/gts-ts` via `getAttribute()` method
+- No custom schema extensions required
+- Works with GTS type inheritance (derived domains have their narrowed `extensionsUiMeta`)
+
+**Integration Point:**
+
+The orchestrator calls `validateExtensionUiMeta()` during extension registration, after contract matching validation:
+
+```typescript
+// In MfeOrchestrator.registerExtension()
+const contractResult = validateContract(entry, domain);
+if (!contractResult.valid) {
+  throw new ContractValidationError(contractResult.errors);
+}
+
+const uiMetaResult = validateExtensionUiMeta(this.typeSystem, extension);
+if (!uiMetaResult.valid) {
+  throw new UiMetaValidationError(uiMetaResult.errors);
+}
+
+// Contract and uiMeta both valid, proceed with registration
+```
+
+### Decision 10: Isolated State Instances
+
+Each MFE instance runs with its own isolated @hai3/state container. The host also has its own state instance.
 
 **Architecture:**
 ```
@@ -879,7 +1064,7 @@ Each MFE instance runs with its own HAI3 state container. The host also has its 
                      |
               +------v------+
               | ORCHESTRATOR |
-              | (with GPTS)  |
+              | (TypeSystem) |
               +-------------+
 ```
 
@@ -889,7 +1074,7 @@ Each MFE instance runs with its own HAI3 state container. The host also has its 
 - Actions delivered via orchestrator messaging
 - Type System plugin validates type IDs and schemas
 
-### Decision 10: Actions Chain Execution
+### Decision 11: Actions Chain Execution
 
 The orchestrator delivers action chains to targets and handles success/failure branching. The Type System plugin validates all type IDs and payloads.
 
@@ -942,7 +1127,7 @@ interface ChainResult {
 }
 ```
 
-### Decision 11: Hierarchical Extension Domains
+### Decision 12: Hierarchical Extension Domains
 
 Extension domains can be hierarchical. HAI3 provides base layout domains, and vendor screensets can define their own. Base domains are registered via the Type System plugin.
 
@@ -956,25 +1141,26 @@ When using GTS plugin, base domains follow the format `gts.hai3.screensets.ext.d
 
 **Vendor-Defined Domains:**
 
-Vendors define their own domains following the GTS type ID format:
+Vendors define their own domains following the GTS type ID format. The domain's `extensionsUiMeta` defines what UI metadata extensions must provide:
 
 ```typescript
 // Example: Dashboard screenset defines widget slot domain
 // Type ID: gts.acme.dashboard.ext.domain.widget_slot.v1~
 
 const widgetSlotDomain: ExtensionDomain = hydrateWithMetadata(
+  typeSystem,
   'gts.acme.dashboard.ext.domain.widget_slot.v1~',
   {
     sharedProperties: [
       'gts.hai3.screensets.ext.shared_property.user_context.v1~',
     ],
     actions: [
-      'gts.acme.dashboard.ext.action.refresh.v1~',
+      'gts.acme.dashboard.ext.action.refresh.v1~',  // Action type ID domain can emit
     ],
     extensionsActions: [
-      'gts.acme.dashboard.ext.action.data_update.v1~',
+      'gts.acme.dashboard.ext.action.data_update.v1~',  // Action type ID domain can receive
     ],
-    uiMetadataContract: {
+    extensionsUiMeta: {
       type: 'object',
       properties: {
         title: { type: 'string' },
@@ -987,7 +1173,7 @@ const widgetSlotDomain: ExtensionDomain = hydrateWithMetadata(
 );
 ```
 
-### Decision 12: Module Federation 2.0 for Bundle Loading
+### Decision 13: Module Federation 2.0 for Bundle Loading
 
 **What**: Use Webpack 5 / Rspack Module Federation 2.0 for loading remote MFE bundles.
 
@@ -1081,7 +1267,7 @@ class MfeLoader {
 }
 ```
 
-### Decision 13: Shadow DOM for Style Isolation
+### Decision 14: Shadow DOM for Style Isolation
 
 **What**: Each MFE entry renders inside a Shadow DOM container that isolates its styles from the host and other MFEs.
 
@@ -1190,7 +1376,7 @@ function syncCssVariables(
 }
 ```
 
-### Decision 14: MfeBridge Communication Layer
+### Decision 15: MfeBridge Communication Layer
 
 The `MfeBridge` class provides the runtime communication interface between an MFE entry and its extension domain. It handles shared property subscriptions and actions chain sending.
 
@@ -1572,7 +1758,7 @@ function useMfeBridge(): MfeBridge {
 
 1. Implement GTS plugin using `@globaltypesystem/gts-ts`
 2. Implement all plugin interface methods (`parseTypeId`, `validateInstance`, etc.)
-3. Register HAI3 MFE type schemas (all 7 GTS types)
+3. Register HAI3 MFE type schemas (all 7 GTS types: MfeDefinition, MfeEntry, ExtensionDomain, Extension, SharedProperty, Action, ActionsChain)
 4. Test all plugin interface methods with real GTS type IDs
 5. Export as `@hai3/screensets/plugins/gts`
 6. Add peer dependency on `@globaltypesystem/gts-ts`
@@ -1586,8 +1772,8 @@ function useMfeBridge(): MfeBridge {
 
 **Goal**: Define all MFE types with GtsMetadata extraction.
 
-1. Define MFE TypeScript interfaces with generic `TTypeId` (all 7 types)
-2. Create JSON schemas with proper `$id` and `x-gts-ref` references
+1. Define MFE TypeScript interfaces with generic `TTypeId` (all 7 types: MfeDefinition, MfeEntry, ExtensionDomain, Extension, SharedProperty, Action, ActionsChain)
+2. Create JSON schemas with proper `$id` and `x-gts-ref` references (Action uses `x-gts-ref: "/$id"` for self-reference)
 3. Implement `registerHai3Types(plugin)` function
 4. Implement x-gts-ref reference validation
 5. Export types from `@hai3/screensets`

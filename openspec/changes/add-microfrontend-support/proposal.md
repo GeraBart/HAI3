@@ -42,19 +42,22 @@ interface TypeSystemPlugin<TTypeId = string> {
   // Query
   query(pattern: string, limit?: number): TTypeId[];
 
-  // Compatibility (optional)
-  checkCompatibility?(oldTypeId: TTypeId, newTypeId: TTypeId): CompatibilityResult;
+  // Compatibility (REQUIRED)
+  checkCompatibility(oldTypeId: TTypeId, newTypeId: TTypeId): CompatibilityResult;
+
+  // Attribute access (REQUIRED for dynamic schema resolution)
+  getAttribute(typeId: TTypeId, path: string): AttributeResult;
 }
 ```
 
 ### HAI3 Internal TypeScript Types
 
-The MFE system uses these internal TypeScript interfaces. Each type includes `GtsMetadata` which contains data extracted from the GTS type ID:
+The MFE system uses these internal TypeScript interfaces. Each type includes `TypeMetadata` which contains data extracted from the type ID by the plugin:
 
 ```typescript
-// Extracted from GTS ID parsing
-interface GtsMetadata {
-  readonly typeId: string;      // Full GTS type ID
+// Extracted from type ID parsing via plugin
+interface TypeMetadata {
+  readonly typeId: string;      // Full type ID
   readonly vendor: string;      // Extracted from typeId
   readonly package: string;     // Extracted from typeId
   readonly namespace: string;   // Extracted from typeId
@@ -68,13 +71,13 @@ interface GtsMetadata {
 
 | TypeScript Interface | Extends | Fields | Purpose |
 |---------------------|---------|--------|---------|
-| `MfeDefinition` | `GtsMetadata` | `name, url, entries: string[]` | Deployable MFE unit |
-| `MfeEntry` | `GtsMetadata` | `path, requiredProperties[], optionalProperties[], actions[], domainActions[]` | Entry with communication contract |
-| `ExtensionDomain` | `GtsMetadata` | `sharedProperties[], actions[], extensionsActions[], uiMetadataContract` | Extension point contract |
-| `Extension` | `GtsMetadata` | `domain: string, entry: string, uiMetadata` | Extension binding |
-| `SharedProperty` | `GtsMetadata` | `name, schema` | Property definition (NO default value) |
-| `Action` | `GtsMetadata` | `name, payloadSchema` | Action definition |
-| `ActionsChain` | `GtsMetadata` | `target: string, action: string, payload, next?, fallback?` | Orchestration chain |
+| `MfeDefinition` | `TypeMetadata` | `name, url, entries: string[]` | Deployable MFE unit |
+| `MfeEntry` | `TypeMetadata` | `path, requiredProperties[], optionalProperties[], actions[], domainActions[]` | Entry with communication contract |
+| `ExtensionDomain` | `TypeMetadata` | `sharedProperties[], actions[], extensionsActions[], extensionsUiMeta` | Extension point contract |
+| `Extension` | `TypeMetadata` | `domain: string, entry: string, uiMeta` | Extension binding |
+| `SharedProperty` | `TypeMetadata` | `name, schema` | Property definition (NO default value) |
+| `Action` | `TypeMetadata` | `target (x-gts-ref), type (x-gts-ref: "/$id"), payload?` | Action type with self-identifying type ID |
+| `ActionsChain` | `TypeMetadata` | `action: Action, next?: ActionsChain, fallback?: ActionsChain` | Orchestration chain (contains instances) |
 
 ### GTS Type ID Format
 
@@ -91,28 +94,33 @@ When using the GTS plugin, the following types are registered with properly stru
 | `gts.hai3.screensets.ext.domain.v1~` | vendor=hai3, package=screensets, namespace=ext, type=domain | Extension point contract |
 | `gts.hai3.screensets.ext.extension.v1~` | vendor=hai3, package=screensets, namespace=ext, type=extension | Extension binding |
 | `gts.hai3.screensets.ext.shared_property.v1~` | vendor=hai3, package=screensets, namespace=ext, type=shared_property | Property definition |
-| `gts.hai3.screensets.ext.action.v1~` | vendor=hai3, package=screensets, namespace=ext, type=action | Action definition |
+| `gts.hai3.screensets.ext.action.v1~` | vendor=hai3, package=screensets, namespace=ext, type=action | Action type with target and self-id |
 | `gts.hai3.screensets.ext.actions_chain.v1~` | vendor=hai3, package=screensets, namespace=ext, type=actions_chain | Orchestration chain |
 
 ### GTS JSON Schema Definitions
 
-Each GTS type has a corresponding JSON Schema with proper `$id` and `x-gts-ref` references:
+Each of the 7 GTS types has a corresponding JSON Schema with proper `$id` and `x-gts-ref` references. The Action type uses `x-gts-ref: "/$id"` for self-reference per GTS spec:
 
 ```json
 {
-  "$id": "gts://gts.hai3.screensets.mfe.definition.v1~",
+  "$id": "gts://gts.hai3.screensets.ext.action.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
-    "name": { "type": "string", "minLength": 1 },
-    "url": { "type": "string", "format": "uri" },
-    "entries": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.mfe.entry.v1~*" },
-      "minItems": 1
+    "target": {
+      "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~* | gts.hai3.screensets.ext.extension.v1~*",
+      "description": "Type ID of the target ExtensionDomain or Extension"
+    },
+    "type": {
+      "x-gts-ref": "/$id",
+      "description": "Self-reference to this action's type ID (the action's own $id)"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Optional action payload"
     }
   },
-  "required": ["name", "url", "entries"]
+  "required": ["target", "type"]
 }
 ```
 
@@ -126,6 +134,13 @@ entry.requiredProperties  is subset of  domain.sharedProperties
 entry.actions             is subset of  domain.extensionsActions
 domain.actions            is subset of  entry.domainActions
 ```
+
+### Dynamic uiMeta Validation
+
+An `Extension`'s `uiMeta` must conform to its domain's `extensionsUiMeta` schema. Since the domain reference is dynamic, this validation uses the GTS attribute selector syntax at runtime:
+- The orchestrator calls `plugin.getAttribute(extension.domain, 'extensionsUiMeta')` to resolve the schema
+- Then validates `extension.uiMeta` against the resolved schema
+- See Decision 9 in `design.md` for implementation details
 
 ### Actions Chain Runtime
 
@@ -157,8 +172,7 @@ domain.actions            is subset of  entry.domainActions
 - `packages/screensets/src/mfe/plugins/gts/` - GTS plugin implementation (default)
 
 **Modified packages:**
-- `packages/screensets/src/store/` - Isolated state instances
-- `packages/screensets/src/events/` - Cross-MFE event isolation
+- `packages/screensets/src/state/` - Isolated state instances (uses @hai3/state)
 - `packages/screensets/src/screensets/` - Extension domain registration
 - `packages/framework/src/plugins/microfrontends/` - Accept Type System plugin from screensets
 

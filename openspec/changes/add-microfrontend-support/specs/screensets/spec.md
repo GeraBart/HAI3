@@ -11,12 +11,13 @@ The system SHALL abstract the Type System as a pluggable dependency.
 - **AND** the interface SHALL define type ID operations (`parseTypeId`, `isValidTypeId`, `buildTypeId`)
 - **AND** the interface SHALL define schema registry operations (`registerSchema`, `validateInstance`, `getSchema`)
 - **AND** the interface SHALL define query operations (`query`, `listAll`)
-- **AND** the interface MAY define optional compatibility checking (`checkCompatibility`)
+- **AND** the interface SHALL define required compatibility checking (`checkCompatibility`)
+- **AND** the interface SHALL define attribute access (`getAttribute`) for dynamic schema resolution
 
 #### Scenario: GTS plugin as default implementation
 
 - **WHEN** a developer imports `@hai3/screensets/plugins/gts`
-- **THEN** the package SHALL export a `gtsTypeSystem` implementing `TypeSystemPlugin`
+- **THEN** the package SHALL export a `gtsPlugin` implementing `TypeSystemPlugin`
 - **AND** the plugin SHALL use `@globaltypesystem/gts-ts` internally
 - **AND** the plugin SHALL handle GTS type ID format: `gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.<MINOR>]~`
 
@@ -40,7 +41,7 @@ The system SHALL abstract the Type System as a pluggable dependency.
 
 - **WHEN** the orchestrator initializes with a plugin
 - **THEN** the orchestrator SHALL register HAI3 MFE types via `plugin.registerSchema()`
-- **AND** registered types SHALL include:
+- **AND** registered types SHALL include (7 types total):
   - `gts.hai3.screensets.mfe.definition.v1~` (MfeDefinition)
   - `gts.hai3.screensets.mfe.entry.v1~` (MfeEntry)
   - `gts.hai3.screensets.ext.domain.v1~` (ExtensionDomain)
@@ -56,9 +57,9 @@ The system SHALL abstract the Type System as a pluggable dependency.
 - **AND** type ID format SHALL be determined by the custom plugin
 - **AND** validation behavior SHALL be determined by the custom plugin
 
-#### Scenario: GtsMetadata extraction from type ID
+#### Scenario: TypeMetadata extraction from type ID
 
-- **WHEN** parsing a GTS type ID like `gts.hai3.screensets.mfe.definition.v1~`
+- **WHEN** parsing a type ID like `gts.hai3.screensets.mfe.definition.v1~` via the plugin
 - **THEN** the system SHALL extract `vendor` as "hai3"
 - **AND** the system SHALL extract `package` as "screensets"
 - **AND** the system SHALL extract `namespace` as "mfe"
@@ -66,9 +67,9 @@ The system SHALL abstract the Type System as a pluggable dependency.
 - **AND** the system SHALL extract `version.major` as 1
 - **AND** the system SHALL store the full `typeId`
 
-#### Scenario: GtsMetadata extraction with minor version
+#### Scenario: TypeMetadata extraction with minor version
 
-- **WHEN** parsing a GTS type ID like `gts.hai3.screensets.mfe.definition.v1.2~`
+- **WHEN** parsing a type ID like `gts.hai3.screensets.mfe.definition.v1.2~` via the plugin
 - **THEN** the system SHALL extract `version.major` as 1
 - **AND** the system SHALL extract `version.minor` as 2
 
@@ -79,28 +80,68 @@ The system SHALL abstract the Type System as a pluggable dependency.
 - **AND** the system SHALL validate that referenced type IDs follow the correct format
 - **AND** wildcard patterns like `gts.hai3.screensets.mfe.entry.v1~*` SHALL match any instance of that type
 
+#### Scenario: Attribute access via plugin
+
+- **WHEN** calling `plugin.getAttribute(typeId, path)`
+- **THEN** the plugin SHALL resolve the property path from the type's registered schema
+- **AND** the result SHALL indicate whether the attribute was resolved
+- **AND** the result SHALL contain the value if resolved
+- **AND** the result SHALL contain an error message if not resolved
+
+#### Scenario: GTS attribute selector format
+
+- **WHEN** using the GTS plugin's getAttribute method
+- **THEN** the method SHALL support GTS attribute selector syntax: `typeId@propertyPath`
+- **AND** nested paths SHALL be supported (e.g., `typeId@property.nested.field`)
+- **AND** the method SHALL work with derived types (e.g., `gts.hai3.screensets.ext.domain.v1~hai3.layout.domain.sidebar.v1@extensionsUiMeta`)
+
+### Requirement: Dynamic uiMeta Validation
+
+The system SHALL validate Extension's uiMeta against its domain's extensionsUiMeta schema at runtime.
+
+#### Scenario: uiMeta validation via attribute selector
+
+- **WHEN** registering an extension binding
+- **THEN** the orchestrator SHALL resolve the domain's extensionsUiMeta via `plugin.getAttribute()`
+- **AND** the orchestrator SHALL validate extension.uiMeta against the resolved schema
+- **AND** validation failure SHALL prevent extension registration
+- **AND** error message SHALL identify the uiMeta validation failure
+
+#### Scenario: uiMeta validation with derived domains
+
+- **WHEN** an extension binds to a derived domain (e.g., `gts.hai3.screensets.ext.domain.v1~hai3.layout.domain.sidebar.v1`)
+- **THEN** the orchestrator SHALL use the derived domain's narrowed extensionsUiMeta schema
+- **AND** uiMeta validation SHALL enforce the derived schema requirements
+
+#### Scenario: uiMeta schema resolution failure
+
+- **WHEN** the orchestrator cannot resolve extensionsUiMeta from the domain
+- **THEN** extension registration SHALL fail
+- **AND** error message SHALL indicate the attribute resolution failure
+- **AND** error SHALL include the domain type ID
+
 ### Requirement: MFE TypeScript Type System
 
-The system SHALL define internal TypeScript types for microfrontend architecture using a symmetric contract model. All types extend `GtsMetadata` which contains data extracted from the GTS type ID.
+The system SHALL define internal TypeScript types for microfrontend architecture using a symmetric contract model. All types extend `TypeMetadata` which contains data extracted from the type ID via the plugin.
 
-#### Scenario: GtsMetadata interface
+#### Scenario: TypeMetadata interface
 
 - **WHEN** defining any MFE type
-- **THEN** the type SHALL extend `GtsMetadata` interface
-- **AND** `GtsMetadata` SHALL include `typeId`, `vendor`, `package`, `namespace`, `type`, and `version`
+- **THEN** the type SHALL extend `TypeMetadata` interface
+- **AND** `TypeMetadata` SHALL include `typeId`, `vendor`, `package`, `namespace`, `type`, and `version`
 - **AND** `version` SHALL contain `major` (required) and `minor` (optional)
 
 #### Scenario: MFE type definition
 
 - **WHEN** a vendor creates an MFE manifest
-- **THEN** the manifest SHALL conform to `MfeDefinition` TypeScript interface (extends GtsMetadata)
+- **THEN** the manifest SHALL conform to `MfeDefinition` TypeScript interface (extends TypeMetadata)
 - **AND** the manifest SHALL include name, url, and entries array
 - **AND** entries SHALL reference valid MfeEntry type IDs (e.g., `gts.vendor.package.mfe.entry.v1~`)
 
 #### Scenario: MFE entry type definition
 
 - **WHEN** a vendor defines an MFE entry point
-- **THEN** the entry SHALL conform to `MfeEntry` TypeScript interface (extends GtsMetadata)
+- **THEN** the entry SHALL conform to `MfeEntry` TypeScript interface (extends TypeMetadata)
 - **AND** the entry SHALL specify path, requiredProperties, optionalProperties, actions, and domainActions
 - **AND** requiredProperties and optionalProperties SHALL reference SharedProperty type IDs
 - **AND** actions and domainActions SHALL reference Action type IDs
@@ -108,44 +149,44 @@ The system SHALL define internal TypeScript types for microfrontend architecture
 #### Scenario: Extension domain type definition
 
 - **WHEN** a host defines an extension domain
-- **THEN** the domain SHALL conform to `ExtensionDomain` TypeScript interface (extends GtsMetadata)
-- **AND** the domain SHALL specify sharedProperties, actions, extensionsActions, and uiMetadataContract
+- **THEN** the domain SHALL conform to `ExtensionDomain` TypeScript interface (extends TypeMetadata)
+- **AND** the domain SHALL specify sharedProperties, actions, extensionsActions, and extensionsUiMeta
 - **AND** sharedProperties SHALL reference SharedProperty type IDs
 - **AND** actions and extensionsActions SHALL reference Action type IDs
-- **AND** uiMetadataContract SHALL be a valid JSON Schema
+- **AND** extensionsUiMeta SHALL be a valid JSON Schema
+- **AND** derived domains MAY narrow extensionsUiMeta through GTS type inheritance
 
 #### Scenario: Extension binding type definition
 
 - **WHEN** binding an MFE entry to a domain
-- **THEN** the binding SHALL conform to `Extension` TypeScript interface (extends GtsMetadata)
+- **THEN** the binding SHALL conform to `Extension` TypeScript interface (extends TypeMetadata)
 - **AND** the binding SHALL reference valid domain and entry type IDs
 - **AND** domain SHALL reference an ExtensionDomain type ID (e.g., `gts.hai3.screensets.ext.domain.v1~`)
 - **AND** entry SHALL reference an MfeEntry type ID (e.g., `gts.hai3.screensets.mfe.entry.v1~`)
-- **AND** uiMetadata SHALL conform to the domain's uiMetadataContract
+- **AND** uiMeta SHALL conform to the domain's extensionsUiMeta schema
 
 #### Scenario: Shared property type definition
 
 - **WHEN** defining a shared property
-- **THEN** the property SHALL conform to `SharedProperty` TypeScript interface (extends GtsMetadata)
+- **THEN** the property SHALL conform to `SharedProperty` TypeScript interface (extends TypeMetadata)
 - **AND** the property SHALL specify name and schema
 - **AND** the property SHALL NOT include a default value
 
 #### Scenario: Action type definition
 
-- **WHEN** defining an action
-- **THEN** the action SHALL conform to `Action` TypeScript interface (extends GtsMetadata)
-- **AND** the action SHALL specify name and payloadSchema
-- **AND** payloadSchema SHALL be a valid JSON Schema
+- **WHEN** defining an action type
+- **THEN** the action SHALL conform to `Action` TypeScript interface (extends TypeMetadata)
+- **AND** the action SHALL specify target (REQUIRED) - uses `x-gts-ref` to reference ExtensionDomain or Extension type ID
+- **AND** the action SHALL specify type (REQUIRED) - uses `x-gts-ref: "/$id"` for self-reference to action's own type ID per GTS spec
+- **AND** the action MAY specify payload (optional object)
 
 #### Scenario: Actions chain type definition
 
 - **WHEN** defining an actions chain
-- **THEN** the chain SHALL conform to `ActionsChain` TypeScript interface (extends GtsMetadata)
-- **AND** the chain SHALL specify target and action
-- **AND** target SHALL be a valid ExtensionDomain or MfeEntry type ID
-- **AND** action SHALL be a valid Action type ID
-- **AND** payload SHALL be optional
-- **AND** next and fallback SHALL be optional recursive ActionsChain references
+- **THEN** the chain SHALL conform to `ActionsChain` TypeScript interface (extends TypeMetadata)
+- **AND** the chain SHALL contain an action INSTANCE (object conforming to Action schema)
+- **AND** next and fallback SHALL be optional ActionsChain INSTANCES (recursive objects)
+- **AND** the chain SHALL NOT contain type ID references for action, next, or fallback
 
 ### Requirement: Contract Matching Validation
 
