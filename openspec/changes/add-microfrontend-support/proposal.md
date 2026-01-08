@@ -15,13 +15,13 @@ HAI3 applications need to compose functionality from multiple independently depl
 
 Each MFE instance and host has its **own isolated HAI3 state instance**. Communication happens ONLY through a symmetric contract:
 - **Shared properties** (parent to child, read-only)
-- **Actions chain** delivered by orchestrator to targets
+- **Actions chain** delivered by ActionsChainsMediator to targets
 
 ### Architectural Decision: Type System Plugin Abstraction
 
 The @hai3/screensets package abstracts the Type System as a **pluggable dependency**:
 
-1. **Internal TypeScript Types**: The package works internally with TypeScript interfaces (`MfeDefinition`, `MfeEntry`, `ExtensionDomain`, etc.)
+1. **Internal TypeScript Types**: The package works internally with TypeScript interfaces (`MfeEntry`, `MfeEntryMF`, `ExtensionDomain`, etc.)
 2. **Required Plugin**: A `TypeSystemPlugin` must be provided at initialization
 3. **Default Implementation**: GTS (`@globaltypesystem/gts-ts`) ships as the default plugin
 4. **Extensibility**: Other Type System implementations can be plugged in
@@ -69,15 +69,43 @@ interface TypeMetadata {
 }
 ```
 
+**Core Types (6 types):**
+
 | TypeScript Interface | Extends | Fields | Purpose |
 |---------------------|---------|--------|---------|
-| `MfeDefinition` | `TypeMetadata` | `name, url, entries: string[]` | Deployable MFE unit |
-| `MfeEntry` | `TypeMetadata` | `path, requiredProperties[], optionalProperties[], actions[], domainActions[]` | Entry with communication contract |
+| `MfeEntry` | `TypeMetadata` | `requiredProperties[], optionalProperties?[], actions[], domainActions[]` | Pure contract type (Abstract Base) |
 | `ExtensionDomain` | `TypeMetadata` | `sharedProperties[], actions[], extensionsActions[], extensionsUiMeta` | Extension point contract |
 | `Extension` | `TypeMetadata` | `domain: string, entry: string, uiMeta` | Extension binding |
 | `SharedProperty` | `TypeMetadata` | `name, schema` | Property definition (NO default value) |
 | `Action` | `TypeMetadata` | `target (x-gts-ref), type (x-gts-ref: "/$id"), payload?` | Action type with self-identifying type ID |
-| `ActionsChain` | `TypeMetadata` | `action: Action, next?: ActionsChain, fallback?: ActionsChain` | Orchestration chain (contains instances) |
+| `ActionsChain` | `TypeMetadata` | `action: Action, next?: ActionsChain, fallback?: ActionsChain` | Action chain for mediation (contains instances) |
+
+**MF-Specific Types (2 types):**
+
+| TypeScript Interface | Extends | Fields | Purpose |
+|---------------------|---------|--------|---------|
+| `MfManifest` | `TypeMetadata` | `remoteEntry, remoteName, sharedDependencies?, entries?` | Module Federation manifest (standalone) |
+| `MfeEntryMF` | `MfeEntry` | `manifest: string, exposedModule: string` | Module Federation entry (derived) |
+
+**Note on MfeEntry Design:** MfeEntry is a **pure contract** type (abstract base) that defines ONLY the communication interface (properties, actions). Derived types like `MfeEntryMF` add loader-specific fields. This separation ensures the same entry contract works with any loader and allows future loaders (ESM, Import Maps) to add their own derived types.
+
+**Why This Structure Eliminates Parallel Hierarchies:**
+
+The previous design had parallel hierarchies:
+- `MfeDefinition` (abstract) -> `MfeDefinitionMF` (derived)
+- `MfeEntry` (pure contract)
+
+This created redundancy because both hierarchies needed to track entries. The new design:
+
+1. **Makes MfeEntry the abstract base** for entry contracts
+2. **Adds MfeEntryMF as derived** that references its MfManifest
+3. **MfManifest is standalone** containing Module Federation config
+4. **Extension binds to MfeEntry** (or its derived types)
+
+Benefits:
+- **No parallel hierarchies**: Only one entry hierarchy
+- **Future-proof**: ESM loader would add `MfeEntryEsm` derived type with its own manifest reference
+- **Clear ownership**: Entry owns its contract AND references its manifest
 
 ### GTS Type ID Format
 
@@ -87,19 +115,27 @@ The GTS type ID format is: `gts.<vendor>.<package>.<namespace>.<type>.v<MAJOR>[.
 
 When using the GTS plugin, the following types are registered with properly structured GTS type IDs:
 
+**Core Types (6 types):**
+
 | GTS Type ID | Segments | Purpose |
 |-------------|----------|---------|
-| `gts.hai3.screensets.mfe.definition.v1~` | vendor=hai3, package=screensets, namespace=mfe, type=definition | Deployable MFE unit |
-| `gts.hai3.screensets.mfe.entry.v1~` | vendor=hai3, package=screensets, namespace=mfe, type=entry | Entry with communication contract |
+| `gts.hai3.screensets.mfe.entry.v1~` | vendor=hai3, package=screensets, namespace=mfe, type=entry | Pure contract type (Abstract Base) |
 | `gts.hai3.screensets.ext.domain.v1~` | vendor=hai3, package=screensets, namespace=ext, type=domain | Extension point contract |
 | `gts.hai3.screensets.ext.extension.v1~` | vendor=hai3, package=screensets, namespace=ext, type=extension | Extension binding |
 | `gts.hai3.screensets.ext.shared_property.v1~` | vendor=hai3, package=screensets, namespace=ext, type=shared_property | Property definition |
 | `gts.hai3.screensets.ext.action.v1~` | vendor=hai3, package=screensets, namespace=ext, type=action | Action type with target and self-id |
-| `gts.hai3.screensets.ext.actions_chain.v1~` | vendor=hai3, package=screensets, namespace=ext, type=actions_chain | Orchestration chain |
+| `gts.hai3.screensets.ext.actions_chain.v1~` | vendor=hai3, package=screensets, namespace=ext, type=actions_chain | Action chain for mediation |
+
+**MF-Specific Types (2 types):**
+
+| GTS Type ID | Segments | Purpose |
+|-------------|----------|---------|
+| `gts.hai3.screensets.mfe.mf.v1~` | vendor=hai3, package=screensets, namespace=mfe, type=mf | Module Federation manifest (standalone) |
+| `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1` | Derived from MfeEntry | Module Federation entry with manifest reference |
 
 ### GTS JSON Schema Definitions
 
-Each of the 7 GTS types has a corresponding JSON Schema with proper `$id` and `x-gts-ref` references. The Action type uses `x-gts-ref: "/$id"` for self-reference per GTS spec:
+Each of the 6 core types and 2 MF-specific types has a corresponding JSON Schema with proper `$id` and `x-gts-ref` references. The Action type uses `x-gts-ref: "/$id"` for self-reference per GTS spec:
 
 ```json
 {
@@ -108,7 +144,11 @@ Each of the 7 GTS types has a corresponding JSON Schema with proper `$id` and `x
   "type": "object",
   "properties": {
     "target": {
-      "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~* | gts.hai3.screensets.ext.extension.v1~*",
+      "type": "string",
+      "oneOf": [
+        { "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~*" },
+        { "x-gts-ref": "gts.hai3.screensets.ext.extension.v1~*" }
+      ],
       "description": "Type ID of the target ExtensionDomain or Extension"
     },
     "type": {
@@ -124,11 +164,32 @@ Each of the 7 GTS types has a corresponding JSON Schema with proper `$id` and `x
 }
 ```
 
-See `design.md` for complete JSON Schema definitions of all 7 types.
+See `design.md` for complete JSON Schema definitions of all 8 types.
+
+### MfeEntry Type Hierarchy
+
+```
+gts.hai3.screensets.mfe.entry.v1~ (Base - Abstract Contract)
+  |-- requiredProperties: SharedProperty typeId[]
+  |-- optionalProperties: SharedProperty typeId[]
+  |-- actions: Action typeId[]
+  |-- domainActions: Action typeId[]
+  |
+  +-- gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1 (Module Federation)
+        |-- (inherits contract fields from base)
+        |-- manifest: MfManifest typeId (reference to shared MF config)
+        |-- exposedModule: string (federation exposed module name)
+
+gts.hai3.screensets.mfe.mf.v1~ (Standalone - Module Federation Config)
+  |-- remoteEntry: string (URL to remoteEntry.js)
+  |-- remoteName: string (federation container name)
+  |-- sharedDependencies?: SharedDependencyConfig[] (optional override)
+  |-- entries?: MfeEntryMF typeId[] (convenience for discovery)
+```
 
 ### Contract Matching Rules
 
-For injection to be valid:
+For mounting to be valid:
 ```
 entry.requiredProperties  is subset of  domain.sharedProperties
 entry.actions             is subset of  domain.extensionsActions
@@ -138,16 +199,16 @@ domain.actions            is subset of  entry.domainActions
 ### Dynamic uiMeta Validation
 
 An `Extension`'s `uiMeta` must conform to its domain's `extensionsUiMeta` schema. Since the domain reference is dynamic, this validation uses the GTS attribute selector syntax at runtime:
-- The orchestrator calls `plugin.getAttribute(extension.domain, 'extensionsUiMeta')` to resolve the schema
+- The ScreensetsRuntime calls `plugin.getAttribute(extension.domain, 'extensionsUiMeta')` to resolve the schema
 - Then validates `extension.uiMeta` against the resolved schema
 - See Decision 9 in `design.md` for implementation details
 
 ### Actions Chain Runtime
 
-1. Orchestrator delivers actions chain to target (domain or entry)
+1. ActionsChainsMediator delivers actions chain to target (domain or entry)
 2. Target executes the action (only target understands payload based on action type)
-3. On success: orchestrator delivers `next` chain to its target
-4. On failure: orchestrator delivers `fallback` chain to its target
+3. On success: mediator delivers `next` chain to its target
+4. On failure: mediator delivers `fallback` chain to its target
 5. Recursive until chain ends (no next/fallback)
 
 ### Hierarchical Extension Domains
@@ -164,12 +225,13 @@ An `Extension`'s `uiMeta` must conform to its domain's `extensionsUiMeta` schema
 ### Affected code
 
 **New packages:**
-- `packages/screensets/src/mfe/` - MFE runtime, loader, orchestrator
+- `packages/screensets/src/mfe/` - MFE runtime, loader, ActionsChainsMediator
 - `packages/screensets/src/mfe/types/` - Internal TypeScript type definitions
 - `packages/screensets/src/mfe/validation/` - Contract matching validation
-- `packages/screensets/src/mfe/orchestrator/` - Actions chain delivery
+- `packages/screensets/src/mfe/mediator/` - ActionsChainsMediator for action chain delivery
 - `packages/screensets/src/mfe/plugins/` - Type System plugin interface and implementations
 - `packages/screensets/src/mfe/plugins/gts/` - GTS plugin implementation (default)
+- `packages/screensets/src/mfe/loader/` - MFE loader (Module Federation)
 
 **Modified packages:**
 - `packages/screensets/src/state/` - Isolated state instances (uses @hai3/state)
@@ -179,13 +241,13 @@ An `Extension`'s `uiMeta` must conform to its domain's `extensionsUiMeta` schema
 ### Breaking changes
 - **BREAKING**: MFEs require Type System-compliant type definitions for integration
 - **BREAKING**: Extension points must define explicit contracts
-- **BREAKING**: `ScreensetsOrchestratorConfig` now requires `typeSystem` parameter
+- **BREAKING**: `ScreensetsRuntimeConfig` now requires `typeSystem` parameter
 
 ### Migration strategy
 1. Define `TypeSystemPlugin` interface in @hai3/screensets
 2. Create GTS plugin implementation as default
-3. Update orchestrator to require plugin injection
-4. Define internal TypeScript types for MFE architecture
+3. Implement ScreensetsRuntime to require plugin at initialization
+4. Define internal TypeScript types for MFE architecture (6 core + 2 MF-specific)
 5. Register HAI3 types via plugin at initialization
 6. Propagate plugin through @hai3/framework layers
 7. Update documentation and examples

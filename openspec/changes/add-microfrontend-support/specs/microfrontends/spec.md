@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
-**Key principle**: This spec defines Flux integration only. All MFE orchestration (loading, mounting, bridging) is handled by `@hai3/screensets`. The framework plugin wires the orchestrator into the Flux data flow pattern.
+**Key principle**: This spec defines Flux integration only. All MFE lifecycle management (loading, mounting, bridging) is handled by `@hai3/screensets`. The framework plugin wires the ScreensetsRuntime into the Flux data flow pattern.
 
 ### Requirement: Microfrontends Plugin
 
-The system SHALL provide a `microfrontends()` plugin in `@hai3/framework` that wires the MFE orchestrator from `@hai3/screensets` into the Flux data flow pattern.
+The system SHALL provide a `microfrontends()` plugin in `@hai3/framework` that wires the ScreensetsRuntime from `@hai3/screensets` into the Flux data flow pattern.
 
 #### Scenario: Register microfrontends plugin
 
@@ -84,30 +84,30 @@ mfeActions.loadMfe(MFE_ANALYTICS);
 #### Scenario: Handle MFE host action
 
 ```typescript
-// Called by orchestrator when MFE requests host action
+// Called by ScreensetsRuntime when MFE requests host action
 mfeActions.handleMfeHostAction(mfeTypeId, actionTypeId, payload);
 // Emits: 'mfe/hostActionRequested' with { mfeTypeId, actionTypeId, payload }
 ```
 
-- **WHEN** the orchestrator's `onHostAction` callback is invoked
+- **WHEN** the ScreensetsRuntime's `onHostAction` callback is invoked
 - **THEN** it SHALL call `handleMfeHostAction` action
 - **AND** the action SHALL emit `'mfe/hostActionRequested'` event
-- **AND** effects SHALL handle the event and call orchestrator methods
+- **AND** effects SHALL handle the event and call ScreensetsRuntime methods
 
 ### Requirement: MFE Effects
 
-The system SHALL provide MFE effects that subscribe to events, call orchestrator methods, and dispatch to slices.
+The system SHALL provide MFE effects that subscribe to events, call ScreensetsRuntime methods, and dispatch to slices.
 
 #### Scenario: Load effect handles loadRequested event
 
 ```typescript
-import { MfeOrchestrator } from '@hai3/screensets';
+import { ScreensetsRuntime } from '@hai3/screensets';
 
-// Effect subscribes to event, calls orchestrator, dispatches to slice
+// Effect subscribes to event, calls runtime, dispatches to slice
 eventBus.on('mfe/loadRequested', async ({ mfeTypeId }) => {
   dispatch(mfeSlice.actions.setLoading({ mfeTypeId }));
   try {
-    await orchestrator.load(mfeTypeId);
+    await runtime.loadMfe(mfeTypeId);
     dispatch(mfeSlice.actions.setLoaded({ mfeTypeId }));
   } catch (error) {
     dispatch(mfeSlice.actions.setError({ mfeTypeId, error: error.message }));
@@ -117,7 +117,7 @@ eventBus.on('mfe/loadRequested', async ({ mfeTypeId }) => {
 
 - **WHEN** `'mfe/loadRequested'` event is emitted
 - **THEN** the effect SHALL dispatch `setLoading` to mfeSlice
-- **AND** the effect SHALL call `orchestrator.load()`
+- **AND** the effect SHALL call `runtime.loadMfe()`
 - **AND** on success, the effect SHALL dispatch `setLoaded`
 - **AND** on failure, the effect SHALL dispatch `setError`
 - **AND** the effect SHALL NOT call any actions (prevents loops)
@@ -129,14 +129,14 @@ eventBus.on('mfe/hostActionRequested', async ({ mfeTypeId, actionTypeId, payload
   if (conformsTo(actionTypeId, HAI3_ACTION_SHOW_POPUP)) {
     const { entryTypeId, props } = payload as ShowPopupPayload;
     const container = document.getElementById('popup-domain')!;
-    orchestrator.mount(mfeTypeId, entryTypeId, container);
+    runtime.mountExtension(mfeTypeId, entryTypeId, container);
     dispatch(layoutSlice.actions.showPopup({ mfeTypeId, entryTypeId }));
   }
 });
 ```
 
 - **WHEN** `'mfe/hostActionRequested'` event with `show_popup` action is received
-- **THEN** the effect SHALL call `orchestrator.mount()` for the popup entry
+- **THEN** the effect SHALL call `runtime.mountExtension()` for the popup entry
 - **AND** the effect SHALL dispatch to `layoutSlice`
 
 ### Requirement: MFE Load State Tracking
@@ -219,25 +219,25 @@ const MFE_ANALYTICS = 'gts.hai3.mfe.type.v1~acme.analytics._.dashboard.v1~' as G
 // Action emits event
 app.actions.navigateToMfe({ mfeTypeId: MFE_ANALYTICS });
 // Emits 'navigation/mfeRequested' event
-// Effect handles: calls orchestrator.load(), then orchestrator.mount()
+// Effect handles: calls runtime.loadMfe(), then runtime.mountExtension()
 ```
 
 - **WHEN** navigating to a registered MFE by GTS type ID
 - **THEN** the action SHALL emit `'navigation/mfeRequested'` event
-- **AND** the effect SHALL call `orchestrator.load()` then `orchestrator.mount()`
+- **AND** the effect SHALL call `runtime.loadMfe()` then `runtime.mountExtension()`
 - **AND** on error, the effect SHALL dispatch error to slice
 
 #### Scenario: Navigate away from MFE
 
 ```typescript
 app.actions.navigateToScreenset({ screensetId: 'local-screenset' });
-// Effect calls orchestrator.unmount() for previous MFE
-// Orchestrator cleans up bridge subscriptions
+// Effect unmounts previous MFE via runtime
+// Runtime cleans up bridge subscriptions
 ```
 
 - **WHEN** navigating away from an MFE screenset
-- **THEN** the effect SHALL call `orchestrator.unmount()` for the previous MFE
-- **AND** the orchestrator SHALL clean up all bridge subscriptions
+- **THEN** the effect SHALL unmount the previous MFE via runtime
+- **AND** the runtime SHALL clean up all bridge subscriptions
 
 ### Requirement: MFE Popup Rendering
 
@@ -260,13 +260,13 @@ await bridge.requestHostAction(HAI3_ACTION_SHOW_POPUP, {
 // 2. Bridge calls onHostAction callback
 // 3. Callback invokes handleMfeHostAction action
 // 4. Action emits 'mfe/hostActionRequested' event
-// 5. Effect handles event, calls orchestrator.mount() for popup entry
+// 5. Effect handles event, calls runtime.mountExtension() for popup entry
 ```
 
 - **WHEN** an MFE requests showPopup with GTS entry type ID
 - **THEN** the bridge (from @hai3/screensets) SHALL validate the payload
 - **AND** the bridge SHALL call onHostAction callback
-- **AND** the effect SHALL call `orchestrator.mount()` for the popup entry
+- **AND** the effect SHALL call `runtime.mountExtension()` for the popup entry
 - **AND** the popup SHALL render in its own Shadow DOM container
 
 #### Scenario: MFE popup closes

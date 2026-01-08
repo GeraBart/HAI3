@@ -24,52 +24,54 @@ The system SHALL abstract the Type System as a pluggable dependency.
 #### Scenario: GTS type ID validation
 
 - **WHEN** validating a GTS type ID
-- **THEN** the plugin SHALL accept valid type IDs like `gts.hai3.screensets.mfe.definition.v1~`
+- **THEN** the plugin SHALL accept valid type IDs like `gts.hai3.screensets.mfe.entry.v1~`
 - **AND** the plugin SHALL reject invalid formats like `gts.hai3.mfe.v1~` (missing segments)
 - **AND** the plugin SHALL reject formats without trailing tilde
 - **AND** the plugin SHALL reject formats without version prefix "v"
 
-#### Scenario: Plugin injection at initialization
+#### Scenario: Plugin requirement at initialization
 
-- **WHEN** creating a screensets orchestrator
-- **THEN** the `ScreensetsOrchestratorConfig` SHALL require a `typeSystem` parameter
-- **AND** the orchestrator SHALL use the plugin for all type ID operations
-- **AND** the orchestrator SHALL use the plugin for schema validation
+- **WHEN** creating a ScreensetsRuntime
+- **THEN** the `ScreensetsRuntimeConfig` SHALL require a `typeSystem` parameter
+- **AND** the runtime SHALL use the plugin for all type ID operations
+- **AND** the runtime SHALL use the plugin for schema validation
 - **AND** initialization without a plugin SHALL throw an error
 
 #### Scenario: HAI3 type registration via plugin
 
-- **WHEN** the orchestrator initializes with a plugin
-- **THEN** the orchestrator SHALL register HAI3 MFE types via `plugin.registerSchema()`
-- **AND** registered types SHALL include (7 types total):
-  - `gts.hai3.screensets.mfe.definition.v1~` (MfeDefinition)
-  - `gts.hai3.screensets.mfe.entry.v1~` (MfeEntry)
+- **WHEN** the ScreensetsRuntime initializes with a plugin
+- **THEN** the runtime SHALL register HAI3 MFE types via `plugin.registerSchema()`
+- **AND** registered types SHALL include 6 core types:
+  - `gts.hai3.screensets.mfe.entry.v1~` (MfeEntry - Abstract Base)
   - `gts.hai3.screensets.ext.domain.v1~` (ExtensionDomain)
   - `gts.hai3.screensets.ext.extension.v1~` (Extension)
   - `gts.hai3.screensets.ext.shared_property.v1~` (SharedProperty)
   - `gts.hai3.screensets.ext.action.v1~` (Action)
   - `gts.hai3.screensets.ext.actions_chain.v1~` (ActionsChain)
+- **AND** registered types SHALL include 2 MF-specific types:
+  - `gts.hai3.screensets.mfe.mf.v1~` (MfManifest - Standalone)
+  - `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1` (MfeEntryMF - Derived)
 
 #### Scenario: Custom plugin implementation
 
 - **WHEN** a developer implements a custom `TypeSystemPlugin`
-- **THEN** the implementation SHALL work with the orchestrator
+- **THEN** the implementation SHALL work with the ScreensetsRuntime
 - **AND** type ID format SHALL be determined by the custom plugin
 - **AND** validation behavior SHALL be determined by the custom plugin
 
 #### Scenario: TypeMetadata extraction from type ID
 
-- **WHEN** parsing a type ID like `gts.hai3.screensets.mfe.definition.v1~` via the plugin
+- **WHEN** parsing a type ID like `gts.hai3.screensets.mfe.entry.v1~` via the plugin
 - **THEN** the system SHALL extract `vendor` as "hai3"
 - **AND** the system SHALL extract `package` as "screensets"
 - **AND** the system SHALL extract `namespace` as "mfe"
-- **AND** the system SHALL extract `type` as "definition"
+- **AND** the system SHALL extract `type` as "entry"
 - **AND** the system SHALL extract `version.major` as 1
 - **AND** the system SHALL store the full `typeId`
 
 #### Scenario: TypeMetadata extraction with minor version
 
-- **WHEN** parsing a type ID like `gts.hai3.screensets.mfe.definition.v1.2~` via the plugin
+- **WHEN** parsing a type ID like `gts.hai3.screensets.mfe.entry.v1.2~` via the plugin
 - **THEN** the system SHALL extract `version.major` as 1
 - **AND** the system SHALL extract `version.minor` as 2
 
@@ -102,20 +104,20 @@ The system SHALL validate Extension's uiMeta against its domain's extensionsUiMe
 #### Scenario: uiMeta validation via attribute selector
 
 - **WHEN** registering an extension binding
-- **THEN** the orchestrator SHALL resolve the domain's extensionsUiMeta via `plugin.getAttribute()`
-- **AND** the orchestrator SHALL validate extension.uiMeta against the resolved schema
+- **THEN** the ScreensetsRuntime SHALL resolve the domain's extensionsUiMeta via `plugin.getAttribute()`
+- **AND** the runtime SHALL validate extension.uiMeta against the resolved schema
 - **AND** validation failure SHALL prevent extension registration
 - **AND** error message SHALL identify the uiMeta validation failure
 
 #### Scenario: uiMeta validation with derived domains
 
 - **WHEN** an extension binds to a derived domain (e.g., `gts.hai3.screensets.ext.domain.v1~hai3.layout.domain.sidebar.v1`)
-- **THEN** the orchestrator SHALL use the derived domain's narrowed extensionsUiMeta schema
+- **THEN** the runtime SHALL use the derived domain's narrowed extensionsUiMeta schema
 - **AND** uiMeta validation SHALL enforce the derived schema requirements
 
 #### Scenario: uiMeta schema resolution failure
 
-- **WHEN** the orchestrator cannot resolve extensionsUiMeta from the domain
+- **WHEN** the ScreensetsRuntime cannot resolve extensionsUiMeta from the domain
 - **THEN** extension registration SHALL fail
 - **AND** error message SHALL indicate the attribute resolution failure
 - **AND** error SHALL include the domain type ID
@@ -131,20 +133,34 @@ The system SHALL define internal TypeScript types for microfrontend architecture
 - **AND** `TypeMetadata` SHALL include `typeId`, `vendor`, `package`, `namespace`, `type`, and `version`
 - **AND** `version` SHALL contain `major` (required) and `minor` (optional)
 
-#### Scenario: MFE type definition
-
-- **WHEN** a vendor creates an MFE manifest
-- **THEN** the manifest SHALL conform to `MfeDefinition` TypeScript interface (extends TypeMetadata)
-- **AND** the manifest SHALL include name, url, and entries array
-- **AND** entries SHALL reference valid MfeEntry type IDs (e.g., `gts.vendor.package.mfe.entry.v1~`)
-
-#### Scenario: MFE entry type definition
+#### Scenario: MFE entry type definition (abstract base)
 
 - **WHEN** a vendor defines an MFE entry point
 - **THEN** the entry SHALL conform to `MfeEntry` TypeScript interface (extends TypeMetadata)
-- **AND** the entry SHALL specify path, requiredProperties, optionalProperties, actions, and domainActions
-- **AND** requiredProperties and optionalProperties SHALL reference SharedProperty type IDs
+- **AND** the entry SHALL specify requiredProperties (required), actions (required), and domainActions (required)
+- **AND** the entry MAY specify optionalProperties (optional field)
+- **AND** the entry SHALL NOT contain implementation-specific fields like `path` or loading details
+- **AND** requiredProperties and optionalProperties (if present) SHALL reference SharedProperty type IDs
 - **AND** actions and domainActions SHALL reference Action type IDs
+- **AND** `MfeEntry` SHALL be the abstract base type for all entry contracts
+
+#### Scenario: MFE entry MF type definition (derived for Module Federation)
+
+- **WHEN** a vendor creates an MFE entry for Module Federation 2.0
+- **THEN** the entry SHALL conform to `MfeEntryMF` TypeScript interface (extends MfeEntry)
+- **AND** the entry SHALL include manifest (reference to MfManifest type ID)
+- **AND** the entry SHALL include exposedModule (federation exposed module name)
+- **AND** the entry SHALL inherit all contract fields from MfeEntry base
+
+#### Scenario: MF manifest type definition (standalone)
+
+- **WHEN** a vendor defines a Module Federation manifest
+- **THEN** the manifest SHALL conform to `MfManifest` TypeScript interface (extends TypeMetadata)
+- **AND** the manifest SHALL include remoteEntry (URL to remoteEntry.js)
+- **AND** the manifest SHALL include remoteName (federation container name)
+- **AND** the manifest MAY include sharedDependencies (optional override configuration)
+- **AND** the manifest MAY include entries (convenience field for discovery)
+- **AND** multiple MfeEntryMF instances MAY reference the same manifest
 
 #### Scenario: Extension domain type definition
 
@@ -162,7 +178,7 @@ The system SHALL define internal TypeScript types for microfrontend architecture
 - **THEN** the binding SHALL conform to `Extension` TypeScript interface (extends TypeMetadata)
 - **AND** the binding SHALL reference valid domain and entry type IDs
 - **AND** domain SHALL reference an ExtensionDomain type ID (e.g., `gts.hai3.screensets.ext.domain.v1~`)
-- **AND** entry SHALL reference an MfeEntry type ID (e.g., `gts.hai3.screensets.mfe.entry.v1~`)
+- **AND** entry SHALL reference an MfeEntry type ID (base or derived, e.g., `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1`)
 - **AND** uiMeta SHALL conform to the domain's extensionsUiMeta schema
 
 #### Scenario: Shared property type definition
@@ -188,9 +204,43 @@ The system SHALL define internal TypeScript types for microfrontend architecture
 - **AND** next and fallback SHALL be optional ActionsChain INSTANCES (recursive objects)
 - **AND** the chain SHALL NOT contain type ID references for action, next, or fallback
 
+### Requirement: MfeEntry Type Hierarchy
+
+The system SHALL support a type hierarchy for MfeEntry to enable multiple loader implementations without parallel hierarchies.
+
+#### Scenario: MfeEntry as abstract base
+
+- **WHEN** defining the MfeEntry type
+- **THEN** it SHALL be an abstract base type defining only the communication contract
+- **AND** it SHALL NOT contain loader-specific fields
+- **AND** derived types SHALL inherit all contract fields
+
+#### Scenario: MfeEntryMF as derived type
+
+- **WHEN** a Module Federation entry is created
+- **THEN** it SHALL derive from MfeEntry
+- **AND** it SHALL add manifest (reference to MfManifest)
+- **AND** it SHALL add exposedModule (federation module name)
+- **AND** it SHALL inherit requiredProperties, optionalProperties, actions, domainActions from base
+
+#### Scenario: Future loader extensibility
+
+- **WHEN** a new loader type is needed (e.g., ESM, Import Maps)
+- **THEN** a new derived type (e.g., MfeEntryEsm) SHALL be created
+- **AND** the new type SHALL extend MfeEntry
+- **AND** the new type SHALL add loader-specific fields
+- **AND** existing MfeEntry base and MfeEntryMF SHALL NOT be modified
+
+#### Scenario: Extension binds to MfeEntry hierarchy
+
+- **WHEN** an Extension references an entry
+- **THEN** the entry field SHALL accept MfeEntry or any derived type
+- **AND** contract validation SHALL use the base MfeEntry contract fields
+- **AND** loading SHALL use the derived type's loader-specific fields
+
 ### Requirement: Contract Matching Validation
 
-The system SHALL validate that MFE entries are compatible with extension domains before injection.
+The system SHALL validate that MFE entries are compatible with extension domains before mounting.
 
 #### Scenario: Valid contract matching
 
@@ -245,51 +295,55 @@ Each MFE instance SHALL have its own isolated HAI3 state instance separate from 
 - **THEN** the host state SHALL NOT be modified by MFE state changes
 - **AND** the host SHALL NOT have direct access to MFE state
 
-#### Scenario: Shared properties injection
+#### Scenario: Shared properties propagation
 
 - **WHEN** an MFE entry receives shared properties
 - **THEN** properties SHALL be passed as read-only props
-- **AND** properties SHALL be re-injected when host values change
+- **AND** properties SHALL be updated when host values change
 - **AND** MFE SHALL NOT modify shared properties directly
 
-### Requirement: Actions Chain Orchestration
+### Requirement: Actions Chain Mediation
 
-The system SHALL provide an orchestrator to deliver action chains between domains and extensions, using the Type System plugin for validation.
+The system SHALL provide an ActionsChainsMediator to deliver action chains between domains and extensions, using the Type System plugin for validation.
+
+**Note on terminology:**
+- **ScreensetsRuntime**: Manages MFE lifecycle (loading, mounting, registration, validation)
+- **ActionsChainsMediator**: Mediates action chain delivery between domains and extensions
 
 #### Scenario: Action chain type ID validation
 
-- **WHEN** orchestrator receives an actions chain
-- **THEN** orchestrator SHALL validate target type ID via `plugin.isValidTypeId()`
-- **AND** orchestrator SHALL validate action type ID via `plugin.isValidTypeId()`
+- **WHEN** ActionsChainsMediator receives an actions chain
+- **THEN** mediator SHALL validate target type ID via `plugin.isValidTypeId()`
+- **AND** mediator SHALL validate action type ID via `plugin.isValidTypeId()`
 - **AND** invalid type IDs SHALL cause chain failure
 
 #### Scenario: Action chain execution success path
 
-- **WHEN** orchestrator executes an actions chain
+- **WHEN** ActionsChainsMediator executes an actions chain
 - **AND** target successfully handles the action
 - **AND** chain has a `next` property
-- **THEN** orchestrator SHALL execute the next chain
+- **THEN** mediator SHALL execute the next chain
 - **AND** next chain's target SHALL receive its action
 
 #### Scenario: Action chain execution failure path
 
-- **WHEN** orchestrator executes an actions chain
+- **WHEN** ActionsChainsMediator executes an actions chain
 - **AND** target fails to handle the action
 - **AND** chain has a `fallback` property
-- **THEN** orchestrator SHALL execute the fallback chain
+- **THEN** mediator SHALL execute the fallback chain
 - **AND** fallback chain's target SHALL receive its action
 
 #### Scenario: Action chain termination
 
-- **WHEN** orchestrator executes an actions chain
+- **WHEN** ActionsChainsMediator executes an actions chain
 - **AND** chain has no `next` property (on success)
 - **OR** chain has no `fallback` property (on failure)
 - **THEN** chain execution SHALL terminate
-- **AND** orchestrator SHALL return completion result
+- **AND** mediator SHALL return completion result
 
 #### Scenario: Action payload validation via plugin
 
-- **WHEN** orchestrator delivers an action
+- **WHEN** ActionsChainsMediator delivers an action
 - **THEN** payload SHALL be validated via `plugin.validateInstance()`
 - **AND** validation SHALL use the action's registered payloadSchema
 - **AND** invalid payloads SHALL cause chain failure
@@ -297,16 +351,43 @@ The system SHALL provide an orchestrator to deliver action chains between domain
 #### Scenario: Extension registration
 
 - **WHEN** an MFE entry is mounted
-- **THEN** the entry SHALL register with orchestrator
+- **THEN** the entry SHALL register with ActionsChainsMediator
 - **AND** registration SHALL provide action handler callback
 - **AND** handler SHALL receive actions for that extension
 
 #### Scenario: Extension unregistration
 
 - **WHEN** an MFE entry is unmounted
-- **THEN** the entry SHALL unregister from orchestrator
+- **THEN** the entry SHALL unregister from ActionsChainsMediator
 - **AND** pending actions SHALL be cancelled or failed
-- **AND** orchestrator SHALL not deliver actions to unmounted entries
+- **AND** mediator SHALL not deliver actions to unmounted entries
+
+### Requirement: MFE Loading via MfeEntryMF and MfManifest
+
+The system SHALL load MFE bundles using the MfeEntryMF derived type which references an MfManifest.
+
+#### Scenario: MfeEntryMF loading flow
+
+- **WHEN** loading an MFE from its MfeEntryMF definition
+- **THEN** the loader SHALL validate entry against MfeEntryMF schema
+- **AND** the loader SHALL resolve manifest from entry.manifest reference
+- **AND** the loader SHALL load Module Federation container from manifest.remoteEntry
+- **AND** the loader SHALL get exposed module using entry.exposedModule
+
+#### Scenario: Manifest resolution and caching
+
+- **WHEN** resolving an MfManifest from type ID
+- **THEN** the loader SHALL cache manifests to avoid redundant loading
+- **AND** the loader SHALL validate manifest against MfManifest schema
+- **AND** multiple MfeEntryMF referencing same manifest SHALL reuse cached container
+
+#### Scenario: Module Federation container loading
+
+- **WHEN** loading a Module Federation container
+- **THEN** the loader SHALL load remoteEntry.js script
+- **AND** the loader SHALL get container from window[manifest.remoteName]
+- **AND** the loader SHALL initialize sharing scope
+- **AND** the loader SHALL cache containers per remoteName
 
 ### Requirement: Hierarchical Extension Domains
 
@@ -323,12 +404,12 @@ The system SHALL support hierarchical extension domains where vendor screensets 
 
 - **WHEN** a vendor screenset defines an extension domain
 - **THEN** the domain SHALL be registered with the system
-- **AND** MFE entries compatible with the domain SHALL be injectable
+- **AND** MFE entries compatible with the domain SHALL be mountable
 - **AND** domain contracts SHALL be validated at registration
 
-#### Scenario: Nested extension injection
+#### Scenario: Nested extension mounting
 
-- **WHEN** an MFE entry is injected into a vendor-defined domain
+- **WHEN** an MFE entry is mounted into a vendor-defined domain
 - **AND** that domain is rendered within a base layout domain
 - **THEN** the MFE SHALL render within the nested context
 - **AND** actions chains SHALL traverse the hierarchy correctly
@@ -366,7 +447,7 @@ The Type System plugin SHALL propagate from @hai3/screensets through @hai3/frame
 
 - **WHEN** configuring the @hai3/framework microfrontends plugin
 - **THEN** the plugin configuration SHALL accept a `typeSystem` parameter
-- **AND** the plugin SHALL pass the Type System plugin to the screensets orchestrator
+- **AND** the plugin SHALL pass the Type System plugin to the ScreensetsRuntime
 - **AND** the same plugin instance SHALL be used throughout the application
 
 #### Scenario: Base domains registration via plugin
@@ -378,7 +459,7 @@ The Type System plugin SHALL propagate from @hai3/screensets through @hai3/frame
 
 #### Scenario: Plugin consistency across layers
 
-- **WHEN** an MFE extension accesses the orchestrator
+- **WHEN** an MFE extension accesses the ScreensetsRuntime
 - **THEN** all type ID operations SHALL use the same plugin instance
 - **AND** type IDs from different layers SHALL be compatible
 - **AND** schema validation SHALL be consistent

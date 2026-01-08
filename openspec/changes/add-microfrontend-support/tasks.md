@@ -91,37 +91,46 @@
 
 ### 3.1 Define MFE TypeScript Interfaces (extending TypeMetadata)
 
-- [ ] 3.1.1 Create `MfeDefinition extends TypeMetadata` interface (name, url, entries)
-- [ ] 3.1.2 Create `MfeEntry extends TypeMetadata` interface (path, requiredProperties, optionalProperties, actions, domainActions)
-- [ ] 3.1.3 Create `ExtensionDomain extends TypeMetadata` interface (sharedProperties, actions, extensionsActions, extensionsUiMeta)
-- [ ] 3.1.4 Create `Extension extends TypeMetadata` interface (domain, entry, uiMeta)
-- [ ] 3.1.5 Create `SharedProperty extends TypeMetadata` interface (name, schema)
-- [ ] 3.1.6 Create `Action extends TypeMetadata` interface (name, payloadSchema, target?, payload?)
-- [ ] 3.1.7 Create `ActionsChain extends TypeMetadata` interface (action: Action, next?: ActionsChain, fallback?: ActionsChain) - contains INSTANCES, not references
-- [ ] 3.1.8 Export types from `packages/screensets/src/mfe/types/`
+**Core Types (6 types):**
+- [ ] 3.1.1 Create `MfeEntry extends TypeMetadata` interface (abstract base - requiredProperties, optionalProperties, actions, domainActions)
+- [ ] 3.1.2 Create `ExtensionDomain extends TypeMetadata` interface (sharedProperties, actions, extensionsActions, extensionsUiMeta)
+- [ ] 3.1.3 Create `Extension extends TypeMetadata` interface (domain, entry, uiMeta)
+- [ ] 3.1.4 Create `SharedProperty extends TypeMetadata` interface (name, schema)
+- [ ] 3.1.5 Create `Action extends TypeMetadata` interface (target, type via x-gts-ref /$id, payload?)
+- [ ] 3.1.6 Create `ActionsChain extends TypeMetadata` interface (action: Action, next?: ActionsChain, fallback?: ActionsChain) - contains INSTANCES, not references
+
+**Module Federation Types (2 types):**
+- [ ] 3.1.7 Create `MfManifest extends TypeMetadata` interface (remoteEntry, remoteName, sharedDependencies?, entries?)
+- [ ] 3.1.8 Create `MfeEntryMF extends MfeEntry` interface (manifest: MfManifest typeId, exposedModule)
+- [ ] 3.1.9 Export types from `packages/screensets/src/mfe/types/`
 
 **Traceability**: Requirement "MFE TypeScript Type System" - TypeMetadata interface
 
 ### 3.2 Create GTS JSON Schemas with x-gts-ref
 
-- [ ] 3.2.1 Create schema for `gts.hai3.screensets.mfe.definition.v1~` with `$id` and `x-gts-ref` for entries
-- [ ] 3.2.2 Create schema for `gts.hai3.screensets.mfe.entry.v1~` with `x-gts-ref` for properties and actions
-- [ ] 3.2.3 Create base schema for `gts.hai3.screensets.ext.domain.v1~` with `extensionsUiMeta` as generic object
-- [ ] 3.2.4 Create derived domain schemas that narrow `extensionsUiMeta` through GTS type inheritance
-- [ ] 3.2.5 Create schema for `gts.hai3.screensets.ext.extension.v1~` with `uiMeta` conforming to domain's `extensionsUiMeta`
-- [ ] 3.2.6 Create schema for `gts.hai3.screensets.ext.shared_property.v1~`
-- [ ] 3.2.7 Create schema for `gts.hai3.screensets.ext.action.v1~`
-- [ ] 3.2.8 Create schema for `gts.hai3.screensets.ext.actions_chain.v1~` with `$ref` for action INSTANCE and recursive next/fallback INSTANCES
-- [ ] 3.2.9 Export schemas from `packages/screensets/src/mfe/schemas/gts-schemas.ts`
+**Core Type Schemas (6 types):**
+- [ ] 3.2.1 Create schema for `gts.hai3.screensets.mfe.entry.v1~` (abstract base) with `x-gts-ref` for properties and actions
+- [ ] 3.2.2 Create base schema for `gts.hai3.screensets.ext.domain.v1~` with `extensionsUiMeta` as generic object
+- [ ] 3.2.3 Create derived domain schemas that narrow `extensionsUiMeta` through GTS type inheritance
+- [ ] 3.2.4 Create schema for `gts.hai3.screensets.ext.extension.v1~` with `uiMeta` conforming to domain's `extensionsUiMeta`
+- [ ] 3.2.5 Create schema for `gts.hai3.screensets.ext.shared_property.v1~`
+- [ ] 3.2.6 Create schema for `gts.hai3.screensets.ext.action.v1~`
+- [ ] 3.2.7 Create schema for `gts.hai3.screensets.ext.actions_chain.v1~` with `$ref` for action INSTANCE and recursive next/fallback INSTANCES
+
+**Module Federation Schemas (2 types):**
+- [ ] 3.2.8 Create schema for `gts.hai3.screensets.mfe.mf.v1~` (MfManifest) with remoteEntry, remoteName, sharedDependencies
+- [ ] 3.2.9 Create schema for `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1` (MfeEntryMF derived) with manifest reference and exposedModule
+- [ ] 3.2.10 Export schemas from `packages/screensets/src/mfe/schemas/gts-schemas.ts`
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - HAI3 type registration via plugin, x-gts-ref validation in schemas
 
 ### 3.3 HAI3 Type Registration
 
-- [ ] 3.3.1 Define `HAI3_TYPE_IDS` constant with all 7 GTS type IDs
-- [ ] 3.3.2 Implement `registerHai3Types(plugin)` function
-- [ ] 3.3.3 Register all 7 schemas using `plugin.registerSchema()` with correct GTS type IDs
-- [ ] 3.3.4 Return `HAI3_TYPE_IDS` for orchestrator use
+- [ ] 3.3.1 Define `HAI3_CORE_TYPE_IDS` constant with 6 core GTS type IDs
+- [ ] 3.3.2 Define `HAI3_MF_TYPE_IDS` constant with 2 Module Federation GTS type IDs
+- [ ] 3.3.3 Implement `registerHai3Types(plugin)` function
+- [ ] 3.3.4 Register all 8 schemas (6 core + 2 MF) using `plugin.registerSchema()` with correct GTS type IDs
+- [ ] 3.3.5 Return combined `HAI3_TYPE_IDS` for runtime use
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - HAI3 type registration via plugin
 
@@ -134,27 +143,27 @@
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - x-gts-ref validation in schemas
 
-## Phase 4: Orchestrator with Plugin
+## Phase 4: ScreensetsRuntime with Plugin
 
-**Goal**: Implement the orchestrator with required Type System plugin injection.
+**Goal**: Implement the ScreensetsRuntime with required Type System plugin at initialization.
 
-### 4.1 Orchestrator Configuration
+### 4.1 Runtime Configuration
 
-- [ ] 4.1.1 Create `ScreensetsOrchestratorConfig<TTypeId>` interface
+- [ ] 4.1.1 Create `ScreensetsRuntimeConfig<TTypeId>` interface
 - [ ] 4.1.2 Add required `typeSystem` parameter
-- [ ] 4.1.3 Add optional `onError`, `loadingComponent`, `errorFallbackComponent`, `debug` parameters
-- [ ] 4.1.4 Implement `createScreensetsOrchestrator<TTypeId>(config)` factory
+- [ ] 4.1.3 Add optional `onError`, `loadingComponent`, `errorFallbackComponent`, `debug`, `mfeLoader`, `parentBridge` parameters
+- [ ] 4.1.4 Implement `createScreensetsRuntime<TTypeId>(config)` factory
 
-**Traceability**: Requirement "Type System Plugin Abstraction" - Plugin injection at initialization
+**Traceability**: Requirement "Type System Plugin Abstraction" - Plugin requirement at initialization
 
-### 4.2 Orchestrator Core with Plugin
+### 4.2 ScreensetsRuntime Core with Plugin
 
-- [ ] 4.2.1 Create `MfeOrchestratorImpl<TTypeId>` class
+- [ ] 4.2.1 Create `ScreensetsRuntime<TTypeId>` class
 - [ ] 4.2.2 Store plugin reference as `readonly typeSystem`
 - [ ] 4.2.3 Call `registerHai3Types(plugin)` on initialization
 - [ ] 4.2.4 Throw error if plugin is missing
 
-**Traceability**: Requirement "Type System Plugin Abstraction" - Plugin injection at initialization
+**Traceability**: Requirement "Type System Plugin Abstraction" - Plugin requirement at initialization
 
 ### 4.3 Type ID Validation via Plugin
 
@@ -162,7 +171,7 @@
 - [ ] 4.3.2 Validate action type ID via `plugin.isValidTypeId()` before chain execution
 - [ ] 4.3.3 Return validation error if type IDs are invalid
 
-**Traceability**: Requirement "Actions Chain Orchestration" - Action chain type ID validation
+**Traceability**: Requirement "Actions Chain Mediation" - Action chain type ID validation
 
 ### 4.4 Payload Validation via Plugin
 
@@ -170,7 +179,7 @@
 - [ ] 4.4.2 Use action's registered payloadSchema for validation
 - [ ] 4.4.3 Return validation error details on failure
 
-**Traceability**: Requirement "Actions Chain Orchestration" - Action payload validation via plugin
+**Traceability**: Requirement "Actions Chain Mediation" - Action payload validation via plugin
 
 ---
 
@@ -233,17 +242,17 @@
 
 ### 6.3 Plugin Propagation
 
-- [ ] 6.3.1 Pass plugin to `createScreensetsOrchestrator()` in setup
-- [ ] 6.3.2 Expose orchestrator via `framework.provide('mfeOrchestrator', orchestrator)`
+- [ ] 6.3.1 Pass plugin to `createScreensetsRuntime()` in setup
+- [ ] 6.3.2 Expose runtime via `framework.provide('screensetsRuntime', runtime)`
 - [ ] 6.3.3 Ensure same plugin instance is used throughout
 
 **Traceability**: Requirement "Framework Plugin Propagation" - Plugin consistency across layers
 
 ### 6.4 Framework Plugin Tests
 
-- [ ] 6.4.1 Test plugin propagation from config to orchestrator
+- [ ] 6.4.1 Test plugin propagation from config to runtime
 - [ ] 6.4.2 Test base domain registration with GTS plugin
-- [ ] 6.4.3 Test orchestrator accessibility via framework
+- [ ] 6.4.3 Test runtime accessibility via framework
 
 **Traceability**: Requirement "Framework Plugin Propagation" - all scenarios
 
@@ -265,11 +274,11 @@
 ### 7.2 Shared Properties Injection
 
 - [ ] 7.2.1 Create `SharedPropertiesProvider` component
-- [ ] 7.2.2 Implement read-only property injection via props
+- [ ] 7.2.2 Implement read-only property passing via props
 - [ ] 7.2.3 Implement property update propagation from host
 - [ ] 7.2.4 Add tests for property isolation (no direct modification)
 
-**Traceability**: Requirement "Isolated State Instances" - Shared properties injection
+**Traceability**: Requirement "Isolated State Instances" - Shared properties propagation
 
 ### 7.3 Host State Protection
 
@@ -281,13 +290,13 @@
 
 ---
 
-## Phase 8: Actions Chain Execution
+## Phase 8: Actions Chain Mediation
 
-**Goal**: Implement action chain execution logic.
+**Goal**: Implement ActionsChainsMediator for action chain execution logic.
 
-### 8.1 Chain Execution Logic
+### 8.1 ActionsChainsMediator Implementation
 
-- [ ] 8.1.1 Implement `execute(chain)` method
+- [ ] 8.1.1 Create `ActionsChainsMediator` class with `executeActionsChain(chain)` method
 - [ ] 8.1.2 Implement target resolution (domain or entry)
 - [ ] 8.1.3 Implement action validation against target contract
 - [ ] 8.1.4 Implement success path (execute `next` chain)
@@ -295,27 +304,27 @@
 - [ ] 8.1.6 Implement termination (no next/fallback)
 - [ ] 8.1.7 Implement `ChainResult` return type
 
-**Traceability**: Requirement "Actions Chain Orchestration" - success/failure/termination scenarios
+**Traceability**: Requirement "Actions Chain Mediation" - success/failure/termination scenarios
 
-### 8.2 Extension Registration
+### 8.2 Extension Registration with Mediator
 
-- [ ] 8.2.1 Implement `registerExtension()` method
-- [ ] 8.2.2 Implement `unregisterExtension()` method
+- [ ] 8.2.1 Implement `registerExtensionHandler()` method in ActionsChainsMediator
+- [ ] 8.2.2 Implement `unregisterExtensionHandler()` method in ActionsChainsMediator
 - [ ] 8.2.3 Handle pending actions on unregistration
 - [ ] 8.2.4 Add registration/unregistration tests
 
-**Traceability**: Requirement "Actions Chain Orchestration" - Extension registration/unregistration
+**Traceability**: Requirement "Actions Chain Mediation" - Extension registration/unregistration
 
-### 8.3 Chain Execution Tests
+### 8.3 ActionsChainsMediator Tests
 
 - [ ] 8.3.1 Test action chain success path execution
 - [ ] 8.3.2 Test action chain failure path execution
 - [ ] 8.3.3 Test chain termination scenarios
 - [ ] 8.3.4 Test type ID validation via plugin
 - [ ] 8.3.5 Test payload validation via plugin
-- [ ] 8.3.6 Test extension lifecycle (register/unregister)
+- [ ] 8.3.6 Test extension handler lifecycle (register/unregister)
 
-**Traceability**: Requirement "Actions Chain Orchestration" - all scenarios
+**Traceability**: Requirement "Actions Chain Mediation" - all scenarios
 
 ## Phase 9: Base Layout Domains
 
@@ -344,9 +353,9 @@
 - [ ] 9.3.1 Create `ExtensionDomainSlot` component
 - [ ] 9.3.2 Implement extension rendering within slot
 - [ ] 9.3.3 Handle nested domain rendering
-- [ ] 9.3.4 Add integration tests for nested injection
+- [ ] 9.3.4 Add integration tests for nested mounting
 
-**Traceability**: Requirement "Hierarchical Extension Domains" - Nested extension injection
+**Traceability**: Requirement "Hierarchical Extension Domains" - Nested extension mounting
 
 ---
 
