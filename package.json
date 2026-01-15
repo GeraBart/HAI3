@@ -83,6 +83,20 @@
     "tailwindcss-animate": "1.0.7",
     "zod": "^4.0.0"
   },
+  "overrides": {
+    "pg-cloudflare": "1.2.7",
+    "pg-connection-string": "2.9.1",
+    "pg-pool": "3.10.1",
+    "pg-protocol": "1.10.3",
+    "@swc/core": "1.15.7",
+    "promptfoo": {
+      "@swc/core-darwin-arm64": "1.15.7",
+      "@swc/core-darwin-x64": "1.15.7",
+      "@swc/core-linux-x64-gnu": "1.15.7",
+      "@swc/core-linux-x64-musl": "1.15.7",
+      "@swc/core-win32-x64-msvc": "1.15.7"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "9.27.0",
     "@hai3/studio": "*",
@@ -100,7 +114,7 @@
     "knip": "5.68.0",
     "postcss": "8.4.35",
     "postcss-load-config": "6.0.1",
-    "promptfoo": "^0.120.4",
+    "promptfoo": "0.120.4",
     "tailwindcss": "3.4.1",
     "tsx": "4.20.6",
     "typescript": "5.4.2",
