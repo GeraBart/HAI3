@@ -108,7 +108,7 @@
 
 **Module Federation Schemas (2 types):**
 - [ ] 3.2.7 Create schema for `gts.hai3.screensets.mfe.mf.v1~` (MfManifest) with id field
-- [ ] 3.2.8 Create schema for `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~` (MfeEntryMF derived)
+- [ ] 3.2.8 Create schema for `gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~` (MfeEntryMF derived)
 - [ ] 3.2.9 Export schemas from `packages/screensets/src/mfe/schemas/gts-schemas.ts`
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - HAI3 type registration via plugin
@@ -125,22 +125,22 @@
 
 ---
 
-## Phase 4: ScreensetsRuntime with Plugin
+## Phase 4: ScreensetsRegistry with Plugin
 
-**Goal**: Implement the ScreensetsRuntime with required Type System plugin at initialization.
+**Goal**: Implement the ScreensetsRegistry with required Type System plugin at initialization.
 
 ### 4.1 Runtime Configuration
 
-- [ ] 4.1.1 Create `ScreensetsRuntimeConfig` interface
+- [ ] 4.1.1 Create `ScreensetsRegistryConfig` interface
 - [ ] 4.1.2 Add required `typeSystem` parameter
 - [ ] 4.1.3 Add optional `onError`, `loadingComponent`, `errorFallbackComponent`, `debug`, `mfeLoader`, `parentBridge` parameters
-- [ ] 4.1.4 Implement `createScreensetsRuntime(config)` factory
+- [ ] 4.1.4 Implement `createScreensetsRegistry(config)` factory
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - Plugin requirement at initialization
 
-### 4.2 ScreensetsRuntime Core with Plugin
+### 4.2 ScreensetsRegistry Core with Plugin
 
-- [ ] 4.2.1 Create `ScreensetsRuntime` class
+- [ ] 4.2.1 Create `ScreensetsRegistry` class
 - [ ] 4.2.2 Store plugin reference as `readonly typeSystem`
 - [ ] 4.2.3 Call `registerHai3Types(plugin)` on initialization
 - [ ] 4.2.4 Throw error if plugin is missing
@@ -231,37 +231,36 @@
 
 ### 7.1 Framework Microfrontends Plugin
 
-- [ ] 7.1.1 Create `MicrofrontendsPluginConfig` interface
-- [ ] 7.1.2 Add required `typeSystem` parameter
-- [ ] 7.1.3 Add optional `baseDomains` parameter
-- [ ] 7.1.4 Implement `createMicrofrontendsPlugin(config)` factory
+- [ ] 7.1.1 Implement `microfrontends()` plugin factory with NO configuration parameters
 
-**Traceability**: Requirement "Framework Plugin Propagation" - Framework microfrontends plugin configuration
+**Traceability**: Requirement "Framework Plugin Propagation" - Framework microfrontends plugin (zero-config)
 
-### 7.2 Base Domains Registration
+### 7.2 Base Domains Definition
 
-- [ ] 7.2.1 Create `getBaseDomain(name, plugin)` function
-- [ ] 7.2.2 Build base domain type IDs via `plugin.buildTypeId()`
-- [ ] 7.2.3 Register base domain schemas via `plugin.registerSchema()`
-- [ ] 7.2.4 Implement sidebar, popup, screen, overlay base domains
+- [ ] 7.2.1 Create `createSidebarDomain()` factory returning domain instance
+- [ ] 7.2.2 Create `createPopupDomain()` factory returning domain instance
+- [ ] 7.2.3 Create `createScreenDomain()` factory returning domain instance
+- [ ] 7.2.4 Create `createOverlayDomain()` factory returning domain instance
+- [ ] 7.2.5 Document that domains are registered via `runtime.registerDomain()` at runtime, NOT at plugin init
 
-**Traceability**: Requirement "Framework Plugin Propagation" - Base domains registration via plugin
+**Traceability**: Requirement "Framework Plugin Propagation" - Base domains (dynamic registration via runtime)
 
 ### 7.3 Plugin Propagation
 
-- [ ] 7.3.1 Pass plugin to `createScreensetsRuntime()` in setup
-- [ ] 7.3.2 Expose runtime via `framework.provide('screensetsRuntime', runtime)`
+- [ ] 7.3.1 Pass plugin to `createScreensetsRegistry()` in setup
+- [ ] 7.3.2 Expose runtime via `framework.provide('screensetsRegistry', runtime)`
 - [ ] 7.3.3 Ensure same plugin instance is used throughout
 
 **Traceability**: Requirement "Framework Plugin Propagation" - Plugin consistency across layers
 
 ### 7.4 Framework Plugin Tests
 
-- [ ] 7.4.1 Test plugin propagation from config to runtime
-- [ ] 7.4.2 Test base domain registration with GTS plugin
-- [ ] 7.4.3 Test runtime accessibility via framework
+- [ ] 7.4.1 Test microfrontends() accepts no parameters
+- [ ] 7.4.2 Test microfrontends({ anything }) throws error
+- [ ] 7.4.3 Test plugin obtains screensetsRegistry from framework
+- [ ] 7.4.4 Test runtime.registerDomain() works for base domains at runtime
 
-**Traceability**: Requirement "Framework Plugin Propagation" - all scenarios
+**Traceability**: Requirement "Framework Plugin Propagation" - all scenarios (zero-config, dynamic registration)
 
 ---
 
@@ -362,10 +361,10 @@
 
 ### 10.1 Define Base Domain Contracts
 
-- [ ] 10.1.1 Define sidebar domain: `gts.hai3.screensets.ext.domain.sidebar.v1~`
-- [ ] 10.1.2 Define popup domain: `gts.hai3.screensets.ext.domain.popup.v1~`
-- [ ] 10.1.3 Define screen domain: `gts.hai3.screensets.ext.domain.screen.v1~`
-- [ ] 10.1.4 Define overlay domain: `gts.hai3.screensets.ext.domain.overlay.v1~`
+- [ ] 10.1.1 Define sidebar domain: `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.sidebar.v1~`
+- [ ] 10.1.2 Define popup domain: `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.popup.v1~`
+- [ ] 10.1.3 Define screen domain: `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.screen.v1~`
+- [ ] 10.1.4 Define overlay domain: `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.overlay.v1~`
 
 **Traceability**: Requirement "Hierarchical Extension Domains" - Base layout domains
 
@@ -461,35 +460,33 @@
 
 ## Phase 13: @hai3/framework Microfrontends Plugin
 
-**Goal**: Implement the microfrontends plugin that wires ScreensetsRuntime into Flux data flow.
+**Goal**: Implement the microfrontends plugin that wires ScreensetsRegistry into Flux data flow.
 
 ### 13.1 Plugin Infrastructure
 
 - [ ] 13.1.1 Create `packages/framework/src/plugins/microfrontends/index.ts`
-- [ ] 13.1.2 Define `MicrofrontendsPluginConfig` interface with `typeSystem`, `remotes`, `styleIsolation` options
-- [ ] 13.1.3 Implement `microfrontends()` plugin factory function
-- [ ] 13.1.4 Add dependency check for `screensets` plugin
+- [ ] 13.1.2 Implement `microfrontends()` plugin factory with NO configuration parameters
+- [ ] 13.1.3 Add test verifying that `microfrontends({ anything })` throws an error - plugin accepts NO config
+- [ ] 13.1.4 Verify screensetsRegistry is available from framework
 - [ ] 13.1.5 Export plugin from `@hai3/framework`
 
-**Traceability**: Requirement "Microfrontends Plugin" - Plugin registration
+**Traceability**: Requirement "Microfrontends Plugin" - Plugin registration (zero-config)
 
 ### 13.2 MFE Actions
 
 - [ ] 13.2.1 Create `packages/framework/src/plugins/microfrontends/actions.ts`
-- [ ] 13.2.2 Implement `loadMfe(entryTypeId)` action - emits `'mfe/loadRequested'` event
-- [ ] 13.2.3 Implement `handleMfeHostAction(entryTypeId, actionTypeId, payload)` action
-- [ ] 13.2.4 Implement `navigateToMfe(entryTypeId)` action - emits `'navigation/mfeRequested'` event
-- [ ] 13.2.5 Export actions as `mfeActions` from plugin
+- [ ] 13.2.2 Implement `mountExtension(extensionId)` action - emits `'mfe/mountRequested'` event
+- [ ] 13.2.3 Implement `handleMfeHostAction(extensionId, actionTypeId, payload)` action
+- [ ] 13.2.4 Export actions as `mfeActions` from plugin
 
-**Traceability**: Requirement "MFE Actions" - Load, host action, and navigation actions
+**Traceability**: Requirement "MFE Actions" - Mount and host action (navigation is handled by mounting on screen domain)
 
 ### 13.3 MFE Effects
 
 - [ ] 13.3.1 Create `packages/framework/src/plugins/microfrontends/effects.ts`
-- [ ] 13.3.2 Implement load effect - subscribes to `'mfe/loadRequested'`, calls `runtime.loadMfe()`
-- [ ] 13.3.3 Implement host action effect - handles popup, sidebar, and custom actions
-- [ ] 13.3.4 Implement navigation effect - loads and mounts MFE on navigation
-- [ ] 13.3.5 Implement unmount effect - cleans up on navigation away
+- [ ] 13.3.2 Implement mount effect - subscribes to `'mfe/mountRequested'`, calls `runtime.mountExtension()` (screen domain mount = navigation)
+- [ ] 13.3.3 Implement host action effect - handles load_ext/unload_ext for popup, sidebar, overlay, and custom domains
+- [ ] 13.3.4 Implement unmount effect - cleans up on domain unload
 
 **Traceability**: Requirement "MFE Effects" - Event handlers and runtime calls
 
@@ -515,19 +512,18 @@
 
 ### 13.6 Navigation Integration
 
-- [ ] 13.6.1 Integrate MFE loading with navigation plugin
-- [ ] 13.6.2 Implement route-based MFE mounting
-- [ ] 13.6.3 Handle navigation cleanup (unmount previous MFE)
-- [ ] 13.6.4 Add navigation state to mfeSlice
+- [ ] 13.6.1 Integrate MFE mounting on screen domain with navigation (mount = navigate)
+- [ ] 13.6.2 Implement route-based MFE mounting via screen domain
+- [ ] 13.6.3 Handle navigation cleanup (unmount previous screen extension when new one is mounted)
 
-**Traceability**: Requirement "Navigation Integration" - Route-based MFE loading
+**Traceability**: Requirement "Navigation Integration" - Screen domain mount = navigation
 
 ### 13.7 Error Boundary and Loading
 
 - [ ] 13.7.1 Create `MfeErrorBoundary` component with retry support
 - [ ] 13.7.2 Create default `MfeLoadingIndicator` component
-- [ ] 13.7.3 Allow custom error boundary via plugin config
-- [ ] 13.7.4 Allow custom loading component via plugin config
+- [ ] 13.7.3 Allow custom error boundary via ScreensetsRegistryConfig (NOT microfrontends plugin)
+- [ ] 13.7.4 Allow custom loading component via ScreensetsRegistryConfig (NOT microfrontends plugin)
 
 **Traceability**: Requirement "Error Boundary for MFEs", "Loading Indicator for MFEs"
 
@@ -623,7 +619,7 @@
 
 ### 15.3 Bridge Factory
 
-- [ ] 15.3.1 Create `createBridge()` factory in ScreensetsRuntime
+- [ ] 15.3.1 Create `createBridge()` factory in ScreensetsRegistry
 - [ ] 15.3.2 Connect bridge to domain properties
 - [ ] 15.3.3 Connect bridge to ActionsChainsMediator
 - [ ] 15.3.4 Handle bridge lifecycle with extension lifecycle
@@ -745,8 +741,8 @@
 - [ ] 18.2.1 Create `packages/screensets/src/mfe/constants/index.ts`
 - [ ] 18.2.2 Define `HAI3_MFE_ENTRY`, `HAI3_MFE_ENTRY_MF`, `HAI3_MF_MANIFEST` constants
 - [ ] 18.2.3 Define `HAI3_EXT_DOMAIN`, `HAI3_EXT_EXTENSION`, `HAI3_EXT_ACTION` constants
-- [ ] 18.2.4 Define `HAI3_ACTION_SHOW_POPUP`, `HAI3_ACTION_HIDE_POPUP` constants
-- [ ] 18.2.5 Define `HAI3_ACTION_SHOW_SIDEBAR`, `HAI3_ACTION_HIDE_SIDEBAR` constants
+- [ ] 18.2.4 Define `HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_UNLOAD_EXT` constants (DRY principle - generic actions for all domains)
+- [ ] 18.2.5 Define `HAI3_POPUP_DOMAIN`, `HAI3_SIDEBAR_DOMAIN`, `HAI3_SCREEN_DOMAIN`, `HAI3_OVERLAY_DOMAIN` constants
 - [ ] 18.2.6 Export constants from `@hai3/screensets`
 
 **Traceability**: Requirements "HAI3 Action Constants", "HAI3 Type Constants"
@@ -759,3 +755,201 @@
 - [ ] 18.3.4 Test HAI3 constants values
 
 **Traceability**: Requirements "GTS Type ID Utilities", "HAI3 Action Constants", "HAI3 Type Constants"
+
+---
+
+## Phase 19: Dynamic Registration Model
+
+**Goal**: Implement dynamic registration of extensions and MFEs at any time during runtime.
+
+### 19.1 ScreensetsRegistry Dynamic API
+
+- [ ] 19.1.1 Implement `registerExtension(extension): Promise<void>` method
+- [ ] 19.1.2 Implement extension validation against GTS schema
+- [ ] 19.1.3 Implement domain existence check (must be registered first)
+- [ ] 19.1.4 Implement entry resolution (from cache or provider)
+- [ ] 19.1.5 Implement `unregisterExtension(extensionId): Promise<void>` method
+- [ ] 19.1.6 Implement auto-unmount if MFE is currently mounted
+- [ ] 19.1.7 Implement `registerDomain(domain): Promise<void>` method
+- [ ] 19.1.8 Implement `unregisterDomain(domainId): Promise<void>` method
+- [ ] 19.1.9 Implement cascade unregister of extensions in domain
+
+**Traceability**: Requirement "Dynamic Registration Model" - all scenarios
+
+### 19.2 Extension Mounting API
+
+- [ ] 19.2.1 Implement `mountExtension(extensionId, container): Promise<MfeBridgeConnection>` method
+- [ ] 19.2.2 Verify extension is registered before mounting
+- [ ] 19.2.3 Integrate with MfeLoader for bundle loading
+- [ ] 19.2.4 Create bridge connection on mount
+- [ ] 19.2.5 Register with RuntimeCoordinator
+- [ ] 19.2.6 Implement `unmountExtension(extensionId): Promise<void>` method
+- [ ] 19.2.7 Dispose bridge and unregister from coordinator
+- [ ] 19.2.8 Keep extension registered after unmount
+
+**Traceability**: Requirement "Dynamic Registration Model" - mountExtension/unmountExtension scenarios
+
+### 19.3 Registration Events
+
+- [ ] 19.3.1 Implement `emit(event, data)` method on ScreensetsRegistry
+- [ ] 19.3.2 Emit `extensionRegistered` event with `{ extensionId }`
+- [ ] 19.3.3 Emit `extensionUnregistered` event with `{ extensionId }`
+- [ ] 19.3.4 Emit `domainRegistered` event with `{ domainId }`
+- [ ] 19.3.5 Emit `domainUnregistered` event with `{ domainId }`
+- [ ] 19.3.6 Implement `on(event, callback)` and `off(event, callback)` for subscriptions
+
+**Traceability**: Requirement "ScreensetsRegistry Dynamic API" - Registration events
+
+### 19.4 Dynamic Registration Tests
+
+- [ ] 19.4.1 Test registerExtension after runtime initialization
+- [ ] 19.4.2 Test registerExtension fails if domain not registered
+- [ ] 19.4.3 Test unregisterExtension unmounts MFE if mounted
+- [ ] 19.4.4 Test unregisterExtension is idempotent
+- [ ] 19.4.5 Test registerDomain at any time
+- [ ] 19.4.6 Test unregisterDomain cascades to extensions
+- [ ] 19.4.7 Test mountExtension requires extension to be registered
+- [ ] 19.4.8 Test unmountExtension keeps extension registered
+- [ ] 19.4.9 Test registration events are emitted correctly
+- [ ] 19.4.10 Test hot-swap: unregister + register with same ID
+
+**Traceability**: Requirement "Dynamic Registration Model" - all scenarios
+
+---
+
+## Phase 20: TypeInstanceProvider
+
+**Goal**: Implement TypeInstanceProvider interface for future backend integration.
+
+### 20.1 TypeInstanceProvider Interface
+
+- [ ] 20.1.1 Create `packages/screensets/src/mfe/provider/types.ts`
+- [ ] 20.1.2 Define `TypeInstanceProvider` interface
+- [ ] 20.1.3 Define `InstanceUpdate` interface with type, typeId, instance
+- [ ] 20.1.4 Export interfaces from `@hai3/screensets`
+
+**Traceability**: Requirement "TypeInstanceProvider Interface" - interface definition
+
+### 20.2 InMemoryTypeInstanceProvider
+
+- [ ] 20.2.1 Create `packages/screensets/src/mfe/provider/InMemoryTypeInstanceProvider.ts`
+- [ ] 20.2.2 Implement `fetchExtensions(): Promise<Extension[]>`
+- [ ] 20.2.3 Implement `fetchDomains(): Promise<ExtensionDomain[]>`
+- [ ] 20.2.4 Implement `fetchInstance<T>(typeId): Promise<T | undefined>`
+- [ ] 20.2.5 Implement `subscribeToUpdates(callback): () => void`
+- [ ] 20.2.6 Implement `registerExtension(extension)` manual registration
+- [ ] 20.2.7 Implement `registerDomain(domain)` manual registration
+- [ ] 20.2.8 Implement `registerInstance(typeId, instance)` manual registration
+- [ ] 20.2.9 Notify subscribers on registration
+
+**Traceability**: Requirement "TypeInstanceProvider Interface" - InMemoryTypeInstanceProvider
+
+### 20.3 Runtime Provider Integration
+
+- [ ] 20.3.1 Implement `setTypeInstanceProvider(provider)` on ScreensetsRegistry
+- [ ] 20.3.2 Subscribe to provider updates on set
+- [ ] 20.3.3 Auto-register new extensions/domains from provider
+- [ ] 20.3.4 Auto-unregister removed extensions/domains from provider
+- [ ] 20.3.5 Implement `refreshExtensionsFromBackend(): Promise<void>`
+- [ ] 20.3.6 Fetch domains first, then extensions
+- [ ] 20.3.7 Skip already-registered items
+- [ ] 20.3.8 Throw error if no provider configured
+
+**Traceability**: Requirement "TypeInstanceProvider Interface" - runtime integration
+
+### 20.4 Entry Resolution with Provider
+
+- [ ] 20.4.1 Implement `resolveEntry(entryId): Promise<MfeEntry>` private method
+- [ ] 20.4.2 Try local cache first
+- [ ] 20.4.3 Fall back to provider.fetchInstance if available
+- [ ] 20.4.4 Cache fetched entries locally
+- [ ] 20.4.5 Throw error if entry not found anywhere
+
+**Traceability**: Requirement "TypeInstanceProvider Interface" - resolve entry from provider
+
+### 20.5 TypeInstanceProvider Tests
+
+- [ ] 20.5.1 Test InMemoryTypeInstanceProvider fetch methods
+- [ ] 20.5.2 Test InMemoryTypeInstanceProvider subscription notifications
+- [ ] 20.5.3 Test setTypeInstanceProvider configures runtime
+- [ ] 20.5.4 Test auto-registration from provider updates
+- [ ] 20.5.5 Test refreshExtensionsFromBackend fetches and registers
+- [ ] 20.5.6 Test refreshExtensionsFromBackend throws without provider
+- [ ] 20.5.7 Test resolveEntry uses cache first
+- [ ] 20.5.8 Test resolveEntry falls back to provider
+
+**Traceability**: Requirement "TypeInstanceProvider Interface" - all scenarios
+
+---
+
+## Phase 21: Framework Dynamic Registration Actions
+
+**Goal**: Add dynamic registration actions to @hai3/framework microfrontends plugin.
+
+### 21.1 Dynamic Registration Actions
+
+- [ ] 21.1.1 Add `registerExtension(extension)` action to mfeActions
+- [ ] 21.1.2 Emit `'mfe/registerExtensionRequested'` event
+- [ ] 21.1.3 Add `unregisterExtension(extensionId)` action to mfeActions
+- [ ] 21.1.4 Emit `'mfe/unregisterExtensionRequested'` event
+- [ ] 21.1.5 Add `refreshExtensions()` action to mfeActions
+- [ ] 21.1.6 Emit `'mfe/refreshExtensionsRequested'` event
+
+**Traceability**: Requirement "Dynamic Registration Support in Framework" - actions
+
+### 21.2 Dynamic Registration Effects
+
+- [ ] 21.2.1 Handle `'mfe/registerExtensionRequested'` event
+- [ ] 21.2.2 Call `runtime.registerExtension()` in effect
+- [ ] 21.2.3 Dispatch `setExtensionRegistering` before call
+- [ ] 21.2.4 Dispatch `setExtensionRegistered` on success
+- [ ] 21.2.5 Dispatch `setExtensionError` on failure
+- [ ] 21.2.6 Handle `'mfe/unregisterExtensionRequested'` event
+- [ ] 21.2.7 Call `runtime.unregisterExtension()` in effect
+- [ ] 21.2.8 Handle `'mfe/refreshExtensionsRequested'` event
+- [ ] 21.2.9 Call `runtime.refreshExtensionsFromBackend()` in effect
+
+**Traceability**: Requirement "Dynamic Registration Support in Framework" - effects
+
+### 21.3 Extension Registration Slice
+
+- [ ] 21.3.1 Add `extensionStates: Record<string, ExtensionRegistrationState>` to mfeSlice
+- [ ] 21.3.2 Define `ExtensionRegistrationState`: 'unregistered' | 'registering' | 'registered' | 'error'
+- [ ] 21.3.3 Add `setExtensionRegistering` reducer
+- [ ] 21.3.4 Add `setExtensionRegistered` reducer
+- [ ] 21.3.5 Add `setExtensionUnregistered` reducer
+- [ ] 21.3.6 Add `setExtensionError` reducer
+- [ ] 21.3.7 Add `selectExtensionState(state, extensionId)` selector
+- [ ] 21.3.8 Add `selectRegisteredExtensions(state)` selector
+
+**Traceability**: Requirement "Dynamic Registration Support in Framework" - slice
+
+### 21.4 TypeInstanceProvider Runtime Setup
+
+- [ ] 21.4.1 Document that TypeInstanceProvider is set via `runtime.setTypeInstanceProvider()` at runtime, NOT via plugin config
+
+**Traceability**: Requirement "Dynamic Registration Support in Framework" - runtime provider setup (no-config)
+
+### 21.5 Extension Events Hook
+
+- [ ] 21.5.1 Create `useExtensionEvents(domainId)` hook
+- [ ] 21.5.2 Subscribe to runtime's `extensionRegistered` event
+- [ ] 21.5.3 Subscribe to runtime's `extensionUnregistered` event
+- [ ] 21.5.4 Filter events by domainId
+- [ ] 21.5.5 Return current extensions for domain
+- [ ] 21.5.6 Trigger re-render on changes
+
+**Traceability**: Requirement "Dynamic Registration Support in Framework" - events hook
+
+### 21.6 Framework Dynamic Registration Tests
+
+- [ ] 21.6.1 Test registerExtension action emits event
+- [ ] 21.6.2 Test registerExtension effect calls runtime
+- [ ] 21.6.3 Test unregisterExtension action and effect
+- [ ] 21.6.4 Test refreshExtensions action and effect
+- [ ] 21.6.5 Test slice state transitions
+- [ ] 21.6.6 Test selectExtensionState selector
+- [ ] 21.6.7 Test selectRegisteredExtensions selector
+- [ ] 21.6.8 Test useExtensionEvents hook
+
+**Traceability**: Requirement "Dynamic Registration Support in Framework" - all scenarios

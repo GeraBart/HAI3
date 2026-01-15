@@ -41,9 +41,10 @@ The @hai3/screensets package treats **type IDs as opaque strings**. All type ID 
 
 1. **Direct State Sharing**: No shared Redux store between host and MFE
 2. **Event Bus Bridging**: No automatic event propagation across boundaries
-3. **Hot Module Replacement**: MFE updates require reload
+3. **Hot Module Replacement**: MFE updates require reload (but hot-swap of extensions IS supported)
 4. **Version Negotiation**: Single version per MFE entry
 5. **Multiple Concurrent Plugins**: Only one Type System plugin per application instance
+6. **Static Extension Registry**: Extensions are NOT known at initialization time (dynamic registration is the model)
 
 ## Decisions
 
@@ -288,7 +289,7 @@ The type system is organized into **6 core types** that define the contract mode
 | Type | GTS Type ID | Purpose |
 |------|-------------|---------|
 | MF Manifest | `gts.hai3.screensets.mfe.mf.v1~` | Module Federation manifest (standalone) |
-| MFE Entry MF (Derived) | `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~` | Module Federation entry with manifest reference |
+| MFE Entry MF (Derived) | `gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~` | Module Federation entry with manifest reference |
 
 #### Why This Structure Eliminates Parallel Hierarchies
 
@@ -355,7 +356,7 @@ The Module Federation derived type adds fields specific to Webpack 5 / Rspack Mo
 
 ```json
 {
-  "$id": "gts://gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~",
+  "$id": "gts://gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
     { "$ref": "gts://gts.hai3.screensets.mfe.entry.v1~" }
@@ -418,7 +419,7 @@ MfManifest is a **standalone type** containing Module Federation configuration.
     },
     "entries": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~*" },
+      "items": { "x-gts-ref": "gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~*" },
       "$comment": "Convenience field for discovery - lists MfeEntryMF type IDs"
     }
   },
@@ -436,7 +437,7 @@ gts.hai3.screensets.mfe.entry.v1~ (Base - Abstract Contract)
   |-- actions: x-gts-ref[] -> gts.hai3.screensets.ext.action.v1~*
   |-- domainActions: x-gts-ref[] -> gts.hai3.screensets.ext.action.v1~*
   |
-  +-- gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~ (Module Federation)
+  +-- gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~ (Module Federation)
         |-- (inherits contract fields from base)
         |-- manifest: x-gts-ref -> gts.hai3.screensets.mfe.mf.v1~*
         |-- exposedModule: string
@@ -449,7 +450,7 @@ gts.hai3.screensets.mfe.mf.v1~ (Standalone - Module Federation Config)
   |     |-- name: string
   |     |-- requiredVersion: string
   |     |-- singleton?: boolean (default: false = isolated instances)
-  |-- entries?: x-gts-ref[] -> gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~*
+  |-- entries?: x-gts-ref[] -> gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~*
 ```
 
 **3. Extension Domain Schema (Base):**
@@ -629,7 +630,7 @@ interface MfeEntry {
 
 /**
  * Module Federation 2.0 implementation of MfeEntry
- * GTS Type: gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~
+ * GTS Type: gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~
  */
 interface MfeEntryMF extends MfeEntry {
   /** Reference to MfManifest type ID containing Module Federation config */
@@ -769,7 +770,7 @@ interface ActionsChain {
 
 ### Decision 4: HAI3 Type Registration via Plugin
 
-When initializing the ScreensetsRuntime with the GTS plugin, HAI3 types are registered. There are 6 core types plus 2 MF-specific types:
+When initializing the ScreensetsRegistry with the GTS plugin, HAI3 types are registered. There are 6 core types plus 2 MF-specific types:
 
 ```typescript
 // packages/screensets/src/mfe/init.ts
@@ -789,7 +790,7 @@ const HAI3_CORE_TYPE_IDS = {
 /** GTS Type IDs for MF-specific types (2 types) */
 const HAI3_MF_TYPE_IDS = {
   mfManifest: 'gts.hai3.screensets.mfe.mf.v1~',
-  mfeEntryMf: 'gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~',
+  mfeEntryMf: 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~',
 } as const;
 
 function registerHai3Types(
@@ -811,17 +812,17 @@ function registerHai3Types(
 }
 ```
 
-### Decision 5: ScreensetsRuntime Configuration
+### Decision 5: ScreensetsRegistry Configuration
 
-The ScreensetsRuntime requires a Type System plugin at initialization:
+The ScreensetsRegistry requires a Type System plugin at initialization:
 
 ```typescript
 // packages/screensets/src/mfe/runtime/config.ts
 
 /**
- * Configuration for the ScreensetsRuntime
+ * Configuration for the ScreensetsRegistry
  */
-interface ScreensetsRuntimeConfig {
+interface ScreensetsRegistryConfig {
   /** Required: Type System plugin for type handling */
   typeSystem: TypeSystemPlugin;
 
@@ -845,28 +846,28 @@ interface ScreensetsRuntimeConfig {
 }
 
 /**
- * Create the ScreensetsRuntime with required Type System plugin
+ * Create the ScreensetsRegistry with required Type System plugin
  */
-function createScreensetsRuntime(
-  config: ScreensetsRuntimeConfig
-): ScreensetsRuntime {
+function createScreensetsRegistry(
+  config: ScreensetsRegistryConfig
+): ScreensetsRegistry {
   const { typeSystem, ...options } = config;
 
   // Validate plugin
   if (!typeSystem) {
-    throw new Error('ScreensetsRuntime requires a typeSystem');
+    throw new Error('ScreensetsRegistry requires a typeSystem');
   }
 
   // Register HAI3 types (6 core + 2 MF-specific)
   const typeIds = registerHai3Types(typeSystem);
 
-  return new ScreensetsRuntime(typeSystem, typeIds, options);
+  return new ScreensetsRegistry(typeSystem, typeIds, options);
 }
 
 // Usage with GTS (default)
 import { gtsPlugin } from '@hai3/screensets/plugins/gts';
 
-const runtime = createScreensetsRuntime({
+const runtime = createScreensetsRegistry({
   typeSystem: gtsPlugin,
   debug: process.env.NODE_ENV === 'development',
 });
@@ -874,62 +875,72 @@ const runtime = createScreensetsRuntime({
 // Usage with custom plugin
 import { customPlugin } from './my-custom-plugin';
 
-const runtimeWithCustomPlugin = createScreensetsRuntime({
+const runtimeWithCustomPlugin = createScreensetsRegistry({
   typeSystem: customPlugin,
 });
 ```
 
-### Decision 6: Plugin Propagation to Framework
+### Decision 6: Framework Plugin Model (No Static Configuration)
 
-The @hai3/framework microfrontends plugin accepts the Type System plugin from screensets:
+**Key Principles:**
+- Screensets is CORE to HAI3 - automatically initialized, NOT a plugin
+- The microfrontends plugin enables MFE capabilities with NO static configuration
+- All MFE registrations (manifests, extensions, domains) happen dynamically at runtime
+
+The @hai3/framework microfrontends plugin requires NO configuration. It simply enables MFE capabilities and wires the ScreensetsRegistry into the Flux data flow pattern:
 
 ```typescript
 // packages/framework/src/plugins/microfrontends/index.ts
 
-interface MicrofrontendsPluginConfig {
-  /** Type System plugin inherited from screensets configuration */
-  typeSystem: TypeSystemPlugin;
-
-  /** Base domains to register */
-  baseDomains?: Array<'sidebar' | 'popup' | 'screen' | 'overlay'>;
-}
-
-function createMicrofrontendsPlugin(
-  config: MicrofrontendsPluginConfig
-): FrameworkPlugin {
+/**
+ * Microfrontends plugin - enables MFE capabilities.
+ * NO configuration required or accepted.
+ * All MFE registration happens dynamically at runtime.
+ */
+function microfrontends(): FrameworkPlugin {
   return {
     name: 'microfrontends',
 
     setup(framework) {
-      // Create runtime with provided plugin
-      const runtime = createScreensetsRuntime({
-        typeSystem: config.typeSystem,
-      });
+      // Screensets runtime is already initialized by HAI3 core
+      // We just need to get the reference and wire it into Flux
+      const runtime = framework.get<ScreensetsRegistry>('screensetsRegistry');
 
-      // Register base domains if specified
-      if (config.baseDomains) {
-        for (const domain of config.baseDomains) {
-          runtime.registerDomain(getBaseDomain(domain, config.typeSystem));
-        }
-      }
+      // Register MFE actions and effects
+      framework.registerActions(mfeActions);
+      framework.registerEffects(mfeEffects);
+      framework.registerSlice(mfeSlice);
 
-      // Expose runtime to framework
-      framework.provide('screensetsRuntime', runtime);
+      // Base domains (sidebar, popup, screen, overlay) are registered
+      // dynamically at runtime, not via static configuration
     },
   };
 }
 
-// App initialization example
-import { createFramework } from '@hai3/framework';
-import { gtsPlugin } from '@hai3/screensets/plugins/gts';
+// App initialization example - screensets is CORE, not a plugin
+import { createHAI3, microfrontends } from '@hai3/framework';
 
-const app = createFramework({
-  plugins: [
-    createMicrofrontendsPlugin({
-      typeSystem: gtsPlugin,
-      baseDomains: ['sidebar', 'popup', 'screen', 'overlay'],
-    }),
-  ],
+// Screensets is CORE - automatically initialized by createHAI3()
+const app = createHAI3()
+  .use(microfrontends())  // No configuration - just enables MFE capabilities
+  .build();
+
+// All registration happens dynamically at runtime via actions:
+// - mfeActions.registerDomain({ domain })
+// - mfeActions.registerExtension({ extension })
+// - mfeActions.registerManifest({ manifest })
+
+// Or via runtime API:
+// - runtime.registerDomain(domain)
+// - runtime.registerExtension(extension)
+// - runtime.registerManifest(manifest)
+
+// Example: Register base domains dynamically after app initialization
+eventBus.on('app/ready', () => {
+  mfeActions.registerDomain(HAI3_SIDEBAR_DOMAIN);
+  mfeActions.registerDomain(HAI3_POPUP_DOMAIN);
+  mfeActions.registerDomain(HAI3_SCREEN_DOMAIN);
+  mfeActions.registerDomain(HAI3_OVERLAY_DOMAIN);
 });
 ```
 
@@ -1057,10 +1068,10 @@ function validateExtensionUiMeta(
 
 **Integration Point:**
 
-The ScreensetsRuntime calls `validateExtensionUiMeta()` during extension registration, after contract matching validation:
+The ScreensetsRegistry calls `validateExtensionUiMeta()` during extension registration, after contract matching validation:
 
 ```typescript
-// In ScreensetsRuntime.registerExtension()
+// In ScreensetsRegistry.registerExtension()
 const contractResult = validateContract(entry, domain);
 if (!contractResult.valid) {
   throw new ContractValidationError(contractResult.errors);
@@ -1188,10 +1199,10 @@ Extension domains can be hierarchical. HAI3 provides base layout domains, and ve
 **Base Layout Domains (registered via plugin):**
 
 When using GTS plugin, base domains follow the format `gts.hai3.screensets.ext.domain.<layout>.v1~`:
-- `gts.hai3.screensets.ext.domain.sidebar.v1~` - Sidebar panels
-- `gts.hai3.screensets.ext.domain.popup.v1~` - Modal popups
-- `gts.hai3.screensets.ext.domain.screen.v1~` - Full screen views
-- `gts.hai3.screensets.ext.domain.overlay.v1~` - Floating overlays
+- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.sidebar.v1~` - Sidebar panels
+- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.popup.v1~` - Modal popups
+- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.screen.v1~` - Full screen views
+- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.overlay.v1~` - Floating overlays
 
 **Vendor-Defined Domains:**
 
@@ -1199,12 +1210,12 @@ Vendors define their own domains following the GTS type ID format:
 
 ```typescript
 // Example: Dashboard screenset defines widget slot domain
-// Type ID: gts.acme.dashboard.ext.domain.widget_slot.v1~
+// Type ID: gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~
 
 const widgetSlotDomain: ExtensionDomain = {
-  id: 'gts.acme.dashboard.ext.domain.widget_slot.v1~',
+  id: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~',
   sharedProperties: [
-    'gts.hai3.screensets.ext.shared_property.user_context.v1~',
+    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.user_context.v1',
   ],
   actions: [
     'gts.acme.dashboard.ext.action.refresh.v1~',
@@ -1323,7 +1334,7 @@ interface LoadedMfe {
 class MfeLoader {
   /** GTS Type ID for Module Federation MFE entries */
   private static readonly MF_ENTRY_TYPE_ID =
-    'gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~';
+    'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~';
 
   /** GTS Type ID for Module Federation manifests */
   private static readonly MF_MANIFEST_TYPE_ID =
@@ -1451,7 +1462,7 @@ class MfeLoader {
 
 ```typescript
 const analyticsManifest: MfManifest = {
-  id: 'gts.acme.analytics.mfe.mf.v1~',
+  id: 'gts.hai3.screensets.mfe.mf.v1~acme.analytics.mfe.manifest.v1',
   remoteEntry: 'https://cdn.acme.com/analytics/remoteEntry.js',
   remoteName: 'acme_analytics',
   // sharedDependencies configures Module Federation code sharing.
@@ -1471,8 +1482,8 @@ const analyticsManifest: MfManifest = {
     // { name: '@hai3/screensets', requiredVersion: '^1.0.0', singleton: false },
   ],
   entries: [
-    'gts.acme.analytics.mfe.entry.v1~hai3.mfe.entry_mf.v1:chart',
-    'gts.acme.analytics.mfe.entry.v1~hai3.mfe.entry_mf.v1:metrics',
+    'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
+    'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.metrics.v1',
   ],
 };
 ```
@@ -1481,17 +1492,17 @@ const analyticsManifest: MfManifest = {
 
 ```typescript
 const chartEntry: MfeEntryMF = {
-  id: 'gts.acme.analytics.mfe.entry.v1~hai3.mfe.entry_mf.v1:chart',
+  id: 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
   requiredProperties: [
-    'gts.hai3.screensets.ext.shared_property.v1~:user_context',
-    'gts.hai3.screensets.ext.shared_property.v1~:selected_date_range',
+    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.user_context.v1',
+    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.selected_date_range.v1',
   ],
   optionalProperties: [
-    'gts.hai3.screensets.ext.shared_property.v1~:theme',
+    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1',
   ],
   actions: ['gts.acme.analytics.ext.action.data_updated.v1~'],
   domainActions: ['gts.acme.analytics.ext.action.refresh.v1~'],
-  manifest: 'gts.acme.analytics.mfe.mf.v1~',
+  manifest: 'gts.hai3.screensets.mfe.mf.v1~acme.analytics.mfe.manifest.v1',
   exposedModule: './ChartWidget',
 };
 ```
@@ -1531,13 +1542,13 @@ With isolated TypeSystemPlugin per runtime:
 Host and MFE runtimes need to coordinate (property updates, action delivery) but this coordination is PRIVATE. The coordination uses a WeakMap-based approach for better encapsulation and automatic garbage collection:
 
 ```typescript
-// INTERNAL: Not exposed to MFE code - used only by ScreensetsRuntime internals
+// INTERNAL: Not exposed to MFE code - used only by ScreensetsRegistry internals
 
 // Module-level WeakMap instead of window global
 const runtimeConnections = new WeakMap<Element, RuntimeConnection>();
 
 interface RuntimeConnection {
-  hostRuntime: ScreensetsRuntime;
+  hostRuntime: ScreensetsRegistry;
   bridges: Map<string, MfeBridgeConnection>; // entryTypeId -> bridge
 }
 
@@ -1636,13 +1647,13 @@ shared: {
 | GTS | `false` | Has schema registry state |
 | lodash, date-fns | `true` | Purely functional, no state |
 
-**Class-Based ScreensetsRuntime**:
+**Class-Based ScreensetsRegistry**:
 
 ```typescript
-// packages/screensets/src/runtime/ScreensetsRuntime.ts
+// packages/screensets/src/runtime/ScreensetsRegistry.ts
 
 /**
- * ScreensetsRuntime - FULLY isolated instance per MFE.
+ * ScreensetsRegistry - FULLY isolated instance per MFE.
  * Each instance has:
  * - Its own TypeSystemPlugin instance (NOT shared)
  * - Its own schema registry (isolated from other runtimes)
@@ -1653,7 +1664,7 @@ shared: {
  * - Define extension domains and host nested MFEs (be a host)
  * - Both simultaneously (intermediate host pattern)
  */
-class ScreensetsRuntime {
+class ScreensetsRegistry {
   // === Isolated State (per instance) ===
   private readonly domains = new Map<string, ExtensionDomainState>();
   private readonly extensions = new Map<string, ExtensionState>();
@@ -1671,7 +1682,7 @@ class ScreensetsRuntime {
   // This prevents MFEs from discovering host/other MFE types via plugin.query()
   public readonly typeSystem: TypeSystemPlugin;
 
-  constructor(config: ScreensetsRuntimeConfig) {
+  constructor(config: ScreensetsRegistryConfig) {
     this.typeSystem = config.typeSystem;
     this.state = createHAI3State();  // Fresh isolated state
 
@@ -1866,7 +1877,7 @@ interface MfeBridge {
 
 /**
  * Extended bridge interface used by the host to manage MFE communication.
- * Created by ScreensetsRuntime when mounting an extension.
+ * Created by ScreensetsRegistry when mounting an extension.
  */
 interface MfeBridgeConnection extends MfeBridge {
   /** Unique instance ID for this bridge connection */
@@ -1930,7 +1941,7 @@ const MyMfeEntry: React.FC<MfeBridgeProps> = ({ bridge }) => {
   useEffect(() => {
     // Subscribe to shared property
     const unsubscribe = bridge.subscribeToProperty(
-      'gts.hai3.screensets.ext.shared_property.v1~:theme',
+      'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1',
       (value) => setTheme(value as Theme)
     );
     return unsubscribe;
@@ -1939,7 +1950,7 @@ const MyMfeEntry: React.FC<MfeBridgeProps> = ({ bridge }) => {
   const handleClick = () => {
     // Request action from host
     bridge.requestHostAction(
-      'gts.acme.analytics.ext.action.v1~:data_updated',
+      'gts.hai3.screensets.ext.action.v1~acme.analytics.actions.data_updated.v1',
       { timestamp: Date.now() }
     );
   };
@@ -2371,7 +2382,7 @@ interface MfeBridgeConnection extends MfeBridge {
 ```typescript
 // Domain defines default timeout in its type definition
 const dashboardDomain: ExtensionDomain = {
-  id: 'gts.acme.dashboard.ext.domain.v1~',
+  id: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.main.v1~',
   sharedProperties: [...],
   actions: [...],
   extensionsActions: [...],
@@ -2382,14 +2393,14 @@ const dashboardDomain: ExtensionDomain = {
 // Action uses domain's default timeout
 const refreshAction: Action = {
   type: 'gts.acme.dashboard.ext.action.refresh.v1~',
-  target: 'gts.acme.dashboard.ext.domain.v1~',
+  target: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.main.v1~',
   // No timeout specified - uses domain's 30000ms default
 };
 
 // Action overrides for a long-running operation
 const exportAction: Action = {
   type: 'gts.acme.dashboard.ext.action.export.v1~',
-  target: 'gts.acme.dashboard.ext.domain.v1~',
+  target: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.main.v1~',
   timeout: 120000,  // 2 minutes for this specific action
   // On timeout: executes fallback chain if defined (same as any other failure)
 };
@@ -2536,6 +2547,593 @@ const loader = new MfeLoader(typeSystem, {
 });
 ```
 
+### Decision 19: Dynamic Registration Model
+
+**What**: Extensions and MFEs can be registered at ANY time during the application lifecycle, not just at initialization.
+
+**Why**:
+- Extensions are NOT known at app initialization time
+- GTS types and instances will be obtained from backend API in the future
+- Enables runtime configuration, feature flags, and permission-based extensibility
+- Supports hot-swapping extensions for A/B testing
+
+#### ScreensetsRegistry Dynamic API
+
+The ScreensetsRegistry provides a complete API for dynamic registration and unregistration:
+
+```typescript
+/**
+ * ScreensetsRegistry - Supports dynamic registration at any time
+ */
+class ScreensetsRegistry {
+  // === Dynamic Registration (anytime during runtime) ===
+
+  /**
+   * Register extension dynamically.
+   * Can be called at any time, not just initialization.
+   * Validates contract compatibility before registration.
+   */
+  async registerExtension(extension: Extension): Promise<void> {
+    // 1. Validate extension against schema
+    const validation = this.typeSystem.validateInstance(
+      'gts.hai3.screensets.ext.extension.v1~',
+      extension
+    );
+    if (!validation.valid) {
+      throw new ExtensionValidationError(validation.errors, extension.id);
+    }
+
+    // 2. Verify domain exists (may have been registered earlier or dynamically)
+    const domainState = this.domains.get(extension.domain);
+    if (!domainState) {
+      throw new Error(`Domain '${extension.domain}' not registered. Register domain first.`);
+    }
+
+    // 3. Resolve entry (may need to fetch from provider)
+    const entry = await this.resolveEntry(extension.entry);
+
+    // 4. Validate contract
+    const contractResult = validateContract(entry, domainState.domain);
+    if (!contractResult.valid) {
+      throw new ContractValidationError(contractResult.errors);
+    }
+
+    // 5. Validate uiMeta
+    const uiMetaResult = validateExtensionUiMeta(this.typeSystem, extension);
+    if (!uiMetaResult.valid) {
+      throw new UiMetaValidationError(uiMetaResult.errors, extension.id, extension.domain);
+    }
+
+    // 6. Register extension
+    this.extensions.set(extension.id, {
+      extension,
+      entry,
+      mounted: false,
+      bridge: null,
+    });
+
+    // 7. Emit registration event for observers
+    this.emit('extensionRegistered', { extensionId: extension.id });
+  }
+
+  /**
+   * Unregister extension dynamically.
+   * Unmounts MFE if currently mounted, cleans up bridge.
+   */
+  async unregisterExtension(extensionId: string): Promise<void> {
+    const state = this.extensions.get(extensionId);
+    if (!state) {
+      return; // Already unregistered, idempotent
+    }
+
+    // 1. Unmount if mounted
+    if (state.mounted && state.bridge) {
+      await this.unmountExtension(extensionId);
+    }
+
+    // 2. Remove from registry
+    this.extensions.delete(extensionId);
+
+    // 3. Remove from domain
+    const domainState = this.domains.get(state.extension.domain);
+    if (domainState) {
+      domainState.extensions.delete(extensionId);
+    }
+
+    // 4. Emit unregistration event
+    this.emit('extensionUnregistered', { extensionId });
+  }
+
+  /**
+   * Register domain dynamically.
+   * Can be called at any time to add new extension points.
+   */
+  async registerDomain(domain: ExtensionDomain): Promise<void> {
+    // 1. Validate domain
+    const validation = this.typeSystem.validateInstance(
+      'gts.hai3.screensets.ext.domain.v1~',
+      domain
+    );
+    if (!validation.valid) {
+      throw new DomainValidationError(validation.errors, domain.id);
+    }
+
+    // 2. Register domain
+    this.domains.set(domain.id, {
+      domain,
+      properties: new Map(),
+      extensions: new Set(),
+    });
+
+    // 3. Emit event
+    this.emit('domainRegistered', { domainId: domain.id });
+  }
+
+  /**
+   * Unregister domain dynamically.
+   * Unregisters all extensions in the domain first.
+   */
+  async unregisterDomain(domainId: string): Promise<void> {
+    const domainState = this.domains.get(domainId);
+    if (!domainState) {
+      return; // Already unregistered, idempotent
+    }
+
+    // 1. Unregister all extensions in this domain
+    for (const extensionId of domainState.extensions) {
+      await this.unregisterExtension(extensionId);
+    }
+
+    // 2. Remove domain
+    this.domains.delete(domainId);
+
+    // 3. Emit event
+    this.emit('domainUnregistered', { domainId });
+  }
+
+  // === Extension Mounting (on-demand) ===
+
+  /**
+   * Mount extension on demand.
+   * Extension must be registered before mounting.
+   */
+  async mountExtension(extensionId: string, container: Element): Promise<MfeBridgeConnection> {
+    // Get extension state
+    const extensionState = this.extensions.get(extensionId);
+    if (!extensionState) {
+      throw new Error(`Extension '${extensionId}' not registered`);
+    }
+
+    const { extension, entry } = extensionState;
+    const domainState = this.domains.get(extension.domain);
+    if (!domainState) {
+      throw new Error(`Domain '${extension.domain}' not found`);
+    }
+
+    // Load MFE bundle if not cached
+    const loaded = await this.mfeLoader.load(entry as MfeEntryMF);
+
+    // Create bridge
+    const bridge = this.createBridge(domainState, entry, extensionId);
+
+    // Register with runtime coordinator
+    registerRuntime(container, {
+      hostRuntime: this,
+      bridges: new Map([[extensionId, bridge]]),
+    });
+
+    // Mount component
+    // (Component mounting is framework-specific, handled by caller)
+
+    // Update state
+    extensionState.mounted = true;
+    extensionState.bridge = bridge;
+    extensionState.container = container;
+
+    return bridge;
+  }
+
+  /**
+   * Unmount extension.
+   */
+  async unmountExtension(extensionId: string): Promise<void> {
+    const extensionState = this.extensions.get(extensionId);
+    if (!extensionState || !extensionState.mounted) {
+      return;
+    }
+
+    // Dispose bridge
+    if (extensionState.bridge) {
+      extensionState.bridge.dispose();
+    }
+
+    // Unregister from coordinator
+    if (extensionState.container) {
+      unregisterRuntime(extensionState.container);
+    }
+
+    // Update state
+    extensionState.mounted = false;
+    extensionState.bridge = null;
+    extensionState.container = undefined;
+  }
+
+  // === Type Instance Provider (future backend integration) ===
+
+  private typeInstanceProvider: TypeInstanceProvider | null = null;
+
+  /**
+   * Set the provider for fetching GTS type instances from backend.
+   * Current: in-memory registry
+   * Future: backend API calls
+   */
+  setTypeInstanceProvider(provider: TypeInstanceProvider): void {
+    this.typeInstanceProvider = provider;
+
+    // Subscribe to updates for real-time sync
+    provider.subscribeToUpdates(async (update) => {
+      if (update.type === 'added' && update.instance) {
+        // Auto-register new extensions/domains from backend
+        if (this.isExtension(update.instance)) {
+          await this.registerExtension(update.instance as Extension);
+        } else if (this.isDomain(update.instance)) {
+          await this.registerDomain(update.instance as ExtensionDomain);
+        }
+      } else if (update.type === 'removed') {
+        // Auto-unregister removed extensions/domains
+        if (this.extensions.has(update.typeId)) {
+          await this.unregisterExtension(update.typeId);
+        } else if (this.domains.has(update.typeId)) {
+          await this.unregisterDomain(update.typeId);
+        }
+      }
+    });
+  }
+
+  /**
+   * Refresh extensions from backend.
+   * Fetches all extensions/domains from provider and syncs local registry.
+   */
+  async refreshExtensionsFromBackend(): Promise<void> {
+    if (!this.typeInstanceProvider) {
+      throw new Error('No TypeInstanceProvider configured. Call setTypeInstanceProvider() first.');
+    }
+
+    // Fetch domains first (extensions depend on domains)
+    const domains = await this.typeInstanceProvider.fetchDomains();
+    for (const domain of domains) {
+      if (!this.domains.has(domain.id)) {
+        await this.registerDomain(domain);
+      }
+    }
+
+    // Then fetch extensions
+    const extensions = await this.typeInstanceProvider.fetchExtensions();
+    for (const extension of extensions) {
+      if (!this.extensions.has(extension.id)) {
+        await this.registerExtension(extension);
+      }
+    }
+  }
+
+  /**
+   * Resolve entry - tries local cache first, then provider.
+   */
+  private async resolveEntry(entryId: string): Promise<MfeEntry> {
+    // Try local cache first
+    const cached = this.entryCache.get(entryId);
+    if (cached) {
+      return cached;
+    }
+
+    // Try provider if available
+    if (this.typeInstanceProvider) {
+      const entry = await this.typeInstanceProvider.fetchInstance<MfeEntry>(entryId);
+      if (entry) {
+        this.entryCache.set(entryId, entry);
+        return entry;
+      }
+    }
+
+    throw new Error(`Entry '${entryId}' not found. Ensure entry is registered or provider is configured.`);
+  }
+}
+```
+
+#### TypeInstanceProvider Interface
+
+```typescript
+/**
+ * Provider for fetching GTS type instances from backend.
+ *
+ * CURRENT IMPLEMENTATION: InMemoryTypeInstanceProvider
+ * - Uses local Map for storage
+ * - Manual registration via register() methods
+ *
+ * FUTURE IMPLEMENTATION: BackendTypeInstanceProvider
+ * - Fetches from REST API or GraphQL endpoint
+ * - Supports real-time updates via WebSocket/SSE
+ * - Caches with TTL and invalidation
+ */
+interface TypeInstanceProvider {
+  /** Fetch all available extensions from backend */
+  fetchExtensions(): Promise<Extension[]>;
+
+  /** Fetch all available domains from backend */
+  fetchDomains(): Promise<ExtensionDomain[]>;
+
+  /** Fetch specific type instance by ID */
+  fetchInstance<T>(typeId: string): Promise<T | undefined>;
+
+  /** Subscribe to instance updates (real-time sync) */
+  subscribeToUpdates(callback: (update: InstanceUpdate) => void): () => void;
+}
+
+interface InstanceUpdate {
+  type: 'added' | 'updated' | 'removed';
+  typeId: string;
+  instance?: unknown;
+}
+
+/**
+ * In-memory implementation for current use.
+ * Future: Replace with BackendTypeInstanceProvider.
+ */
+class InMemoryTypeInstanceProvider implements TypeInstanceProvider {
+  private extensions = new Map<string, Extension>();
+  private domains = new Map<string, ExtensionDomain>();
+  private instances = new Map<string, unknown>();
+  private subscribers = new Set<(update: InstanceUpdate) => void>();
+
+  // Manual registration methods (current use)
+  registerExtension(extension: Extension): void {
+    this.extensions.set(extension.id, extension);
+    this.notifySubscribers({ type: 'added', typeId: extension.id, instance: extension });
+  }
+
+  registerDomain(domain: ExtensionDomain): void {
+    this.domains.set(domain.id, domain);
+    this.notifySubscribers({ type: 'added', typeId: domain.id, instance: domain });
+  }
+
+  registerInstance(typeId: string, instance: unknown): void {
+    this.instances.set(typeId, instance);
+    this.notifySubscribers({ type: 'added', typeId, instance });
+  }
+
+  // TypeInstanceProvider implementation
+  async fetchExtensions(): Promise<Extension[]> {
+    return Array.from(this.extensions.values());
+  }
+
+  async fetchDomains(): Promise<ExtensionDomain[]> {
+    return Array.from(this.domains.values());
+  }
+
+  async fetchInstance<T>(typeId: string): Promise<T | undefined> {
+    return this.instances.get(typeId) as T | undefined;
+  }
+
+  subscribeToUpdates(callback: (update: InstanceUpdate) => void): () => void {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
+  }
+
+  private notifySubscribers(update: InstanceUpdate): void {
+    for (const callback of this.subscribers) {
+      callback(update);
+    }
+  }
+}
+```
+
+#### Usage Examples
+
+**Example 1: Dynamic registration after user action**
+```typescript
+// User enables analytics widget in settings
+settingsButton.onClick = async () => {
+  // Register the extension dynamically
+  await runtime.registerExtension({
+    id: 'gts.hai3.screensets.ext.extension.v1~acme.user.widgets.analytics_widget.v1',
+    domain: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~',
+    entry: 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
+    uiMeta: { title: 'Analytics', size: 'medium' },
+  });
+
+  // Mount the extension
+  const container = document.getElementById('widget-slot-1');
+  const bridge = await runtime.mountExtension(
+    'gts.hai3.screensets.ext.extension.v1~acme.user.widgets.analytics_widget.v1',
+    container
+  );
+};
+```
+
+**Example 2: Registration after backend API response**
+```typescript
+// After user login, fetch available extensions from backend
+async function onUserLogin(user: User) {
+  // Configure backend provider
+  runtime.setTypeInstanceProvider(new BackendTypeInstanceProvider({
+    apiUrl: '/api/extensions',
+    authToken: user.token,
+  }));
+
+  // Fetch and register all extensions from backend
+  await runtime.refreshExtensionsFromBackend();
+
+  // Now extensions are available for mounting
+}
+```
+
+**Example 3: Unregistration when user disables feature**
+```typescript
+// User disables analytics widget
+disableButton.onClick = async () => {
+  // Unregister - this also unmounts if currently mounted
+  await runtime.unregisterExtension('gts.hai3.screensets.ext.extension.v1~acme.user.widgets.analytics_widget.v1');
+};
+```
+
+**Example 4: Hot-swap extensions at runtime**
+```typescript
+// A/B testing: swap implementation at runtime
+async function swapToVariantB() {
+  const extensionId = 'gts.hai3.screensets.ext.extension.v1~acme.user.widgets.analytics_widget.v1';
+
+  // 1. Unregister current implementation
+  await runtime.unregisterExtension(extensionId);
+
+  // 2. Register variant B
+  await runtime.registerExtension({
+    id: extensionId,
+    domain: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~',
+    entry: 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart_v2.v1', // Different entry
+    uiMeta: { title: 'Analytics (New)', size: 'medium' },
+  });
+
+  // 3. Mount extension with new implementation
+  const container = document.getElementById('widget-slot-1');
+  await runtime.mountExtension(extensionId, container);
+}
+```
+
+### Decision 20: Domain-Specific Supported Actions
+
+**What**: Each extension domain declares which HAI3 actions it supports, allowing domains to have different action support based on their layout semantics.
+
+**Why**:
+- Not all domains can support all actions semantically
+- Screen domain cannot support `unload_ext` - you cannot have "no screen selected"
+- Popup, Sidebar, Overlay domains can support both `load_ext` and `unload_ext`
+- This enables the mediator to validate action support before delivery
+
+#### Domain Actions Field
+
+The `ExtensionDomain` type includes an `actions` field that lists which HAI3 actions (like `HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_UNLOAD_EXT`) the domain supports:
+
+```typescript
+interface ExtensionDomain {
+  id: string;
+  sharedProperties: string[];
+  /** HAI3 actions this domain supports (e.g., load_ext, unload_ext) */
+  actions: string[];  // <-- Domain declares supported HAI3 actions
+  /** Action type IDs domain can emit to extensions */
+  domainActions: string[];
+  /** Action type IDs domain can receive from extensions */
+  extensionsActions: string[];
+  extensionsUiMeta: JSONSchema;
+  defaultActionTimeout: number;
+}
+```
+
+#### Base Domain Definitions with Supported Actions
+
+**Popup Domain** - Supports both load and unload (modal can be shown/hidden):
+```typescript
+const HAI3_POPUP_DOMAIN: ExtensionDomain = {
+  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.popup.v1~',
+  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],  // Both supported
+  sharedProperties: [...],
+  domainActions: [...],
+  extensionsActions: [...],
+  extensionsUiMeta: {...},
+  defaultActionTimeout: 30000,
+};
+```
+
+**Sidebar Domain** - Supports both load and unload (panel can be shown/hidden):
+```typescript
+const HAI3_SIDEBAR_DOMAIN: ExtensionDomain = {
+  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.sidebar.v1~',
+  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],  // Both supported
+  sharedProperties: [...],
+  domainActions: [...],
+  extensionsActions: [...],
+  extensionsUiMeta: {...},
+  defaultActionTimeout: 30000,
+};
+```
+
+**Overlay Domain** - Supports both load and unload (overlay can be shown/hidden):
+```typescript
+const HAI3_OVERLAY_DOMAIN: ExtensionDomain = {
+  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.overlay.v1~',
+  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],  // Both supported
+  sharedProperties: [...],
+  domainActions: [...],
+  extensionsActions: [...],
+  extensionsUiMeta: {...},
+  defaultActionTimeout: 30000,
+};
+```
+
+**Screen Domain** - Only supports load (you can navigate TO a screen, but cannot have "no screen"):
+```typescript
+const HAI3_SCREEN_DOMAIN: ExtensionDomain = {
+  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.screen.v1~',
+  actions: [HAI3_ACTION_LOAD_EXT],  // NO unload - can't have "no screen selected"
+  sharedProperties: [...],
+  domainActions: [...],
+  extensionsActions: [...],
+  extensionsUiMeta: {...},
+  defaultActionTimeout: 30000,
+};
+```
+
+#### Action Support Validation
+
+The ActionsChainsMediator validates that the target domain supports the action before delivery:
+
+```typescript
+/**
+ * Validate that the target domain supports the action.
+ */
+function validateDomainActionSupport(
+  domain: ExtensionDomain,
+  actionTypeId: string
+): boolean {
+  return domain.actions.includes(actionTypeId);
+}
+
+// In ActionsChainsMediator.executeActionsChain():
+const targetDomain = this.domains.get(action.target);
+if (targetDomain && !validateDomainActionSupport(targetDomain, action.type)) {
+  throw new UnsupportedDomainActionError(
+    `Domain '${action.target}' does not support action '${action.type}'`,
+    action.type,
+    targetDomain.id
+  );
+}
+```
+
+#### Key Principles
+
+1. **`load_ext` is universal**: All domains MUST support `HAI3_ACTION_LOAD_EXT` (it's how extensions are loaded)
+2. **`unload_ext` is optional**: Some domains (like screen) cannot semantically support unloading
+3. **Domains declare support**: Each domain explicitly lists which HAI3 actions it can handle
+4. **Mediator validates**: ActionsChainsMediator checks action support before delivery
+5. **Clear error messages**: When an unsupported action is attempted, a clear error is thrown
+
+#### UnsupportedDomainActionError
+
+```typescript
+/**
+ * Error thrown when an action is not supported by the target domain
+ */
+class UnsupportedDomainActionError extends MfeError {
+  constructor(
+    message: string,
+    public readonly actionTypeId: string,
+    public readonly domainTypeId: string
+  ) {
+    super(message, 'UNSUPPORTED_DOMAIN_ACTION');
+    this.name = 'UnsupportedDomainActionError';
+  }
+}
+```
+
 ## Risks and Mitigations
 
 | Risk | Mitigation |
@@ -2546,6 +3144,8 @@ const loader = new MfeLoader(typeSystem, {
 | Hierarchical domain complexity | Clear documentation, example implementations |
 | Actions chain timeout | Configurable timeouts with fallback support |
 | Manifest discovery | Multiple fetching strategies (registry, URL, composite) |
+| Dynamic registration race conditions | Sequential registration with async/await, event-based coordination |
+| Backend provider latency | Local caching, optimistic updates, loading states |
 
 ## Testing Strategy
 

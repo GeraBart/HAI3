@@ -53,15 +53,15 @@ The system SHALL abstract the Type System as a pluggable dependency. The screens
 
 #### Scenario: Plugin requirement at initialization
 
-- **WHEN** creating a ScreensetsRuntime
-- **THEN** the `ScreensetsRuntimeConfig` SHALL require a `typeSystem` parameter
+- **WHEN** creating a ScreensetsRegistry
+- **THEN** the `ScreensetsRegistryConfig` SHALL require a `typeSystem` parameter
 - **AND** the runtime SHALL use the plugin for all type ID operations
 - **AND** the runtime SHALL use the plugin for schema validation
 - **AND** initialization without a plugin SHALL throw an error
 
 #### Scenario: HAI3 type registration via plugin
 
-- **WHEN** the ScreensetsRuntime initializes with a plugin
+- **WHEN** the ScreensetsRegistry initializes with a plugin
 - **THEN** the runtime SHALL register HAI3 MFE types via `plugin.registerSchema()`
 - **AND** registered types SHALL include 6 core types:
   - `gts.hai3.screensets.mfe.entry.v1~` (MfeEntry - Abstract Base)
@@ -72,12 +72,12 @@ The system SHALL abstract the Type System as a pluggable dependency. The screens
   - `gts.hai3.screensets.ext.actions_chain.v1~` (ActionsChain)
 - **AND** registered types SHALL include 2 MF-specific types:
   - `gts.hai3.screensets.mfe.mf.v1~` (MfManifest - Standalone)
-  - `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~` (MfeEntryMF - Derived)
+  - `gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~` (MfeEntryMF - Derived)
 
 #### Scenario: Custom plugin implementation
 
 - **WHEN** a developer implements a custom `TypeSystemPlugin`
-- **THEN** the implementation SHALL work with the ScreensetsRuntime
+- **THEN** the implementation SHALL work with the ScreensetsRegistry
 - **AND** type ID format SHALL be determined by the custom plugin
 - **AND** validation behavior SHALL be determined by the custom plugin
 
@@ -103,7 +103,7 @@ The system SHALL validate Extension's uiMeta against its domain's extensionsUiMe
 #### Scenario: uiMeta validation via attribute selector
 
 - **WHEN** registering an extension binding
-- **THEN** the ScreensetsRuntime SHALL resolve the domain's extensionsUiMeta via `plugin.getAttribute()`
+- **THEN** the ScreensetsRegistry SHALL resolve the domain's extensionsUiMeta via `plugin.getAttribute()`
 - **AND** the runtime SHALL validate extension.uiMeta against the resolved schema
 - **AND** validation failure SHALL prevent extension registration
 - **AND** error message SHALL identify the uiMeta validation failure
@@ -116,7 +116,7 @@ The system SHALL validate Extension's uiMeta against its domain's extensionsUiMe
 
 #### Scenario: uiMeta schema resolution failure
 
-- **WHEN** the ScreensetsRuntime cannot resolve extensionsUiMeta from the domain
+- **WHEN** the ScreensetsRegistry cannot resolve extensionsUiMeta from the domain
 - **THEN** extension registration SHALL fail
 - **AND** error message SHALL indicate the attribute resolution failure
 - **AND** error SHALL include the domain type ID
@@ -170,10 +170,12 @@ The system SHALL define internal TypeScript types for microfrontend architecture
 - **WHEN** a host defines an extension domain
 - **THEN** the domain SHALL conform to `ExtensionDomain` TypeScript interface
 - **AND** the domain SHALL have an `id` field (string)
-- **AND** the domain SHALL specify sharedProperties, actions, extensionsActions, and extensionsUiMeta
+- **AND** the domain SHALL specify sharedProperties, actions, domainActions, extensionsActions, and extensionsUiMeta
 - **AND** the domain SHALL specify `defaultActionTimeout` (REQUIRED, number in milliseconds)
 - **AND** sharedProperties SHALL reference SharedProperty type IDs
-- **AND** actions and extensionsActions SHALL reference Action type IDs
+- **AND** `actions` SHALL list HAI3 actions this domain supports (e.g., `HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_UNLOAD_EXT`)
+- **AND** `domainActions` SHALL reference Action type IDs the domain can emit to extensions
+- **AND** `extensionsActions` SHALL reference Action type IDs the domain can receive from extensions
 - **AND** extensionsUiMeta SHALL be a valid JSON Schema
 - **AND** derived domains MAY narrow extensionsUiMeta through GTS type inheritance
 
@@ -336,7 +338,7 @@ Each MFE instance SHALL have its own FULLY ISOLATED runtime, including TypeSyste
 The system SHALL provide an ActionsChainsMediator to deliver action chains between domains and extensions, using the Type System plugin for validation.
 
 **Note on terminology:**
-- **ScreensetsRuntime**: Manages MFE lifecycle (loading, mounting, registration, validation)
+- **ScreensetsRegistry**: Manages MFE lifecycle (loading, mounting, registration, validation)
 - **ActionsChainsMediator**: Mediates action chain delivery between domains and extensions
 
 #### Scenario: Action chain type ID validation
@@ -472,23 +474,23 @@ The system SHALL provide consistent error handling for MFE operations.
 
 The Type System plugin SHALL propagate from @hai3/screensets through @hai3/framework layers.
 
-#### Scenario: Framework microfrontends plugin configuration
+#### Scenario: Framework microfrontends plugin (zero-config)
 
-- **WHEN** configuring the @hai3/framework microfrontends plugin
-- **THEN** the plugin configuration SHALL accept a `typeSystem` parameter
-- **AND** the plugin SHALL pass the Type System plugin to the ScreensetsRuntime
-- **AND** the same plugin instance SHALL be used throughout the application
+- **WHEN** initializing the @hai3/framework microfrontends plugin
+- **THEN** the plugin SHALL accept NO configuration parameters
+- **AND** calling `microfrontends({ anything })` SHALL throw an error
+- **AND** the plugin SHALL obtain the screensetsRegistry from the framework (already provided by screensets plugin)
+- **AND** the same TypeSystemPlugin instance SHALL be used throughout the application
 
-#### Scenario: Base domains registration via plugin
+#### Scenario: Base domains registration via runtime
 
-- **WHEN** the framework microfrontends plugin initializes
-- **AND** baseDomains are specified in configuration
-- **THEN** base domain type IDs SHALL be built via `plugin.buildTypeId()`
-- **AND** base domain schemas SHALL be registered via `plugin.registerSchema()`
+- **WHEN** base domains need to be registered
+- **THEN** they SHALL be registered dynamically via `runtime.registerDomain()` or `mfeActions.registerDomain()` at runtime
+- **AND** there SHALL be NO static baseDomains configuration in plugin setup
 
 #### Scenario: Plugin consistency across layers
 
-- **WHEN** an MFE extension accesses the ScreensetsRuntime
+- **WHEN** an MFE extension accesses the ScreensetsRegistry
 - **THEN** all type ID operations SHALL use the same plugin instance
 - **AND** type IDs from different layers SHALL be compatible
 - **AND** schema validation SHALL be consistent
@@ -515,8 +517,8 @@ The system SHALL provide utilities for working with GTS type IDs, used by both s
 
 - **WHEN** calling `conformsTo(derivedTypeId, baseTypeId)`
 - **THEN** the function SHALL return `true` if the derived type conforms to the base type
-- **AND** `conformsTo('gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~acme.dashboard~', 'gts.hai3.screensets.mfe.entry.v1~')` SHALL return `true`
-- **AND** `conformsTo('gts.hai3.screensets.mfe.mf.v1~acme.analytics~', 'gts.hai3.screensets.mfe.entry.v1~')` SHALL return `false`
+- **AND** `conformsTo('gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.dashboard.mfe.main.v1', 'gts.hai3.screensets.mfe.entry.v1~')` SHALL return `true`
+- **AND** `conformsTo('gts.hai3.screensets.mfe.mf.v1~acme.analytics.mfe.manifest.v1', 'gts.hai3.screensets.mfe.entry.v1~')` SHALL return `false`
 
 ### Requirement: MfeRemoteConfig Type
 
@@ -559,16 +561,89 @@ The system SHALL provide bridge interfaces for communication between host and MF
 
 ### Requirement: HAI3 Action Constants
 
-The system SHALL export constants for standard HAI3 actions.
+The system SHALL export constants for standard HAI3 actions following the DRY principle. Instead of domain-specific actions (show_popup, hide_popup, show_sidebar, hide_sidebar), HAI3 provides generic extension lifecycle actions that each domain handles according to its layout behavior.
 
 #### Scenario: Standard action type IDs
 
 - **WHEN** importing `@hai3/screensets`
 - **THEN** the package SHALL export action type ID constants:
-  - `HAI3_ACTION_SHOW_POPUP`: `gts.hai3.screensets.ext.action.v1~hai3.actions.show_popup~`
-  - `HAI3_ACTION_HIDE_POPUP`: `gts.hai3.screensets.ext.action.v1~hai3.actions.hide_popup~`
-  - `HAI3_ACTION_SHOW_SIDEBAR`: `gts.hai3.screensets.ext.action.v1~hai3.actions.show_sidebar~`
-  - `HAI3_ACTION_HIDE_SIDEBAR`: `gts.hai3.screensets.ext.action.v1~hai3.actions.hide_sidebar~`
+  - `HAI3_ACTION_LOAD_EXT`: `gts.hai3.screensets.ext.action.v1~hai3.screensets.actions.load_ext.v1~`
+  - `HAI3_ACTION_UNLOAD_EXT`: `gts.hai3.screensets.ext.action.v1~hai3.screensets.actions.unload_ext.v1~`
+
+#### Scenario: DRY principle for extension actions
+
+- **WHEN** an MFE needs to load an extension into any domain (popup, sidebar, screen, overlay)
+- **THEN** it SHALL use `HAI3_ACTION_LOAD_EXT` with payload specifying target domain and extension
+- **AND** each domain SHALL handle the generic action according to its specific layout behavior
+- **AND** there SHALL NOT be separate action types for each domain (no show_popup, show_sidebar, etc.)
+
+#### Scenario: load_ext action payload structure
+
+- **WHEN** dispatching a `load_ext` action
+- **THEN** the payload SHALL include `domainTypeId` (string) - the target domain to load into
+- **AND** the payload SHALL include `extensionTypeId` (string) - the extension to load
+- **AND** the payload MAY include additional domain-specific parameters
+
+#### Scenario: unload_ext action payload structure
+
+- **WHEN** dispatching an `unload_ext` action
+- **THEN** the payload SHALL include `domainTypeId` (string) - the domain to unload from
+- **AND** the payload SHALL include `extensionTypeId` (string) - the extension to unload
+
+### Requirement: Domain-Specific Action Support
+
+The system SHALL allow domains to declare which HAI3 actions they support. Not all domains can support all actions semantically.
+
+#### Scenario: Domain declares supported actions
+
+- **WHEN** defining an ExtensionDomain
+- **THEN** the domain SHALL include an `actions` field listing supported HAI3 actions
+- **AND** the `actions` field SHALL be an array of action type IDs (strings)
+- **AND** all domains MUST support `HAI3_ACTION_LOAD_EXT` at minimum
+- **AND** domains MAY optionally support `HAI3_ACTION_UNLOAD_EXT`
+
+#### Scenario: Popup domain supports both load and unload
+
+- **WHEN** defining the popup base domain
+- **THEN** `actions` SHALL include `HAI3_ACTION_LOAD_EXT`
+- **AND** `actions` SHALL include `HAI3_ACTION_UNLOAD_EXT`
+- **AND** popup can be shown (load) and hidden (unload)
+
+#### Scenario: Sidebar domain supports both load and unload
+
+- **WHEN** defining the sidebar base domain
+- **THEN** `actions` SHALL include `HAI3_ACTION_LOAD_EXT`
+- **AND** `actions` SHALL include `HAI3_ACTION_UNLOAD_EXT`
+- **AND** sidebar can be shown (load) and hidden (unload)
+
+#### Scenario: Overlay domain supports both load and unload
+
+- **WHEN** defining the overlay base domain
+- **THEN** `actions` SHALL include `HAI3_ACTION_LOAD_EXT`
+- **AND** `actions` SHALL include `HAI3_ACTION_UNLOAD_EXT`
+- **AND** overlay can be shown (load) and hidden (unload)
+
+#### Scenario: Screen domain only supports load
+
+- **WHEN** defining the screen base domain
+- **THEN** `actions` SHALL include `HAI3_ACTION_LOAD_EXT`
+- **AND** `actions` SHALL NOT include `HAI3_ACTION_UNLOAD_EXT`
+- **AND** you can navigate TO a screen but cannot have "no screen selected"
+
+#### Scenario: ActionsChainsMediator validates domain action support
+
+- **WHEN** ActionsChainsMediator delivers an action to a domain
+- **THEN** the mediator SHALL validate the domain supports the action type
+- **AND** if the domain does NOT support the action type, delivery SHALL fail
+- **AND** `UnsupportedDomainActionError` SHALL be thrown with `actionTypeId` and `domainTypeId`
+
+#### Scenario: UnsupportedDomainActionError class
+
+- **WHEN** an action is not supported by the target domain
+- **THEN** `UnsupportedDomainActionError` SHALL be thrown
+- **AND** the error SHALL include `actionTypeId` (the unsupported action)
+- **AND** the error SHALL include `domainTypeId` (the target domain)
+- **AND** the error code SHALL be `'UNSUPPORTED_DOMAIN_ACTION'`
 
 ### Requirement: HAI3 Type Constants
 
@@ -579,7 +654,7 @@ The system SHALL export constants for HAI3 MFE base types.
 - **WHEN** importing `@hai3/screensets`
 - **THEN** the package SHALL export base type ID constants:
   - `HAI3_MFE_ENTRY`: `gts.hai3.screensets.mfe.entry.v1~`
-  - `HAI3_MFE_ENTRY_MF`: `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~`
+  - `HAI3_MFE_ENTRY_MF`: `gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~`
   - `HAI3_MF_MANIFEST`: `gts.hai3.screensets.mfe.mf.v1~`
   - `HAI3_EXT_DOMAIN`: `gts.hai3.screensets.ext.domain.v1~`
   - `HAI3_EXT_EXTENSION`: `gts.hai3.screensets.ext.extension.v1~`
@@ -812,3 +887,181 @@ Action timeouts SHALL be configured explicitly in type definitions, not as impli
 - **THEN** `sendActionsChain(chain, options?)` SHALL accept optional `ChainExecutionOptions`
 - **AND** the options SHALL be passed through to the underlying mediator
 - **AND** action timeouts SHALL be resolved from action and domain type definitions
+
+### Requirement: Dynamic Registration Model
+
+The system SHALL support dynamic registration of extensions, domains, and MFEs at any time during the application lifecycle, not just at initialization. This enables runtime configuration, feature flags, and backend-driven extensibility.
+
+#### Scenario: Register extension dynamically after user action
+
+- **WHEN** a user enables a feature (e.g., toggles a widget in settings)
+- **THEN** the system SHALL allow calling `runtime.registerExtension(extension)` at any time
+- **AND** the extension SHALL be validated against schema and contract before registration
+- **AND** the extension SHALL be available for mounting immediately after registration
+- **AND** an `extensionRegistered` event SHALL be emitted
+
+#### Scenario: Register extension after backend API response
+
+- **WHEN** extensions configuration is fetched from backend API
+- **THEN** the system SHALL allow registering multiple extensions sequentially
+- **AND** the system SHALL support `runtime.refreshExtensionsFromBackend()` for bulk sync
+- **AND** newly registered extensions SHALL be immediately available
+
+#### Scenario: Unregister extension when user disables feature
+
+- **WHEN** a user disables a feature at runtime
+- **THEN** the system SHALL allow calling `runtime.unregisterExtension(extensionId)`
+- **AND** if the extension's MFE is currently mounted, it SHALL be unmounted first
+- **AND** the bridge SHALL be disposed
+- **AND** an `extensionUnregistered` event SHALL be emitted
+
+#### Scenario: Hot-swap extension at runtime
+
+- **WHEN** the system needs to swap an extension implementation (e.g., A/B testing)
+- **THEN** the system SHALL support unregistering the old extension
+- **AND** the system SHALL support registering a new extension with the same ID
+- **AND** the new extension MAY reference a different entry (different MFE)
+- **AND** the MFE SHALL be reloaded with the new implementation
+
+#### Scenario: Register domain dynamically
+
+- **WHEN** a screenset needs to add a new extension point at runtime
+- **THEN** the system SHALL allow calling `runtime.registerDomain(domain)` at any time
+- **AND** the domain SHALL be validated against schema before registration
+- **AND** a `domainRegistered` event SHALL be emitted
+- **AND** extensions MAY then be registered for this domain
+
+#### Scenario: Unregister domain dynamically
+
+- **WHEN** an extension point is no longer needed
+- **THEN** the system SHALL allow calling `runtime.unregisterDomain(domainId)`
+- **AND** all extensions in this domain SHALL be unregistered first
+- **AND** all mounted MFEs in this domain SHALL be unmounted
+- **AND** a `domainUnregistered` event SHALL be emitted
+
+#### Scenario: Mount extension on demand
+
+- **WHEN** an extension is registered but not yet mounted
+- **THEN** the system SHALL allow calling `runtime.mountExtension(extensionId, container)`
+- **AND** the extension MUST be registered before mounting (validation dependency)
+- **AND** the MFE bundle SHALL be loaded via MfeLoader
+- **AND** a bridge connection SHALL be created and returned
+- **AND** the MFE SHALL be mounted into the container element
+
+#### Scenario: Unmount extension
+
+- **WHEN** an extension is no longer needed but should remain registered
+- **THEN** the system SHALL allow calling `runtime.unmountExtension(extensionId)`
+- **AND** the bridge SHALL be disposed
+- **AND** the MFE SHALL be unmounted from the container
+- **AND** the extension SHALL remain registered for future mounting
+
+### Requirement: TypeInstanceProvider Interface
+
+The system SHALL define a TypeInstanceProvider interface for fetching GTS type instances from a backend API. The current implementation uses in-memory registry, with future implementations supporting backend API calls.
+
+#### Scenario: TypeInstanceProvider interface definition
+
+- **WHEN** importing `@hai3/screensets`
+- **THEN** the package SHALL export `TypeInstanceProvider` interface
+- **AND** the interface SHALL define `fetchExtensions(): Promise<Extension[]>`
+- **AND** the interface SHALL define `fetchDomains(): Promise<ExtensionDomain[]>`
+- **AND** the interface SHALL define `fetchInstance<T>(typeId: string): Promise<T | undefined>`
+- **AND** the interface SHALL define `subscribeToUpdates(callback): () => void`
+
+#### Scenario: InMemoryTypeInstanceProvider implementation
+
+- **WHEN** using in-memory storage (current implementation)
+- **THEN** `InMemoryTypeInstanceProvider` SHALL implement `TypeInstanceProvider`
+- **AND** it SHALL provide `registerExtension()`, `registerDomain()`, `registerInstance()` methods
+- **AND** it SHALL notify subscribers when instances are added/updated/removed
+
+#### Scenario: Set type instance provider on runtime
+
+- **WHEN** configuring the runtime for backend integration
+- **THEN** `runtime.setTypeInstanceProvider(provider)` SHALL configure the provider
+- **AND** the runtime SHALL subscribe to provider updates
+- **AND** new extensions/domains from provider SHALL be auto-registered
+- **AND** removed extensions/domains from provider SHALL be auto-unregistered
+
+#### Scenario: Refresh extensions from backend
+
+- **WHEN** calling `runtime.refreshExtensionsFromBackend()`
+- **THEN** the runtime SHALL fetch all domains from provider first
+- **AND** the runtime SHALL register any new domains
+- **AND** the runtime SHALL fetch all extensions from provider
+- **AND** the runtime SHALL register any new extensions
+- **AND** an error SHALL be thrown if no provider is configured
+
+#### Scenario: Resolve entry from provider
+
+- **WHEN** an extension references an entry not in local cache
+- **THEN** the runtime SHALL call `provider.fetchInstance<MfeEntry>(entryId)`
+- **AND** if found, the entry SHALL be cached locally
+- **AND** if not found, an error SHALL be thrown
+
+### Requirement: ScreensetsRegistry Dynamic API
+
+The ScreensetsRegistry SHALL provide a complete API for dynamic registration and lifecycle management.
+
+#### Scenario: ScreensetsRegistry registerExtension method
+
+- **WHEN** calling `runtime.registerExtension(extension)`
+- **THEN** the method SHALL return `Promise<void>`
+- **AND** the extension SHALL be validated against GTS schema
+- **AND** the domain MUST exist (registered earlier or dynamically)
+- **AND** the entry SHALL be resolved (from cache or provider)
+- **AND** the contract SHALL be validated (entry vs domain)
+- **AND** the uiMeta SHALL be validated against domain's extensionsUiMeta
+
+#### Scenario: ScreensetsRegistry unregisterExtension method
+
+- **WHEN** calling `runtime.unregisterExtension(extensionId)`
+- **THEN** the method SHALL return `Promise<void>`
+- **AND** if extension is mounted, the MFE SHALL be unloaded first
+- **AND** the extension SHALL be removed from registry
+- **AND** the extension SHALL be removed from domain's extension set
+- **AND** the operation SHALL be idempotent (no error if already unregistered)
+
+#### Scenario: ScreensetsRegistry registerDomain method
+
+- **WHEN** calling `runtime.registerDomain(domain)`
+- **THEN** the method SHALL return `Promise<void>`
+- **AND** the domain SHALL be validated against GTS schema
+- **AND** the domain SHALL be added to registry
+- **AND** `domainRegistered` event SHALL be emitted
+
+#### Scenario: ScreensetsRegistry unregisterDomain method
+
+- **WHEN** calling `runtime.unregisterDomain(domainId)`
+- **THEN** the method SHALL return `Promise<void>`
+- **AND** all extensions in domain SHALL be unregistered first
+- **AND** the domain SHALL be removed from registry
+- **AND** the operation SHALL be idempotent
+
+#### Scenario: ScreensetsRegistry mountExtension method
+
+- **WHEN** calling `runtime.mountExtension(extensionId, container)`
+- **THEN** the method SHALL return `Promise<MfeBridgeConnection>`
+- **AND** the extension MUST be registered
+- **AND** the MFE bundle SHALL be loaded via MfeLoader
+- **AND** a bridge SHALL be created and connected
+- **AND** the runtime SHALL be registered with coordinator
+
+#### Scenario: ScreensetsRegistry unmountExtension method
+
+- **WHEN** calling `runtime.unmountExtension(extensionId)`
+- **THEN** the method SHALL return `Promise<void>`
+- **AND** the bridge SHALL be disposed
+- **AND** the runtime SHALL be unregistered from coordinator
+- **AND** the extension SHALL remain registered
+
+#### Scenario: Registration events
+
+- **WHEN** extensions or domains are registered/unregistered
+- **THEN** the runtime SHALL emit events:
+  - `extensionRegistered` with `{ extensionId: string }`
+  - `extensionUnregistered` with `{ extensionId: string }`
+  - `domainRegistered` with `{ domainId: string }`
+  - `domainUnregistered` with `{ domainId: string }`
+- **AND** external systems MAY subscribe to these events for coordination

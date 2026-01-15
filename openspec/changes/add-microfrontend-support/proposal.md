@@ -9,8 +9,29 @@ HAI3 applications need to compose functionality from multiple independently depl
 3. **Complete Runtime Isolation**: Each MFE maintains its own isolated runtime (state, TypeSystemPlugin, schema registry) with controlled communication ONLY through the contract
 4. **Type-Safe Contracts**: Each runtime has its own TypeSystemPlugin instance - MFEs cannot discover host or other MFE schemas
 5. **Framework Agnostic**: Host uses React, but MFEs can use any framework - no React/ReactDOM dependency for MFEs
+6. **Dynamic Registration**: Extensions and MFEs can be registered at ANY time during runtime, not just at app initialization - enabling runtime configuration, feature flags, and backend-driven extensibility
 
 ## What Changes
+
+### Framework Plugin Model
+
+**Key Principles:**
+- **Screensets is CORE to HAI3** - automatically initialized by `createHAI3()`, NOT a `.use()` plugin
+- **Microfrontends plugin enables MFE capabilities** with NO static configuration
+- **All MFE registration is dynamic** - happens at runtime via actions/API, not at initialization
+
+```typescript
+// Screensets is CORE - automatically initialized by createHAI3()
+const app = createHAI3()
+  .use(microfrontends())  // No configuration - just enables MFE capabilities
+  .build();
+
+// All registration happens dynamically at runtime:
+// - mfeActions.registerExtension({ extension })
+// - mfeActions.registerDomain({ domain })
+// - runtime.registerExtension(extension)
+// - runtime.registerDomain(domain)
+```
 
 ### Core Architecture
 
@@ -109,7 +130,7 @@ When using the GTS plugin, the following types are registered with properly stru
 | GTS Type ID | Purpose |
 |-------------|---------|
 | `gts.hai3.screensets.mfe.mf.v1~` | Module Federation manifest (standalone) |
-| `gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~` | Module Federation entry (derived) |
+| `gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~` | Module Federation entry (derived) |
 
 ### GTS JSON Schema Definitions
 
@@ -154,7 +175,7 @@ gts.hai3.screensets.mfe.entry.v1~ (Base - Abstract Contract)
   |-- actions: string[]
   |-- domainActions: string[]
   |
-  +-- gts.hai3.screensets.mfe.entry.v1~hai3.mfe.entry_mf.v1~ (Module Federation)
+  +-- gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~ (Module Federation)
         |-- (inherits contract fields from base)
         |-- manifest: string (MfManifest type ID)
         |-- exposedModule: string
@@ -182,7 +203,7 @@ domain.actions            is subset of  entry.domainActions
 ### Dynamic uiMeta Validation
 
 An `Extension`'s `uiMeta` must conform to its domain's `extensionsUiMeta` schema. Since the domain reference is dynamic, this validation uses the plugin's attribute accessor at runtime:
-- The ScreensetsRuntime calls `plugin.getAttribute(extension.domain, 'extensionsUiMeta')` to resolve the schema
+- The ScreensetsRegistry calls `plugin.getAttribute(extension.domain, 'extensionsUiMeta')` to resolve the schema
 - Then validates `extension.uiMeta` against the resolved schema
 - See Decision 8 in `design.md` for implementation details
 
@@ -218,6 +239,149 @@ On timeout: execute fallback chain if defined (same as any other failure)
 - Vendor screensets can define their own extension domains
 - Example: A dashboard screenset defines a "widget slot" domain for third-party widgets
 
+### DRY Principle for Extension Actions
+
+**Key Principle**: Extension lifecycle uses generic actions (`load_ext`, `unload_ext`) instead of domain-specific actions. This follows the DRY principle - each domain handles the same action according to its specific layout behavior.
+
+**Why NOT domain-specific actions:**
+- `show_popup`, `hide_popup`, `show_sidebar`, `hide_sidebar` are semantically the same - they load/unload extensions
+- Creating separate action types for each domain violates DRY
+- When adding new domains, you would need to create new action types
+- Each extension would need to know domain-specific action types
+
+**Generic Extension Actions:**
+```typescript
+// Only two action constants needed for ALL domains
+HAI3_ACTION_LOAD_EXT: 'gts.hai3.screensets.ext.action.v1~hai3.screensets.actions.load_ext.v1~'
+HAI3_ACTION_UNLOAD_EXT: 'gts.hai3.screensets.ext.action.v1~hai3.screensets.actions.unload_ext.v1~'
+
+// Action payload specifies target domain and extension
+interface LoadExtPayload {
+  domainTypeId: string;     // e.g., HAI3_POPUP_DOMAIN, HAI3_SIDEBAR_DOMAIN
+  extensionTypeId: string;  // the extension to load
+  // ... additional domain-specific params
+}
+```
+
+**Benefits:**
+1. **Single action type** works for popup, sidebar, screen, overlay, and custom domains
+2. **Domain handles layout semantics** - popup shows modal, sidebar shows panel, screen navigates
+3. **Extensible** - new domains automatically support load_ext/unload_ext
+4. **Simpler API** - MFE code only needs to know two action constants
+
+### Domain-Specific Action Support
+
+**Key Principle**: Not all domains can support all actions. Each domain declares which HAI3 actions it supports via its `actions` field.
+
+**Action Support by Domain:**
+- **Popup, Sidebar, Overlay**: Support BOTH `load_ext` and `unload_ext` (can be shown/hidden)
+- **Screen**: Only supports `load_ext` (you can navigate TO a screen, but cannot have "no screen selected")
+
+**Domain declares supported actions:**
+```typescript
+// Popup domain - supports both load and unload
+{
+  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.popup.v1~',
+  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],
+  // ...
+}
+
+// Screen domain - only supports load (navigate to)
+{
+  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.screen.v1~',
+  actions: [HAI3_ACTION_LOAD_EXT],  // No unload - can't have "no screen"
+  // ...
+}
+```
+
+**Key Principles:**
+1. **`load_ext` is universal**: All domains MUST support `HAI3_ACTION_LOAD_EXT`
+2. **`unload_ext` is optional**: Some domains (like screen) cannot semantically support unloading
+3. **ActionsChainsMediator validates**: Before delivering an action, the mediator checks if the target domain supports it
+4. **Clear error on unsupported action**: `UnsupportedDomainActionError` is thrown when attempting an unsupported action
+
+### Dynamic Registration Model
+
+**Key Principle**: Extensions and MFEs are NOT known at app initialization time. They can be registered dynamically at any point during the application lifecycle.
+
+**ScreensetsRegistry** is the central registry for MFE screensets. It:
+- Registers extension domains (extension points where MFEs can mount)
+- Registers extensions (bindings between MFE entries and domains)
+- Registers MFE entries and manifests
+- Manages the Type System plugin for type validation and schema registry
+- Coordinates MFE loading and lifecycle
+
+**ScreensetsRegistry API:**
+```typescript
+interface ScreensetsRegistry {
+  // === Dynamic Registration (anytime during runtime) ===
+
+  /** Register extension dynamically - can be called at any time */
+  registerExtension(extension: Extension): Promise<void>;
+
+  /** Unregister extension dynamically */
+  unregisterExtension(extensionId: string): Promise<void>;
+
+  /** Register domain dynamically - can be called at any time */
+  registerDomain(domain: ExtensionDomain): Promise<void>;
+
+  /** Unregister domain dynamically */
+  unregisterDomain(domainId: string): Promise<void>;
+
+  // === MFE Loading (on-demand) ===
+
+  /** Mount extension on demand */
+  mountExtension(extensionId: string, container: Element): Promise<MfeBridgeConnection>;
+
+  /** Unmount extension */
+  unmountExtension(extensionId: string): Promise<void>;
+
+  // === Type Instance Provider (future backend integration) ===
+
+  /** Set the provider for fetching GTS type instances from backend */
+  setTypeInstanceProvider(provider: TypeInstanceProvider): void;
+
+  /** Refresh extensions from backend - triggers provider.fetchExtensions() */
+  refreshExtensionsFromBackend(): Promise<void>;
+}
+```
+
+**Use Cases for Dynamic Registration:**
+1. **Feature Flags**: Register extensions based on user feature flags fetched after login
+2. **Backend Configuration**: GTS types and instances fetched from backend API
+3. **User Actions**: User enables/disables features at runtime (e.g., toggle a widget)
+4. **Lazy Loading**: Mount extensions on-demand when user navigates to specific screens
+5. **Hot-Swap**: Replace extension implementation at runtime (e.g., A/B testing)
+6. **Permission Changes**: Register/unregister extensions when user permissions change
+
+**TypeInstanceProvider Interface (Future Backend Integration):**
+```typescript
+/**
+ * Provider for fetching GTS type instances from backend.
+ * Current implementation: in-memory registry
+ * Future: backend API calls
+ */
+interface TypeInstanceProvider {
+  /** Fetch all available extensions from backend */
+  fetchExtensions(): Promise<Extension[]>;
+
+  /** Fetch all available domains from backend */
+  fetchDomains(): Promise<ExtensionDomain[]>;
+
+  /** Fetch specific type instance by ID */
+  fetchInstance<T>(typeId: string): Promise<T | undefined>;
+
+  /** Subscribe to instance updates (real-time sync) */
+  subscribeToUpdates(callback: (update: InstanceUpdate) => void): () => void;
+}
+
+interface InstanceUpdate {
+  type: 'added' | 'updated' | 'removed';
+  typeId: string;
+  instance?: unknown;
+}
+```
+
 ## Impact
 
 ### Affected specs
@@ -237,18 +401,23 @@ On timeout: execute fallback chain if defined (same as any other failure)
 **Modified packages:**
 - `packages/screensets/src/state/` - Isolated state instances (uses @hai3/state)
 - `packages/screensets/src/screensets/` - Extension domain registration
-- `packages/framework/src/plugins/microfrontends/` - Accept Type System plugin from screensets
+- `packages/framework/src/plugins/microfrontends/` - Enables MFE capabilities (no static configuration)
 
-### Breaking changes
-- **BREAKING**: MFEs require Type System-compliant type definitions for integration
-- **BREAKING**: Extension points must define explicit contracts
-- **BREAKING**: `ScreensetsRuntimeConfig` now requires `typeSystem` parameter
+### Interface Changes
 
-### Migration strategy
+Note: HAI3 is in alpha stage. Backward-incompatible interface changes are expected.
+
+- MFEs require Type System-compliant type definitions for integration
+- Extension points must define explicit contracts
+- `ScreensetsRegistryConfig` requires `typeSystem` parameter
+
+### Implementation strategy
 1. Define `TypeSystemPlugin` interface in @hai3/screensets
 2. Create GTS plugin implementation as default
-3. Implement ScreensetsRuntime to require plugin at initialization
+3. Implement ScreensetsRegistry with dynamic registration API
 4. Define internal TypeScript types for MFE architecture (6 core + 2 MF-specific)
-5. Register HAI3 types via plugin at initialization
-6. Propagate plugin through @hai3/framework layers
-7. Update documentation and examples
+5. Register HAI3 base types via plugin at initialization
+6. Support runtime registration of extensions, domains, and MFEs at any time
+7. Propagate plugin through @hai3/framework layers
+8. Add TypeInstanceProvider interface for future backend integration
+9. Update documentation and examples
