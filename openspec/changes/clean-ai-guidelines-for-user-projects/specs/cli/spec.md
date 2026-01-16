@@ -103,13 +103,16 @@ The CLI SHALL ship AI configuration files that contain only user-project-applica
 **Given** a HAI3 project created by CLI
 **When** examining `.ai/targets/AI_COMMANDS.md`
 **Then** the file SHALL NOT contain:
-- "ADDING A NEW COMMAND" section (users do not add AI commands)
-- "MODIFYING EXISTING COMMANDS" section (users do not modify AI commands)
+- References to `.ai/commands/internal/` (monorepo-only)
+- References to `packages/*/commands/` (monorepo-only)
 - References to `copy-templates.ts` (monorepo build internals)
-**And** SHALL contain user-relevant content only:
+- References to `hai3dev-*` command namespace (monorepo-only)
+**And** SHALL contain user-relevant content:
 - Command categories (hai3-*, openspec:*)
+- Three-level command hierarchy (HAI3, company, project)
+- How to create company/project commands
 - How to use OpenSpec workflow commands
-- How to run hai3 validation commands
+- Command discovery via ai:sync
 
 #### Scenario: No packages/ references in user projects
 
@@ -163,3 +166,77 @@ The CLI SHALL NOT include STUDIO.md in user project templates.
 **Then** copy-templates.ts SHALL NOT copy STUDIO.md to templates
 **And** STUDIO.md SHALL remain available in the monorepo `.ai/targets/` for SDK developers
 **And** STUDIO.md SHALL NOT exist in `packages/cli/templates/.ai/targets/`
+
+### Requirement: Three-Level Commands Hierarchy
+
+The CLI SHALL support a three-level command hierarchy with company and project-level extensions.
+
+#### Scenario: Command directory structure in user projects
+
+**Given** a HAI3 project created by CLI
+**When** examining the `.ai/` directory structure
+**Then** the following command directories SHALL exist:
+```
+.ai/
+├── commands/               # L1 - HAI3 commands (managed by ai:sync)
+├── company/
+│   └── commands/           # L2 - Company commands (preserved on update)
+└── project/
+    └── commands/           # L3 - Project commands (preserved on update)
+```
+**And** `.ai/company/commands/.gitkeep` SHALL exist as placeholder
+**And** `.ai/project/commands/.gitkeep` SHALL exist as placeholder
+
+#### Scenario: ai:sync discovers commands from all levels
+
+**Given** a user project with commands in:
+  - `.ai/commands/` (HAI3 commands from node_modules)
+  - `.ai/company/commands/review/` (company command)
+  - `.ai/project/commands/deploy/` (project command)
+**When** running `npx hai3 ai:sync`
+**Then** the command SHALL scan all three directories
+**And** SHALL generate IDE adapters in:
+  - `.claude/commands/` for Claude Code
+  - `.cursor/commands/` for Cursor
+  - `.windsurf/workflows/` for Windsurf
+**And** all discovered commands SHALL be included in generated adapters
+
+#### Scenario: Command precedence on conflict
+
+**Given** a user project with:
+  - `.ai/commands/validate/` (HAI3 command)
+  - `.ai/company/commands/validate/` (company override)
+  - `.ai/project/commands/validate/` (project override)
+**When** running `npx hai3 ai:sync`
+**Then** the project-level command SHALL take precedence
+**And** the generated IDE adapter for `validate` SHALL point to `.ai/project/commands/validate/`
+**And** the precedence order SHALL be: project > company > hai3
+
+#### Scenario: Company and project commands preserved on update
+
+**Given** a user project with:
+  - Custom command in `.ai/company/commands/review/`
+  - Custom command in `.ai/project/commands/deploy/`
+**When** running `hai3 update`
+**Then** all files in `.ai/company/` SHALL be preserved unchanged
+**And** all files in `.ai/project/` SHALL be preserved unchanged
+**And** HAI3 commands in `.ai/commands/` SHALL be updated from node_modules
+
+### Requirement: AI_COMMANDS.md Override for Hierarchy Documentation
+
+The AI_COMMANDS.md override SHALL document the three-level commands hierarchy for user projects.
+
+#### Scenario: AI_COMMANDS.md contains hierarchy documentation
+
+**Given** a HAI3 project created by CLI
+**When** examining `.ai/targets/AI_COMMANDS.md`
+**Then** the file SHALL contain:
+  - COMMAND HIERARCHY section explaining 3 levels (HAI3, company, project)
+  - CREATING COMMANDS section with instructions for company/project commands
+  - COMMAND FORMAT section describing README.md structure
+  - COMMAND DISCOVERY section explaining ai:sync
+  - PRECEDENCE RULES section (project > company > hai3)
+**And** the file SHALL NOT contain:
+  - References to `.ai/commands/internal/` (monorepo-only)
+  - References to `packages/*/commands/` (monorepo-only)
+  - References to `copy-templates.ts` (monorepo-only)
