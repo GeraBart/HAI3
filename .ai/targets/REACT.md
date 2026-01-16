@@ -1,4 +1,4 @@
-<!-- @standalone -->
+
 # @hai3/react Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)

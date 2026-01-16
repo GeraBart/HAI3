@@ -47,19 +47,30 @@ The existing `packages/cli/template-sources/ai-overrides/GUIDELINES.md` contains
 
 User projects have only `src/` structure (screensets, themes, uikit customizations), not `packages/` structure.
 
-### Issue 2: SDK-Development-Focused Target Files
+### Issue 2: Unrouted Target Files Are Useless Context
 
-Several target files describe **developing HAI3 packages**, not **using them**:
+The GUIDELINES.md ROUTING section for user projects routes to only 8 target files:
 
-| Target File | Current Focus | Problem for Users |
-|-------------|---------------|-------------------|
-| CLI.md | CLI package development (presets, copy-templates.ts, template assembly) | Users run CLI commands, they do not develop the CLI package |
-| FRAMEWORK.md | Developing @hai3/framework package with `packages/framework/` scope | Users consume the framework, they do not develop it |
-| STORE.md | Developing @hai3/state package with `packages/state/` scope | Users use state patterns, they do not develop the state package |
-| REACT.md | Developing @hai3/react package with `packages/react/` scope | Users use React hooks, they do not develop the react package |
-| UIKIT.md | Developing @hai3/uikit package with `packages/uikit/**` scope | Users customize UI kit, they do not develop base components |
-| STUDIO.md | Developing @hai3/studio package with `packages/studio/**` scope | Users do not develop Studio; it is dev-only tooling |
-| I18N.md | Developing @hai3/i18n package with `packages/i18n/` scope | Users configure i18n, they do not develop the i18n package |
+**Application Layer:**
+- `src/screensets -> .ai/targets/SCREENSETS.md`
+- `src/themes -> .ai/targets/THEMES.md`
+- `Styling anywhere -> .ai/targets/STYLING.md`
+- `Layout patterns -> .ai/targets/LAYOUT.md`
+- `Event patterns -> .ai/targets/EVENTS.md`
+
+**Tooling:**
+- `.ai documentation -> .ai/targets/AI.md`
+- `.ai/commands -> .ai/targets/AI_COMMANDS.md`
+- `CLI usage -> .ai/targets/CLI.md`
+
+The following target files have NO routing entries in user projects:
+- FRAMEWORK.md - never referenced by AI workflow
+- STORE.md - never referenced by AI workflow
+- REACT.md - never referenced by AI workflow
+- UIKIT.md - never referenced by AI workflow
+- I18N.md - never referenced by AI workflow
+
+**Key insight**: If a target file has no routing, it should not exist in user projects at all. Creating "user-focused versions" of unrouted files is still useless context that enlarges token count without providing value.
 
 ### Issue 3: AI Command Documentation Contains Monorepo-Specific Content
 
@@ -89,16 +100,20 @@ Users receive guidance that mixes:
 
 This creates confusion and leads AI assistants to suggest inappropriate patterns (e.g., modifying core registries, creating new plugins, editing package internals).
 
+### Issue 6: Hardcoded @hai3/uikit References
+
+GUIDELINES.md and other files contain hardcoded `@hai3/uikit` references. However, users can replace the HAI3 uikit with their own UI kit. These references should use "the configured UI kit" instead.
+
 ## Existing Overrides Analysis
 
 The following override files ALREADY EXIST in `packages/cli/template-sources/ai-overrides/`:
 
 | File | Status | Action Needed |
 |------|--------|---------------|
-| `GUIDELINES.md` | EXISTS but contains `packages/` routing | MODIFY: Remove SDK/Framework/React/UI routing sections |
+| `GUIDELINES.md` | EXISTS but contains `packages/` routing and hardcoded @hai3/uikit | MODIFY: Remove SDK routing, replace @hai3/uikit references |
 | `GUIDELINES.sdk.md` | EXISTS | No changes needed (SDK layer variant) |
 | `GUIDELINES.framework.md` | EXISTS | No changes needed (Framework layer variant) |
-| `targets/API.md` | EXISTS and user-focused | No changes needed (already standalone-appropriate) |
+| `targets/API.md` | EXISTS and user-focused | No changes needed (referenced from SCREENSETS.md for API patterns) |
 | `targets/THEMES.md` | EXISTS and user-focused | No changes needed (already standalone-appropriate) |
 
 ## Requirements
@@ -113,17 +128,20 @@ The existing `packages/cli/template-sources/ai-overrides/GUIDELINES.md` needs MO
 - [P1-R4] REQUIRED: Remove UI and Dev Packages section with `packages/uikit`, `packages/studio` routes
 - [P1-R5] REQUIRED: Keep Application Layer section (`src/screensets`, `src/themes`, styling)
 - [P1-R6] REQUIRED: Keep Tooling section with CLI usage routes
+- [P1-R7] REQUIRED: Replace hardcoded `@hai3/uikit` references with "the configured UI kit"
 
-### Priority 2: Create Missing User-Focused Target File Overrides
+### Priority 2: Exclude Unrouted Target Files from User Projects
 
-Create new override files in `packages/cli/template-sources/ai-overrides/targets/` for files that currently have no user-focused version:
+Target files with no routing in GUIDELINES.md should be EXCLUDED entirely (not given user-focused overrides):
 
-- [P2-R1] REQUIRED: Create `targets/CLI.md` override (CLI usage, not CLI development)
-- [P2-R2] REQUIRED: Create `targets/FRAMEWORK.md` override (plugin composition for apps, not plugin development)
-- [P2-R3] REQUIRED: Create `targets/STORE.md` override (using state patterns in screensets, not developing @hai3/state)
-- [P2-R4] REQUIRED: Create `targets/REACT.md` override (using hooks in components, not developing @hai3/react)
-- [P2-R5] REQUIRED: Create `targets/UIKIT.md` override (customizing UI kit locally, not developing @hai3/uikit)
-- [P2-R6] REQUIRED: Create `targets/I18N.md` override (configuring i18n in screensets, not developing @hai3/i18n)
+- [P2-R1] REQUIRED: Remove `<!-- @standalone -->` or `<!-- @standalone:override -->` marker from `.ai/targets/FRAMEWORK.md` (no routing = exclude)
+- [P2-R2] REQUIRED: Remove marker from `.ai/targets/STORE.md` (no routing = exclude)
+- [P2-R3] REQUIRED: Remove marker from `.ai/targets/REACT.md` (no routing = exclude)
+- [P2-R4] REQUIRED: Remove marker from `.ai/targets/UIKIT.md` (no routing = exclude)
+- [P2-R5] REQUIRED: Remove marker from `.ai/targets/I18N.md` (no routing = exclude)
+- [P2-R6] REQUIRED: Delete any override files created for these targets in `packages/cli/template-sources/ai-overrides/targets/`
+
+**Rationale**: If a target file has no routing entry, the AI workflow never references it. Shipping it (even a "user-focused" version) only adds context noise and token overhead.
 
 ### Priority 3: Exclude STUDIO.md from User Projects
 
@@ -135,20 +153,24 @@ STUDIO.md exclusion via source file marker removal (simplest approach):
 
 Note: Layer filtering (`TARGET_LAYERS` in layers.ts) handles per-layer target inclusion. This proposal uses marker removal for complete exclusion from all standalone projects, which is simpler than adding layer-based exclusion logic.
 
-### Priority 4: Create AI.md and AI_COMMANDS.md Overrides
+### Priority 4: Create Overrides for ROUTED Target Files
 
-- [P4-R1] REQUIRED: Create `targets/AI.md` override without `hai3dev-*` command references
-- [P4-R2] REQUIRED: Create `targets/AI.md` override without `UPDATE_GUIDELINES.md` references
-- [P4-R3] REQUIRED: Create `targets/AI_COMMANDS.md` override without "ADDING A NEW COMMAND" section
-- [P4-R4] REQUIRED: Create `targets/AI_COMMANDS.md` override without "MODIFYING EXISTING COMMANDS" section
-- [P4-R5] REQUIRED: Create `targets/AI_COMMANDS.md` override without `copy-templates.ts` references
+Create overrides ONLY for target files that ARE routed in user project GUIDELINES.md:
 
-### Priority 5: Source File Marker Updates
+- [P4-R1] REQUIRED: Create `targets/CLI.md` override (CLI usage, not CLI development) - routed via "CLI usage"
+- [P4-R2] REQUIRED: Create `targets/AI.md` override without `hai3dev-*` and `UPDATE_GUIDELINES.md` references - routed via ".ai documentation"
+- [P4-R3] REQUIRED: Create `targets/AI_COMMANDS.md` override without SDK development sections - routed via ".ai/commands"
 
-For each new override, the corresponding source file in `.ai/targets/` needs marker update:
+Note: SCREENSETS.md, THEMES.md, STYLING.md, LAYOUT.md, EVENTS.md are already user-focused (no override needed).
 
-- [P5-R1] REQUIRED: Change marker in source files from `<!-- @standalone -->` to `<!-- @standalone:override -->` for files getting new overrides
-- [P5-R2] REQUIRED: Verify `copy-templates.ts` correctly processes the override mechanism
+### Priority 5: Source File Marker Updates for Routed Files
+
+For each new override of a ROUTED file, the corresponding source file needs marker update:
+
+- [P5-R1] REQUIRED: Change marker in `.ai/targets/CLI.md` from `<!-- @standalone -->` to `<!-- @standalone:override -->`
+- [P5-R2] REQUIRED: Change marker in `.ai/targets/AI.md` from `<!-- @standalone -->` to `<!-- @standalone:override -->`
+- [P5-R3] REQUIRED: Change marker in `.ai/targets/AI_COMMANDS.md` from `<!-- @standalone -->` to `<!-- @standalone:override -->`
+- [P5-R4] REQUIRED: Verify `copy-templates.ts` correctly processes the override mechanism
 
 ## Scenarios
 
@@ -166,7 +188,14 @@ For each new override, the corresponding source file in `.ai/targets/` needs mar
   - `Event patterns -> .ai/targets/EVENTS.md`
   - `Layout patterns -> .ai/targets/LAYOUT.md`
 **And** GUIDELINES.md does NOT contain `packages/*` references
-**And** STUDIO.md is NOT present in `.ai/targets/`
+**And** GUIDELINES.md does NOT contain hardcoded `@hai3/uikit` references
+**And** only 9 target files exist in `.ai/targets/`:
+  - AI.md, AI_COMMANDS.md, CLI.md (Tooling)
+  - SCREENSETS.md, THEMES.md, STYLING.md, LAYOUT.md, EVENTS.md (Application Layer)
+  - API.md (referenced from SCREENSETS.md for API service patterns)
+**And** the following files do NOT exist in `.ai/targets/`:
+  - FRAMEWORK.md, STORE.md, REACT.md, UIKIT.md, I18N.md (no routing)
+  - STUDIO.md (SDK development only)
 
 ### Scenario 2: AI Assistant Guidance in User Project
 
@@ -181,35 +210,15 @@ For each new override, the corresponding source file in `.ai/targets/` needs mar
   - Template assembly logic
   - `packages/cli/` scope references
 
-### Scenario 3: AI Assistant Helping with State Management
+### Scenario 3: AI Assistant Cannot Find Unrouted Files
 
 **Given** a user project with cleaned AI guidelines
-**When** an AI assistant reads `.ai/targets/STORE.md`
-**Then** the assistant learns about:
-  - Using `registerSlice()` in screensets
-  - Slice naming conventions with screenset ID
-  - Module augmentation for type safety
-  - Effects initialization
-**And** the assistant does NOT see:
-  - `packages/state/` scope references
-  - SDK package development rules
-  - Internal store implementation details
+**When** an AI assistant tries to find `.ai/targets/STORE.md` or `.ai/targets/REACT.md`
+**Then** these files do NOT exist
+**And** the assistant uses SCREENSETS.md for state and component patterns instead
+**Because** state management and React hooks are documented in context of screenset development
 
-### Scenario 4: AI Assistant Helping with React Components
-
-**Given** a user project with cleaned AI guidelines
-**When** an AI assistant reads `.ai/targets/REACT.md`
-**Then** the assistant learns about:
-  - Using `HAI3Provider` wrapper
-  - Available hooks (useHAI3, useAppDispatch, useAppSelector, useTranslation, etc.)
-  - Screen translations with `useScreenTranslations()`
-  - TextLoader usage
-**And** the assistant does NOT see:
-  - `packages/react/` scope references
-  - L3 React layer development rules
-  - Peer dependency management
-
-### Scenario 5: Monorepo Development Unaffected
+### Scenario 4: Monorepo Development Unaffected
 
 **Given** the HAI3 monorepo (not a user project)
 **When** a developer works on SDK packages
@@ -229,8 +238,8 @@ For each new override, the corresponding source file in `.ai/targets/` needs mar
 ### Edge Case 2: User Creates Custom UI Kit Components
 
 **Scenario**: A user creates custom components in `src/screensets/*/uikit/`
-**Expected**: UIKIT.md override guides local customization patterns, not @hai3/uikit package development
-**Rationale**: User-created components follow different rules than SDK base components
+**Expected**: SCREENSETS.md and STYLING.md guide local component customization patterns
+**Rationale**: UI kit customization is documented in the context of screenset development, not as separate UIKIT.md file
 
 ### Edge Case 3: User Runs hai3 update
 
@@ -238,37 +247,49 @@ For each new override, the corresponding source file in `.ai/targets/` needs mar
 **Expected**: Updated guidelines replace old monorepo-focused content with user-focused content
 **Rationale**: Existing projects should benefit from cleaner guidelines
 
+### Edge Case 4: User Looks for State or React Documentation
+
+**Scenario**: A user expects to find STORE.md or REACT.md for state/React patterns
+**Expected**: These files do not exist; state management and React patterns are documented in SCREENSETS.md where they are actually used
+**Rationale**: Standalone target files for STORE and REACT were SDK development guides; usage patterns belong in screenset context
+
 ## Acceptance Criteria
 
 ### AC1: No packages/* References in User Projects
 - [AC1.1] VERIFY: `grep -rn "packages/" project/.ai/` returns 0 matches in a newly created project
 - [AC1.2] VERIFY: GUIDELINES.md does not contain "SDK Layer", "Framework Layer", "React Layer", "UI and Dev Packages" sections
 
-### AC2: User-Focused Target Files
-- [AC2.1] VERIFY: CLI.md in user projects does NOT contain "packages/cli/" scope reference
-- [AC2.2] VERIFY: FRAMEWORK.md in user projects does NOT contain "packages/framework/" scope reference
-- [AC2.3] VERIFY: STORE.md in user projects does NOT contain "packages/state/" scope reference
-- [AC2.4] VERIFY: REACT.md in user projects does NOT contain "packages/react/" scope reference
-- [AC2.5] VERIFY: UIKIT.md in user projects does NOT contain "packages/uikit/" scope reference
-- [AC2.6] VERIFY: I18N.md in user projects does NOT contain "packages/i18n/" scope reference
-- [AC2.7] VERIFY: STUDIO.md does NOT exist in user projects `.ai/targets/`
+### AC2: No Hardcoded @hai3/uikit References
+- [AC2.1] VERIFY: `grep -rn "@hai3/uikit" project/.ai/` returns 0 matches in a newly created project
+- [AC2.2] VERIFY: GUIDELINES.md uses "the configured UI kit" instead of hardcoded package names
 
-### AC3: Cleaned AI.md and AI_COMMANDS.md
-- [AC3.1] VERIFY: AI.md in user projects does NOT contain "hai3dev-" references
-- [AC3.2] VERIFY: AI.md in user projects does NOT contain "UPDATE_GUIDELINES.md" references
-- [AC3.3] VERIFY: AI_COMMANDS.md in user projects does NOT contain "ADDING A NEW COMMAND" section
-- [AC3.4] VERIFY: AI_COMMANDS.md in user projects does NOT contain "MODIFYING EXISTING COMMANDS" section
-- [AC3.5] VERIFY: AI_COMMANDS.md in user projects does NOT contain "copy-templates.ts" references
+### AC3: Only Routed Target Files Exist
+- [AC3.1] VERIFY: CLI.md exists in user projects and does NOT contain "packages/cli/" scope reference
+- [AC3.2] VERIFY: FRAMEWORK.md does NOT exist in user projects `.ai/targets/`
+- [AC3.3] VERIFY: STORE.md does NOT exist in user projects `.ai/targets/`
+- [AC3.4] VERIFY: REACT.md does NOT exist in user projects `.ai/targets/`
+- [AC3.5] VERIFY: UIKIT.md does NOT exist in user projects `.ai/targets/`
+- [AC3.6] VERIFY: I18N.md does NOT exist in user projects `.ai/targets/`
+- [AC3.7] VERIFY: STUDIO.md does NOT exist in user projects `.ai/targets/`
+- [AC3.8] VERIFY: API.md exists in user projects (referenced from SCREENSETS.md)
+- [AC3.9] VERIFY: Exactly 9 target files exist: AI.md, AI_COMMANDS.md, API.md, CLI.md, EVENTS.md, LAYOUT.md, SCREENSETS.md, STYLING.md, THEMES.md
 
-### AC4: Template Assembly Validation
-- [AC4.1] VERIFY: `npm run build:packages` succeeds
-- [AC4.2] VERIFY: `hai3 create test-project` creates project with cleaned guidelines
-- [AC4.3] VERIFY: Created project passes `npm run lint` and `npm run type-check`
+### AC4: Cleaned AI.md and AI_COMMANDS.md
+- [AC4.1] VERIFY: AI.md in user projects does NOT contain "hai3dev-" references
+- [AC4.2] VERIFY: AI.md in user projects does NOT contain "UPDATE_GUIDELINES.md" references
+- [AC4.3] VERIFY: AI_COMMANDS.md in user projects does NOT contain "ADDING A NEW COMMAND" section
+- [AC4.4] VERIFY: AI_COMMANDS.md in user projects does NOT contain "MODIFYING EXISTING COMMANDS" section
+- [AC4.5] VERIFY: AI_COMMANDS.md in user projects does NOT contain "copy-templates.ts" references
 
-### AC5: Monorepo Development Unaffected
-- [AC5.1] VERIFY: Original SDK-focused target files remain in monorepo `.ai/targets/`
-- [AC5.2] VERIFY: hai3dev-* commands remain available in monorepo
-- [AC5.3] VERIFY: STUDIO.md remains available in monorepo `.ai/targets/`
+### AC5: Template Assembly Validation
+- [AC5.1] VERIFY: `npm run build:packages` succeeds
+- [AC5.2] VERIFY: `hai3 create test-project` creates project with cleaned guidelines
+- [AC5.3] VERIFY: Created project passes `npm run lint` and `npm run type-check`
+
+### AC6: Monorepo Development Unaffected
+- [AC6.1] VERIFY: Original SDK-focused target files remain in monorepo `.ai/targets/`
+- [AC6.2] VERIFY: hai3dev-* commands remain available in monorepo
+- [AC6.3] VERIFY: STUDIO.md remains available in monorepo `.ai/targets/`
 
 ## Out of Scope
 
@@ -278,7 +299,18 @@ For each new override, the corresponding source file in `.ai/targets/` needs mar
 - Changes to MCP_TROUBLESHOOTING.md
 - Adding new features to the CLI or templates
 - Modifying `packages/cli/src/core/layers.ts` (layer filtering works alongside this proposal)
-- Changes to `packages/cli/template-sources/ai-overrides/targets/API.md` (already user-focused, no `packages/` references)
+- Changes to `packages/cli/template-sources/ai-overrides/targets/API.md` (already user-focused, referenced from SCREENSETS.md for API service patterns)
 - Changes to `packages/cli/template-sources/ai-overrides/targets/THEMES.md` (already user-focused, no `packages/` references)
 - Changes to `packages/cli/template-sources/ai-overrides/GUIDELINES.sdk.md` (SDK layer variant, not for app users)
 - Changes to `packages/cli/template-sources/ai-overrides/GUIDELINES.framework.md` (Framework layer variant, not for app users)
+
+## Notes
+
+### Why API.md is Kept Despite No Direct Routing
+
+API.md has no direct routing entry in GUIDELINES.md, but it IS referenced from SCREENSETS.md for API service patterns. It provides guidance on:
+- Creating API services in `src/screensets/*/api/`
+- Domain-based service architecture
+- Error handling patterns
+
+This makes API.md useful context when working on screensets, unlike FRAMEWORK.md, STORE.md, REACT.md, UIKIT.md, I18N.md which have no references from any routed file.

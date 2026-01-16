@@ -1,4 +1,4 @@
-<!-- @standalone -->
+<!-- @standalone:override -->
 # CLI Guidelines
 
 ## AI WORKFLOW (REQUIRED)

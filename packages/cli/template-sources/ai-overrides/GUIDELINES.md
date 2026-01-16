@@ -12,24 +12,12 @@
 - REQUIRED: When user says "follow X.md rules", read X.md before any change.
 
 ## ROUTING
-### SDK Layer (L1) - Zero @hai3 dependencies
-- packages/state -> .ai/targets/STORE.md
-- packages/api -> .ai/targets/API.md
-- packages/i18n -> .ai/targets/I18N.md
-- Event patterns -> .ai/targets/EVENTS.md
-### Framework Layer (L2) - Depends on SDK packages
-- packages/framework -> .ai/targets/FRAMEWORK.md
-- Layout patterns -> .ai/targets/LAYOUT.md
-- Theme patterns -> .ai/targets/THEMES.md
-### React Layer (L3) - Depends on Framework
-- packages/react -> .ai/targets/REACT.md
-### UI and Dev Packages
-- packages/uikit -> .ai/targets/UIKIT.md
-- packages/studio -> .ai/targets/STUDIO.md
 ### Application Layer
 - src/screensets -> .ai/targets/SCREENSETS.md
 - src/themes -> .ai/targets/THEMES.md
 - Styling anywhere -> .ai/targets/STYLING.md
+- Layout patterns -> .ai/targets/LAYOUT.md
+- Event patterns -> .ai/targets/EVENTS.md
 ### Tooling
 - .ai documentation -> .ai/targets/AI.md
 - .ai/commands -> .ai/targets/AI_COMMANDS.md
@@ -38,7 +26,7 @@
 ## REPO INVARIANTS
 - Event-driven architecture only (see EVENTS.md).
 - Registries follow Open/Closed; adding items must not modify registry root files.
-- App-level deps limited to: @hai3/react, @hai3/uikit, react, react-dom.
+- App-level deps limited to: @hai3/react, the configured UI kit, react, react-dom.
 - Cross-domain communication only via events.
 - No string literal identifiers; use constants or enums.
 - No any, no unknown in type definitions, no "as unknown as" casts.
@@ -47,7 +35,7 @@
 ## IMPORT RULES
 - Inside same package: relative paths.
 - Cross-branch in app: @/ alias.
-- Cross-package: @hai3/framework, @hai3/react, @hai3/uikit.
+- Cross-package: @hai3/framework, @hai3/react, the configured UI kit.
 - Index files: only when aggregating 3 or more exports.
 - Redux slices: import directly (no barrels).
 
@@ -72,7 +60,7 @@
 - npm run arch:check passes.
 - Dev server test via Google Chrome MCP Tools:
   - Affected flows and screens exercised.
-  - UI uses @hai3/uikit and theme tokens.
+  - UI uses the configured UI kit and theme tokens.
   - Event-driven behavior (no direct slice dispatch).
   - No console errors or missing registrations.
 

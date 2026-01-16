@@ -1,4 +1,3 @@
-<!-- @standalone:override -->
 # .ai Documentation Guidelines
 
 ## CRITICAL (AI: READ THIS FIRST)
@@ -8,7 +7,6 @@
 - Never duplicate rules from other .ai/targets/*.md files. Always reference them.
 - Use short declarative rules with these keywords:
   MUST, REQUIRED, FORBIDDEN, STOP, DETECT, BAD, GOOD.
-- Apply updates using UPDATE_GUIDELINES.md.
 
 ## STRUCTURE
 - Start every file with one of:
@@ -43,7 +41,7 @@ No extra commentary. No examples. No code blocks.
 ## DECISION RULES
 1) Use .ai/GUIDELINES.md to route to the correct file.
 2) Check if the requested rule already exists in another target file.
-3) If the rule belongs to UIKIT, UICORE, EVENTS, STYLING, THEMES, or API, reference that file instead of duplicating.
+3) If the rule belongs to specific targets, reference that file instead of duplicating.
 4) Modify only the specific rule or section directly impacted by the requested change.
 
 ## VALIDATION RULES
@@ -62,22 +60,11 @@ Stop and ask the user before:
 - Adding new rule categories.
 - Implementing logic directly instead of delegating to CLI.
 
-## COMMAND NAMESPACES
-- hai3dev-*: internal monorepo commands, NEVER shipped to user projects.
-- hai3-*: user project commands, shipped via CLI templates.
-- Location: internal/ for hai3dev-*, user/ for hai3-*.
-
 ## CLI DELEGATION
 - REQUIRED: Commands DELEGATE to hai3 CLI for scaffolding.
 - FORBIDDEN: Implementing file generation logic in commands.
 - REQUIRED: Commands run validation after scaffolding.
 - PROTECTION: CLI runs type-check, lint, arch:check automatically.
-
-## UPDATE POLICY
-- All rules must be minimal and strictly formatted.
-- If repeated errors occur, rewrite the rule to be more strict.
-- Resolve conflicts by clarifying the rule, not duplicating it.
-- Follow UPDATE_GUIDELINES.md for all edits.
 
 ## OUTPUT POLICY
 When updating a file:

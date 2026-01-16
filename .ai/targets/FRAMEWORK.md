@@ -1,4 +1,4 @@
-<!-- @standalone -->
+
 # @hai3/framework Guidelines (Canonical)
 
 ## AI WORKFLOW (REQUIRED)

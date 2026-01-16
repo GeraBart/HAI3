@@ -70,13 +70,12 @@ The CLI SHALL ship AI configuration files that contain only user-project-applica
 **When** examining `.ai/targets/` files
 **Then** each file SHALL focus on CONSUMING HAI3 packages, NOT developing them:
 - CLI.md: Using hai3 commands (create, update, screenset), NOT CLI package development
-- FRAMEWORK.md: Using plugin composition in apps, NOT plugin development for @hai3/framework
-- STORE.md: Using state patterns in screensets, NOT developing @hai3/state package
-- REACT.md: Using hooks in components, NOT developing @hai3/react package
-- UIKIT.md: Local UI kit customization in screensets, NOT developing @hai3/uikit package
-- I18N.md: Configuring i18n in screensets, NOT developing @hai3/i18n package
 - API.md: Using API services in screensets, NOT developing @hai3/api package
 - THEMES.md: Theme configuration in src/themes/, NOT developing theme infrastructure
+- AI.md: Documentation format guidelines for user projects
+- AI_COMMANDS.md: Command usage documentation for user projects
+**And** the following SDK-focused files SHALL NOT exist (excluded via marker removal):
+- FRAMEWORK.md, STORE.md, REACT.md, UIKIT.md, I18N.md (no routing in GUIDELINES.md)
 
 #### Scenario: SDK-focused targets excluded from user projects
 
@@ -130,8 +129,8 @@ The CLI SHALL use override files from `packages/cli/template-sources/ai-override
 **Then** the system SHALL:
 - Read the marker from source files
 - For `@standalone:override` markers, copy from `packages/cli/template-sources/ai-overrides/` instead of the source file
-- Apply override for: GUIDELINES.md, CLI.md, FRAMEWORK.md, STORE.md, REACT.md, UIKIT.md, I18N.md, AI.md, AI_COMMANDS.md
-- Exclude STUDIO.md entirely from user projects (marker removed from source, so not copied)
+- Apply override for: GUIDELINES.md, CLI.md, AI.md, AI_COMMANDS.md
+- Exclude entirely via marker removal: FRAMEWORK.md, STORE.md, REACT.md, UIKIT.md, I18N.md, STUDIO.md (no marker = not copied)
 
 #### Scenario: Existing overrides preserved
 
