@@ -120,6 +120,8 @@ Note: Three-level hierarchy documentation (CREATING COMMANDS, ai:sync discovery,
 **Then** the search SHALL return 0 matches
 **And** all target file SCOPE sections SHALL reference `src/` paths only
 
+## NEW Requirements
+
 ### Requirement: Standalone Override Files
 
 The CLI SHALL use override files from `packages/cli/template-sources/ai-overrides/` for target files that have different content for user projects vs monorepo development.
