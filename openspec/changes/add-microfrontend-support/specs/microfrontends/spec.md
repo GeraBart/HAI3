@@ -200,31 +200,40 @@ const error = useAppSelector((state) =>
 - **AND** valid states SHALL be: 'idle', 'loading', 'loaded', 'error'
 - **AND** `selectMfeError()` SHALL return the error if state is 'error'
 
-### Requirement: Shadow DOM React Component
+### Requirement: MFE Container Component
 
-The system SHALL provide a `ShadowDomContainer` React component that uses the shadow DOM utilities from `@hai3/screensets`.
+The system SHALL provide an `MfeContainer` React component that handles MFE mounting using the `MfeEntryLifecycle` interface. The component uses shadow DOM utilities from `@hai3/screensets` for style isolation.
 
 #### Scenario: Render MFE in Shadow DOM
 
 ```tsx
-import { ShadowDomContainer } from '@hai3/framework';
+import { MfeContainer } from '@hai3/framework';
 import { type GtsTypeId } from '@hai3/screensets';
 
-// MfeEntryMF type ID - derived from gts.hai3.screensets.mfe.entry.v1~
-const MFE_ANALYTICS_ENTRY = 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.dashboard.v1' as GtsTypeId;
+// Extension type ID (references the MFE entry)
+const ANALYTICS_EXTENSION = 'gts.hai3.screensets.ext.extension.v1~acme.analytics.dashboard.v1' as GtsTypeId;
 
-<ShadowDomContainer
-  entryTypeId={MFE_ANALYTICS_ENTRY}
+// MfeContainer handles mounting via ScreensetsRegistry.mountExtension() and Shadow DOM isolation
+<MfeContainer
+  extensionId={ANALYTICS_EXTENSION}
   cssVariables={themeVariables}
->
-  <AnalyticsEntry bridge={bridge} />
-</ShadowDomContainer>
+/>
 ```
 
-- **WHEN** rendering an MFE entry
-- **THEN** the component SHALL use `createShadowRoot()` from `@hai3/screensets`
-- **AND** it SHALL use `injectCssVariables()` from `@hai3/screensets`
-- **AND** it SHALL wrap children in a React portal into the shadow root
+- **WHEN** rendering an MFE via `MfeContainer`
+- **THEN** the component SHALL call `runtime.mountExtension(extensionId, container)` (loading is handled internally)
+- **AND** it SHALL create a shadow root using `createShadowRoot()` from `@hai3/screensets`
+- **AND** it SHALL inject CSS variables using `injectCssVariables()` from `@hai3/screensets`
+- **AND** internally, the runtime calls `lifecycle.mount(shadowRoot, bridge)` on the loaded MfeEntryLifecycle
+- **AND** it SHALL NOT assume the MFE is a React component
+
+#### Scenario: MfeContainer unmount cleanup
+
+- **WHEN** the `MfeContainer` component is unmounted
+- **THEN** it SHALL call `runtime.unmountExtension(extensionId)` (cleanup is handled internally)
+- **AND** internally, the runtime calls `lifecycle.unmount(shadowRoot)` on the MfeEntryLifecycle
+- **AND** the MFE SHALL clean up its framework-specific resources
+- **AND** the shadow root content SHALL be cleared
 
 #### Scenario: CSS variable passthrough
 

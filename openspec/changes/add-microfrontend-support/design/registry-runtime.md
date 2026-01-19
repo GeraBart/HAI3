@@ -569,47 +569,131 @@ interface MfeBridgeConnection extends MfeBridge {
 }
 
 /**
- * Props interface for MFE entry components.
- * All MFE entry components must accept these props.
+ * Lifecycle interface for MFE entries.
+ * Defines lifecycle methods that any MFE entry must implement,
+ * regardless of framework (React, Vue, Angular, Vanilla JS).
+ *
+ * The name "MfeEntryLifecycle" is chosen because:
+ * - It focuses on lifecycle semantics (mount/unmount)
+ * - It's extensible for future lifecycle methods (onSuspend, onResume, etc.)
+ * - It doesn't include implementation details like "Export" or "Module" in the name
  */
-interface MfeBridgeProps {
-  /** Bridge for host-MFE communication */
-  bridge: MfeBridge;
+interface MfeEntryLifecycle {
+  /**
+   * Mount the MFE into a container element.
+   * @param container - The DOM element to mount into
+   * @param bridge - The MfeBridge for host-MFE communication
+   */
+  mount(container: HTMLElement, bridge: MfeBridge): void;
+
+  /**
+   * Unmount the MFE from a container element.
+   * @param container - The DOM element to unmount from
+   */
+  unmount(container: HTMLElement): void;
 }
 ```
 
 #### Bridge Creation Flow
 
 ```typescript
-// When mounting an extension
-const bridge = runtime.mountExtension(extension);
+// When mounting an extension - the public API handles loading and mounting internally
+const bridge = await runtime.mountExtension(extensionId, container);
 
-// Bridge is passed to MFE component via props
-<MfeComponent bridge={bridge} />
+// Internally, the runtime:
+// 1. Loads the MFE bundle via MfeLoader (internal implementation detail)
+// 2. Gets the MfeEntryLifecycle from the loaded module
+// 3. Calls lifecycle.mount(container, bridge)
+// 4. Returns the bridge for host-MFE communication
 
-// MFE uses bridge to communicate
-const MyMfeEntry: React.FC<MfeBridgeProps> = ({ bridge }) => {
-  const [theme, setTheme] = useState<Theme>();
+// When unmounting - also handled by the public API
+await runtime.unmountExtension(extensionId);
+// Internally calls lifecycle.unmount(container) and cleans up bridge
+```
 
-  useEffect(() => {
-    // Subscribe to shared property
-    const unsubscribe = bridge.subscribeToProperty(
-      'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1',
-      (value) => setTheme(value as Theme)
-    );
-    return unsubscribe;
-  }, [bridge]);
+#### Framework-Specific MFE Implementation Examples
 
-  const handleClick = () => {
-    // Request action from host
-    bridge.requestHostAction(
-      'gts.hai3.screensets.ext.action.v1~acme.analytics.actions.data_updated.v1',
-      { timestamp: Date.now() }
-    );
-  };
+**React MFE:**
+```typescript
+// mfe-entry.tsx - React MFE export
+import { createRoot, Root } from 'react-dom/client';
+import { MfeBridge } from '@hai3/screensets';
+import { App } from './App';
 
-  return <div>...</div>;
-};
+let root: Root | null = null;
+
+export function mount(container: HTMLElement, bridge: MfeBridge): void {
+  root = createRoot(container);
+  root.render(<App bridge={bridge} />);
+}
+
+export function unmount(container: HTMLElement): void {
+  root?.unmount();
+  root = null;
+}
+```
+
+**Vue 3 MFE:**
+```typescript
+// mfe-entry.ts - Vue 3 MFE export
+import { createApp, App as VueApp } from 'vue';
+import { MfeBridge } from '@hai3/screensets';
+import App from './App.vue';
+
+let app: VueApp | null = null;
+
+export function mount(container: HTMLElement, bridge: MfeBridge): void {
+  app = createApp(App, { bridge });
+  app.mount(container);
+}
+
+export function unmount(container: HTMLElement): void {
+  app?.unmount();
+  app = null;
+}
+```
+
+**Svelte MFE:**
+```typescript
+// mfe-entry.ts - Svelte MFE export
+import { MfeBridge } from '@hai3/screensets';
+import App from './App.svelte';
+
+let component: App | null = null;
+
+export function mount(container: HTMLElement, bridge: MfeBridge): void {
+  component = new App({
+    target: container,
+    props: { bridge }
+  });
+}
+
+export function unmount(container: HTMLElement): void {
+  component?.$destroy();
+  component = null;
+}
+```
+
+**Vanilla JS MFE:**
+```typescript
+// mfe-entry.ts - Vanilla JS MFE export
+import { MfeBridge } from '@hai3/screensets';
+
+export function mount(container: HTMLElement, bridge: MfeBridge): void {
+  container.innerHTML = '<div class="my-widget">Loading...</div>';
+
+  // Subscribe to properties
+  bridge.subscribeToProperty(
+    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1',
+    (theme) => {
+      container.style.background = theme === 'dark' ? '#333' : '#fff';
+    }
+  );
+}
+
+export function unmount(container: HTMLElement): void {
+  container.innerHTML = '';
+}
 ```
 
 ### Decision 15: Shadow DOM Utilities

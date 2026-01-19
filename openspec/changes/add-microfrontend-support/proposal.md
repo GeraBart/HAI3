@@ -104,7 +104,21 @@ The MFE system uses these internal TypeScript interfaces. Each type has an `id: 
 | `MfManifest` | `id, remoteEntry, remoteName, sharedDependencies?[], entries?` | Module Federation manifest (standalone) |
 | `MfeEntryMF` | `(extends MfeEntry) manifest, exposedModule` | Module Federation entry (derived) |
 
+**Framework-Agnostic Lifecycle Interface (1 type):**
+
+| TypeScript Interface | Fields | Purpose |
+|---------------------|--------|---------|
+| `MfeEntryLifecycle` | `mount(container, bridge), unmount(container)` | Lifecycle interface for MFE entries |
+
 **Note on MfeEntry Design:** MfeEntry is a **pure contract** type (abstract base) that defines ONLY the communication interface (properties, actions). Derived types like `MfeEntryMF` add loader-specific fields. This separation ensures the same entry contract works with any loader and allows future loaders (ESM, Import Maps) to add their own derived types.
+
+**Note on MfeEntryLifecycle Design:** MfeEntryLifecycle is the **lifecycle interface** that all MFE entries must implement. The name focuses on lifecycle semantics (mount/unmount) rather than implementation details like "Export" or "Module". This interface:
+- Defines framework-agnostic lifecycle methods any MFE entry must implement
+- Is extensible for future lifecycle methods (onSuspend, onResume, etc.)
+- Allows MFEs to be written in any UI framework (React, Vue, Angular, Svelte, Vanilla JS)
+- Maintains a consistent loading contract with the host
+
+**Note on MfeLoader/LoadedMfe:** These are **internal implementation details** of the ScreensetsRegistry, not part of the public API. The public API is `ScreensetsRegistry.mountExtension()` which handles loading and mounting internally.
 
 ### GTS Type ID Format
 

@@ -553,11 +553,66 @@ The system SHALL provide bridge interfaces for communication between host and MF
 - **AND** it SHALL provide `updateProperty(propertyTypeId, value)` for property updates
 - **AND** it SHALL provide `dispose()` for cleanup
 
-#### Scenario: MfeBridgeProps interface
+### Requirement: Framework-Agnostic MFE Module Interface
 
-- **WHEN** an MFE component is rendered
-- **THEN** `MfeBridgeProps` SHALL contain `bridge: MfeBridge`
-- **AND** MFE entry components SHALL accept this interface in their props
+The system SHALL define a framework-agnostic `MfeEntryLifecycle` interface that MFEs must export. This allows MFEs to be written in any framework (React, Vue, Angular, Svelte, Vanilla JS) while maintaining a consistent loading contract.
+
+#### Scenario: MfeEntryLifecycle interface definition
+
+- **WHEN** importing `@hai3/screensets`
+- **THEN** the package SHALL export an `MfeEntryLifecycle` interface
+- **AND** the interface SHALL define `mount(container: HTMLElement, bridge: MfeBridge): void`
+- **AND** the interface SHALL define `unmount(container: HTMLElement): void`
+- **AND** all MFE entries SHALL export functions conforming to this interface
+
+#### Scenario: MFE module validation on load
+
+- **WHEN** loading an MFE module via Module Federation
+- **THEN** the loader SHALL validate that `mount` is a function
+- **AND** the loader SHALL validate that `unmount` is a function
+- **AND** if either is missing, `MfeLoadError` SHALL be thrown
+- **AND** the error message SHALL indicate the required interface
+
+#### Scenario: React MFE implementation
+
+- **WHEN** implementing an MFE in React
+- **THEN** the MFE SHALL export a `mount` function that uses `ReactDOM.createRoot(container).render(<App bridge={bridge} />)`
+- **AND** the MFE SHALL export an `unmount` function that calls `root.unmount()`
+- **AND** the MFE SHALL NOT export a React component directly
+
+#### Scenario: Vue 3 MFE implementation
+
+- **WHEN** implementing an MFE in Vue 3
+- **THEN** the MFE SHALL export a `mount` function that uses `createApp(App, { bridge }).mount(container)`
+- **AND** the MFE SHALL export an `unmount` function that calls `app.unmount()`
+
+#### Scenario: Svelte MFE implementation
+
+- **WHEN** implementing an MFE in Svelte
+- **THEN** the MFE SHALL export a `mount` function that creates a Svelte component with `{ target: container, props: { bridge } }`
+- **AND** the MFE SHALL export an `unmount` function that calls `component.$destroy()`
+
+#### Scenario: Vanilla JS MFE implementation
+
+- **WHEN** implementing an MFE in Vanilla JavaScript
+- **THEN** the MFE SHALL export a `mount` function that directly manipulates the container DOM
+- **AND** the MFE SHALL export an `unmount` function that cleans up the container
+- **AND** the MFE SHALL use the bridge for property subscriptions and action requests
+
+#### Scenario: MFE mount receives bridge
+
+- **WHEN** the host mounts an MFE
+- **THEN** the `mount` function SHALL receive the `MfeBridge` instance
+- **AND** the MFE SHALL use the bridge for all host communication
+- **AND** the bridge SHALL be available throughout the MFE lifecycle
+
+#### Scenario: MFE unmount cleanup
+
+- **WHEN** the host unmounts an MFE
+- **THEN** the `unmount` function SHALL be called with the same container element
+- **AND** the MFE SHALL clean up all DOM content in the container
+- **AND** the MFE SHALL unsubscribe from all bridge subscriptions
+- **AND** the MFE SHALL release any framework-specific resources
 
 ### Requirement: HAI3 Action Constants
 

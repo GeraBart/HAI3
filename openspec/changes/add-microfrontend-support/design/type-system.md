@@ -776,6 +776,43 @@ interface ActionsChain {
   /** Fallback chain to execute on failure */
   fallback?: ActionsChain;
 }
+
+/**
+ * Lifecycle interface for MFE entries.
+ * Defines lifecycle methods that any MFE entry must implement,
+ * regardless of framework (React, Vue, Angular, Vanilla JS).
+ *
+ * The name "MfeEntryLifecycle" is chosen because:
+ * - It focuses on lifecycle semantics (mount/unmount)
+ * - It's extensible for future lifecycle methods (onSuspend, onResume, etc.)
+ * - It doesn't include implementation details like "Export" or "Module" in the name
+ *
+ * NOTE: This is a runtime interface for MFE entries, NOT a GTS type.
+ * It is not registered in the Type System - it's a TypeScript interface for code contracts.
+ *
+ * Example implementations:
+ * - React MFE: Uses ReactDOM.createRoot(container).render(<App bridge={bridge} />)
+ * - Vue MFE: Uses createApp(App, { bridge }).mount(container)
+ * - Angular MFE: Uses platformBrowserDynamic().bootstrapModule(...)
+ * - Svelte MFE: Uses new App({ target: container, props: { bridge } })
+ * - Vanilla JS: Directly manipulates DOM
+ */
+interface MfeEntryLifecycle {
+  /**
+   * Mount the MFE into a container element.
+   * @param container - The DOM element to mount into (typically a shadow root)
+   * @param bridge - The MfeBridge for host-MFE communication
+   */
+  mount(container: HTMLElement, bridge: MfeBridge): void;
+
+  /**
+   * Unmount the MFE from a container element.
+   * Called when the extension is unloaded or the container is removed.
+   * Should clean up all DOM content and unsubscribe from bridge.
+   * @param container - The DOM element to unmount from
+   */
+  unmount(container: HTMLElement): void;
+}
 ```
 
 ### Decision 4: HAI3 Type Registration via Plugin

@@ -76,13 +76,16 @@ Only use `singleton: true` for libraries that are **truly stateless**:
 
 **HAI3 Recommendation**: Use `singleton: false` for all stateful libraries. The memory overhead of duplicate instances is negligible compared to the complexity of debugging shared state issues across MFE boundaries.
 
-**MfeLoader Implementation:**
+**MfeLoader (Internal Implementation Detail):**
 
-The MfeLoader uses the `MfeEntryMF` derived type which references an `MfManifest`:
+Note: `MfeLoader` and its return types are **internal implementation details** of the ScreensetsRegistry. The public API is `ScreensetsRegistry.mountExtension()` which handles loading and mounting internally. This documentation is provided for implementers only.
+
+The internal MfeLoader uses the `MfeEntryMF` derived type which references an `MfManifest`:
 
 ```typescript
-// packages/screensets/src/mfe/loader/index.ts
+// packages/screensets/src/mfe/loader/index.ts (INTERNAL)
 
+/** @internal */
 interface MfeLoaderConfig {
   /** Timeout for bundle loading in ms (default: 30000) */
   timeout?: number;
@@ -92,9 +95,46 @@ interface MfeLoaderConfig {
   preload?: boolean;
 }
 
-interface LoadedMfe {
-  /** The loaded React component */
-  component: React.ComponentType<MfeBridgeProps>;
+/**
+ * Lifecycle interface for MFE entries (PUBLIC).
+ * Defines lifecycle methods that any MFE entry must implement,
+ * regardless of framework (React, Vue, Angular, Vanilla JS).
+ *
+ * The name "MfeEntryLifecycle" is chosen because:
+ * - It focuses on lifecycle semantics (mount/unmount)
+ * - It's extensible for future lifecycle methods (onSuspend, onResume, etc.)
+ * - It doesn't include implementation details like "Export" or "Module" in the name
+ *
+ * Example implementations:
+ * - React MFE: Uses ReactDOM.createRoot(container).render(<App bridge={bridge} />)
+ * - Vue MFE: Uses createApp(App, { bridge }).mount(container)
+ * - Angular MFE: Uses platformBrowserDynamic().bootstrapModule(...)
+ * - Svelte MFE: Uses new App({ target: container, props: { bridge } })
+ * - Vanilla JS: Directly manipulates DOM
+ */
+interface MfeEntryLifecycle {
+  /**
+   * Mount the MFE into a container element.
+   * @param container - The DOM element to mount into
+   * @param bridge - The MfeBridge for host-MFE communication
+   */
+  mount(container: HTMLElement, bridge: MfeBridge): void;
+
+  /**
+   * Unmount the MFE from a container element.
+   * Called when the extension is unloaded or the container is removed.
+   * @param container - The DOM element to unmount from
+   */
+  unmount(container: HTMLElement): void;
+}
+
+/**
+ * @internal - Not part of public API
+ * Result of loading an MFE bundle internally
+ */
+interface LoadedMfeInternal {
+  /** The loaded MFE lifecycle interface */
+  lifecycle: MfeEntryLifecycle;
   /** The entry that was loaded (Module Federation variant) */
   entry: MfeEntryMF;
   /** The manifest used for loading */
@@ -104,6 +144,7 @@ interface LoadedMfe {
 }
 
 /**
+ * @internal - Not part of public API
  * MFE Loader using Module Federation 2.0
  */
 class MfeLoader {
@@ -126,9 +167,10 @@ class MfeLoader {
   ) {}
 
   /**
+   * @internal
    * Load an MFE from its MfeEntryMF definition
    */
-  async load(entry: MfeEntryMF): Promise<LoadedMfe> {
+  async load(entry: MfeEntryMF): Promise<LoadedMfeInternal> {
     // 1. Validate entry against Module Federation entry schema
     const entryValidation = this.typeSystem.validateInstance(
       MfeLoader.MF_ENTRY_TYPE_ID,
@@ -152,10 +194,18 @@ class MfeLoader {
         []
       );
     }
-    const module = moduleFactory();
+    const loadedModule = moduleFactory();
+
+    // 5. Validate the module exports the required MfeEntryLifecycle interface (mount/unmount)
+    if (typeof loadedModule.mount !== 'function' || typeof loadedModule.unmount !== 'function') {
+      throw new MfeLoadError(
+        `Module '${entry.exposedModule}' must implement MfeEntryLifecycle interface with mount(container, bridge) and unmount(container) functions`,
+        []
+      );
+    }
 
     return {
-      component: module.default,
+      lifecycle: loadedModule as MfeEntryLifecycle,
       entry,
       manifest,
       unload: () => this.unloadIfUnused(manifest.remoteName),
