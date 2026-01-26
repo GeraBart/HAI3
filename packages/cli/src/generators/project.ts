@@ -365,7 +365,9 @@ export async function generateProject(
     type: 'module',
     engines: {
       node: '>=25.1.0',
+      npm: '>=11.7.0',
     },
+    packageManager: 'npm@11.7.0',
     workspaces: ['eslint-plugin-local'],
     scripts: {
       dev: 'npm run generate:colors && vite',
