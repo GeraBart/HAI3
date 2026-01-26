@@ -328,7 +328,7 @@ export async function generateProject(
 
   const devDependencies: Record<string, string> = {
     '@hai3/cli': 'alpha',
-    '@j178/prek': '0.2.21',
+    '@j178/prek': '0.2.25',
     '@types/lodash': '4.17.20',
     '@types/react': '18.3.3',
     '@types/react-dom': '18.3.0',
