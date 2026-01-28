@@ -1,10 +1,14 @@
 # Design: Registry and Runtime Architecture
 
-This document covers the ScreensetsRegistry runtime isolation model, action chain mediation, MFE bridges, and dynamic registration.
+This document covers the ScreensetsRegistry runtime isolation model, action chain mediation, MFE bridges, handler registration, and dynamic registration.
 
 **Related Documents:**
 - [Type System](./type-system.md) - Type System Plugin interface, GTS types, contract validation
-- [MFE Loading](./mfe-loading.md) - Module Federation loading, error handling, manifest fetching
+- [MFE Loading](./mfe-loading.md) - MfeHandler abstract class, handler registry, Module Federation loading
+- [MFE API](./mfe-api.md) - MfeEntryLifecycle interface
+- [MFE Actions](./mfe-actions.md) - Action and ActionsChain types
+- [MFE Domain](./mfe-domain.md) - ExtensionDomain type
+- [MFE Extension](./mfe-extension.md) - Extension type
 
 ---
 
@@ -36,8 +40,8 @@ The host uses React, but MFEs are NOT required to use React.
               |                                  |
               |    MfeBridge (Contract)          |
               +==================================+
-              |  - Shared Properties (read-only) |
-              |  - Actions (bidirectional)       |
+              |  - Shared Properties (host→MFE)  |
+              |  - Actions Chains (bidirectional)|
               +==================================+
               |                                  |
               |  RuntimeCoordinator (PRIVATE)    |
@@ -52,113 +56,6 @@ The host uses React, but MFEs are NOT required to use React.
 - Actions delivered via ActionsChainsMediator through MfeBridge
 - Internal coordination via private RuntimeCoordinator (not exposed to MFE code)
 - MFEs can use ANY UI framework - not limited to React
-
-### Decision 10: Actions Chain Mediation
-
-The **ActionsChainsMediator** delivers action chains to targets and handles success/failure branching. The Type System plugin validates all type IDs and payloads.
-
-**Execution Flow:**
-```
-1. ActionsChainsMediator receives chain
-2. Validate chain.action.target via typeSystem.isValidTypeId()
-3. Resolve target (domain or entry instance)
-4. Validate action against target's contract
-5. Validate payload via typeSystem.validateInstance()
-6. Deliver payload to target
-7. Wait for result (Promise<success|failure>)
-8. If success AND chain.next: mediator executes chain.next
-9. If failure AND chain.fallback: mediator executes chain.fallback
-10. Recurse until no next/fallback
-```
-
-**API Contract:**
-
-```typescript
-/**
- * ActionsChainsMediator - Mediates action chain delivery between domains and extensions.
- */
-interface ActionsChainsMediator {
-  /** The Type System plugin used by this mediator */
-  readonly typeSystem: TypeSystemPlugin;
-
-  /**
-   * Execute an action chain, routing to targets and handling success/failure branching.
-   * @param chain - The actions chain to execute
-   * @param options - Optional per-request execution options (override defaults)
-   */
-  executeActionsChain(chain: ActionsChain, options?: ChainExecutionOptions): Promise<ChainResult>;
-
-  /** Register an extension's action handler for receiving actions */
-  registerExtensionHandler(
-    extensionId: string,
-    domainId: string,
-    entryId: string,
-    handler: ActionHandler
-  ): void;
-
-  /** Unregister an extension's action handler */
-  unregisterExtensionHandler(extensionId: string): void;
-
-  /** Register a domain's action handler for receiving actions from extensions */
-  registerDomainHandler(
-    domainId: string,
-    handler: ActionHandler
-  ): void;
-}
-
-interface ActionHandler {
-  handleAction(actionId: string, payload: unknown): Promise<void>;
-}
-
-interface ChainResult {
-  completed: boolean;
-  path: string[];  // Action IDs executed
-  error?: string;  // If failed
-}
-```
-
-### Decision 11: Hierarchical Extension Domains
-
-Extension domains can be hierarchical. HAI3 provides base layout domains, and vendor screensets can define their own. Base domains are registered via the Type System plugin.
-
-**Base Layout Domains (registered via plugin):**
-
-When using GTS plugin, base domains follow the format `gts.hai3.screensets.ext.domain.<layout>.v1~`:
-- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.sidebar.v1~` - Sidebar panels
-- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.popup.v1~` - Modal popups
-- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.screen.v1~` - Full screen views
-- `gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.overlay.v1~` - Floating overlays
-
-**Vendor-Defined Domains:**
-
-Vendors define their own domains following the GTS type ID format:
-
-```typescript
-// Example: Dashboard screenset defines widget slot domain
-// Type ID: gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~
-
-const widgetSlotDomain: ExtensionDomain = {
-  id: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~',
-  sharedProperties: [
-    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.user_context.v1',
-  ],
-  actions: [
-    'gts.hai3.screensets.ext.action.v1~acme.dashboard.ext.refresh.v1~',
-  ],
-  extensionsActions: [
-    'gts.hai3.screensets.ext.action.v1~acme.dashboard.ext.data_update.v1~',
-  ],
-  extensionsUiMeta: {
-    type: 'object',
-    properties: {
-      title: { type: 'string' },
-      icon: { type: 'string' },
-      size: { enum: ['small', 'medium', 'large'] },
-    },
-    required: ['title', 'size'],
-  },
-};
-```
 
 ### Decision 13: Framework-Agnostic Isolation Model
 
@@ -229,6 +126,17 @@ interface MfeBridge {
   getProperty(propertyTypeId: string): unknown;
   subscribeToAllProperties(callback: (properties: Map<string, unknown>) => void): () => void;
 }
+
+// INTERNAL: Extended interface for registry-to-bridge communication
+// Not exposed to MFE code - used by ScreensetsRegistry internally
+interface MfeBridgeConnectionInternal extends MfeBridgeConnection {
+  /**
+   * Called by the registry when a domain property is updated.
+   * Dispatches the update to all registered subscriber callbacks.
+   * @internal
+   */
+  receivePropertyUpdate(propertyTypeId: string, value: unknown): void;
+}
 ```
 
 **Communication Layers**:
@@ -293,6 +201,7 @@ shared: {
 ```
 
 **Summary of singleton usage:**
+
 | Package Type | singleton | Reason |
 |--------------|-----------|--------|
 | React/ReactDOM | `false` | Has internal state (hooks, context) |
@@ -311,6 +220,7 @@ shared: {
  * - Its own TypeSystemPlugin instance (NOT shared)
  * - Its own schema registry (isolated from other runtimes)
  * - Its own state, domains, extensions, bridges
+ * - Its own handler registry for custom entry types
  *
  * Can operate as:
  * - Connect to a parent host (be a child MFE)
@@ -323,6 +233,11 @@ class ScreensetsRegistry {
   private readonly extensions = new Map<string, ExtensionState>();
   private readonly childBridges = new Map<string, MfeBridgeConnection>();
   private readonly actionHandlers = new Map<string, ActionHandler>();
+
+  // === Handler Registry ===
+  // Registered handlers, ordered by priority (highest first)
+  // See MFE Loading - Decision 11 for details
+  private readonly handlers: MfeHandler[] = [];
 
   // Parent connection (if this runtime is an MFE)
   private parentBridge: MfeBridgeConnection | null = null;
@@ -339,8 +254,9 @@ class ScreensetsRegistry {
     this.typeSystem = config.typeSystem;
     this.state = createHAI3State();  // Fresh isolated state
 
-    if (config.mfeLoader) {
-      this.mfeLoader = new MfeLoader(this.typeSystem, config.mfeLoader);
+    // Register default MF handler if MFE loading is enabled
+    if (config.mfeHandler) {
+      this.registerHandler(new MfeHandlerMF(this.typeSystem, config.mfeHandler));
     }
   }
 
@@ -360,7 +276,98 @@ class ScreensetsRegistry {
       domain,
       properties: new Map(),
       extensions: new Set(),
+      propertySubscribers: new Map(), // Map<propertyTypeId, Set<instanceId>>
     });
+  }
+
+  // === Domain-Level Shared Property Management ===
+
+  /**
+   * Update a shared property at the domain level.
+   * All extensions in the domain that subscribe to this property
+   * will automatically receive the update.
+   *
+   * @param domainId - The domain type ID
+   * @param propertyTypeId - The shared property type ID
+   * @param value - The new property value
+   * @throws Error if domain not found or property not declared in domain
+   */
+  updateDomainProperty(domainId: string, propertyTypeId: string, value: unknown): void {
+    const domainState = this.domains.get(domainId);
+    if (!domainState) {
+      throw new Error(`Domain '${domainId}' not registered`);
+    }
+
+    // Validate that the property is declared in the domain's sharedProperties
+    if (!domainState.domain.sharedProperties.includes(propertyTypeId)) {
+      throw new Error(
+        `Property '${propertyTypeId}' is not declared in domain '${domainId}'. ` +
+        `Domain only provides: ${domainState.domain.sharedProperties.join(', ')}`
+      );
+    }
+
+    // Update the property value in domain state
+    domainState.properties.set(propertyTypeId, value);
+
+    // Notify all extensions in this domain that subscribe to this property
+    for (const extensionId of domainState.extensions) {
+      const extensionState = this.extensions.get(extensionId);
+      if (!extensionState?.bridge) continue;
+
+      // Check if this extension subscribes to this property
+      const entry = extensionState.entry;
+      const subscribes =
+        entry.requiredProperties?.includes(propertyTypeId) ||
+        entry.optionalProperties?.includes(propertyTypeId);
+
+      if (subscribes) {
+        // Notify the bridge - internal method that triggers subscriber callbacks
+        this.notifyBridgePropertyUpdate(extensionState.bridge, propertyTypeId, value);
+      }
+    }
+  }
+
+  /**
+   * Get current value of a domain property.
+   *
+   * @param domainId - The domain type ID
+   * @param propertyTypeId - The shared property type ID
+   * @returns Current value or undefined if not set
+   */
+  getDomainProperty(domainId: string, propertyTypeId: string): unknown {
+    const domainState = this.domains.get(domainId);
+    if (!domainState) {
+      return undefined;
+    }
+    return domainState.properties.get(propertyTypeId);
+  }
+
+  /**
+   * Update multiple domain properties at once.
+   * More efficient than calling updateDomainProperty multiple times.
+   *
+   * @param domainId - The domain type ID
+   * @param properties - Map of propertyTypeId to value
+   */
+  updateDomainProperties(domainId: string, properties: Map<string, unknown>): void {
+    for (const [propertyTypeId, value] of properties) {
+      this.updateDomainProperty(domainId, propertyTypeId, value);
+    }
+  }
+
+  /**
+   * Internal: Notify a bridge that a property has been updated.
+   * This triggers the subscriber callbacks registered via bridge.subscribeToProperty().
+   */
+  private notifyBridgePropertyUpdate(
+    bridge: MfeBridgeConnection,
+    propertyTypeId: string,
+    value: unknown
+  ): void {
+    // Implementation detail: bridges maintain their own subscriber callbacks
+    // This method is called by the registry when domain properties change
+    // The bridge implementation handles dispatching to registered callbacks
+    (bridge as MfeBridgeConnectionInternal).receivePropertyUpdate(propertyTypeId, value);
   }
 
   /**
@@ -468,232 +475,97 @@ class ScreensetsRegistry {
     this.extensions.clear();
     this.actionHandlers.clear();
   }
-}
-```
 
-### Decision 14: MFE Bridge Interfaces
-
-The MFE Bridge provides a bidirectional communication channel between host and MFE. The bridge is created by the host when mounting an extension and passed to the MFE component via props.
-
-#### Bridge Interface Definitions
-
-```typescript
-// packages/screensets/src/mfe/bridge/types.ts
-
-/**
- * Read-only bridge interface exposed to MFE components.
- * MFEs use this to communicate with the host.
- */
-interface MfeBridge {
-  /** The entry type ID for this MFE instance */
-  readonly entryTypeId: string;
-
-  /** The domain type ID this MFE is mounted in */
-  readonly domainId: string;
+  // === Handler Registry ===
 
   /**
-   * Request an action from the host.
-   * The bridge validates the payload against the action's schema before sending.
-   * @param actionTypeId - Action type ID (must be in entry's actions list)
-   * @param payload - Action payload (validated against action schema)
-   * @returns Promise that resolves when host acknowledges receipt
+   * Register an MFE handler.
+   * Handlers are tried in priority order (highest first).
+   *
+   * HAI3 registers MfeHandlerMF by default (priority: 0).
+   * Companies register their custom handlers with higher priority.
+   *
+   * See MFE Loading - Decision 11 for full details.
+   *
+   * @param handler - The handler to register
    */
-  requestHostAction(actionTypeId: string, payload?: unknown): Promise<void>;
+  registerHandler(handler: MfeHandler): void {
+    this.handlers.push(handler);
+    // Sort by priority descending (higher priority first)
+    this.handlers.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  }
 
   /**
-   * Subscribe to a shared property from the domain.
-   * @param propertyTypeId - SharedProperty type ID
-   * @param callback - Called with current value and on subsequent updates
-   * @returns Unsubscribe function
+   * Unregister an MFE handler by handled base type ID.
    */
-  subscribeToProperty(
-    propertyTypeId: string,
-    callback: (value: unknown) => void
-  ): () => void;
-
-  /**
-   * Get current value of a shared property.
-   * @param propertyTypeId - SharedProperty type ID
-   * @returns Current value or undefined if not set
-   */
-  getProperty(propertyTypeId: string): unknown;
-
-  /**
-   * Subscribe to all shared properties at once.
-   * @param callback - Called with property map on any property update
-   * @returns Unsubscribe function
-   */
-  subscribeToAllProperties(
-    callback: (properties: Map<string, unknown>) => void
-  ): () => void;
-}
-
-/**
- * Extended bridge interface used by the host to manage MFE communication.
- * Created by ScreensetsRegistry when mounting an extension.
- */
-interface MfeBridgeConnection extends MfeBridge {
-  /** Unique instance ID for this bridge connection */
-  readonly instanceId: string;
-
-  /**
-   * Send an actions chain to the MFE.
-   * Used for domain-to-extension communication.
-   * @param chain - ActionsChain to deliver
-   * @param options - Optional per-request execution options (override defaults)
-   * @returns ChainResult indicating execution outcome
-   */
-  sendActionsChain(chain: ActionsChain, options?: ChainExecutionOptions): Promise<ChainResult>;
-
-  /**
-   * Update a shared property value.
-   * Notifies all subscribers in the MFE.
-   * @param propertyTypeId - SharedProperty type ID
-   * @param value - New property value
-   */
-  updateProperty(propertyTypeId: string, value: unknown): void;
-
-  /**
-   * Register handler for actions coming from the MFE.
-   * @param handler - Callback invoked when MFE requests host action
-   */
-  onHostAction(
-    handler: (actionTypeId: string, payload: unknown) => Promise<void>
-  ): void;
-
-  /**
-   * Clean up the bridge connection.
-   * Unsubscribes all listeners and releases resources.
-   */
-  dispose(): void;
-}
-
-/**
- * Lifecycle interface for MFE entries.
- * Defines lifecycle methods that any MFE entry must implement,
- * regardless of framework (React, Vue, Angular, Vanilla JS).
- *
- * The name "MfeEntryLifecycle" is chosen because:
- * - It focuses on lifecycle semantics (mount/unmount)
- * - It's extensible for future lifecycle methods (onSuspend, onResume, etc.)
- * - It doesn't include implementation details like "Export" or "Module" in the name
- */
-interface MfeEntryLifecycle {
-  /**
-   * Mount the MFE into a container element.
-   * @param container - The DOM element to mount into
-   * @param bridge - The MfeBridge for host-MFE communication
-   */
-  mount(container: HTMLElement, bridge: MfeBridge): void;
-
-  /**
-   * Unmount the MFE from a container element.
-   * @param container - The DOM element to unmount from
-   */
-  unmount(container: HTMLElement): void;
-}
-```
-
-#### Bridge Creation Flow
-
-```typescript
-// When mounting an extension - the public API handles loading and mounting internally
-const bridge = await runtime.mountExtension(extensionId, container);
-
-// Internally, the runtime:
-// 1. Loads the MFE bundle via MfeLoader (internal implementation detail)
-// 2. Gets the MfeEntryLifecycle from the loaded module
-// 3. Calls lifecycle.mount(container, bridge)
-// 4. Returns the bridge for host-MFE communication
-
-// When unmounting - also handled by the public API
-await runtime.unmountExtension(extensionId);
-// Internally calls lifecycle.unmount(container) and cleans up bridge
-```
-
-#### Framework-Specific MFE Implementation Examples
-
-**React MFE:**
-```typescript
-// mfe-entry.tsx - React MFE export
-import { createRoot, Root } from 'react-dom/client';
-import { MfeBridge } from '@hai3/screensets';
-import { App } from './App';
-
-let root: Root | null = null;
-
-export function mount(container: HTMLElement, bridge: MfeBridge): void {
-  root = createRoot(container);
-  root.render(<App bridge={bridge} />);
-}
-
-export function unmount(container: HTMLElement): void {
-  root?.unmount();
-  root = null;
-}
-```
-
-**Vue 3 MFE:**
-```typescript
-// mfe-entry.ts - Vue 3 MFE export
-import { createApp, App as VueApp } from 'vue';
-import { MfeBridge } from '@hai3/screensets';
-import App from './App.vue';
-
-let app: VueApp | null = null;
-
-export function mount(container: HTMLElement, bridge: MfeBridge): void {
-  app = createApp(App, { bridge });
-  app.mount(container);
-}
-
-export function unmount(container: HTMLElement): void {
-  app?.unmount();
-  app = null;
-}
-```
-
-**Svelte MFE:**
-```typescript
-// mfe-entry.ts - Svelte MFE export
-import { MfeBridge } from '@hai3/screensets';
-import App from './App.svelte';
-
-let component: App | null = null;
-
-export function mount(container: HTMLElement, bridge: MfeBridge): void {
-  component = new App({
-    target: container,
-    props: { bridge }
-  });
-}
-
-export function unmount(container: HTMLElement): void {
-  component?.$destroy();
-  component = null;
-}
-```
-
-**Vanilla JS MFE:**
-```typescript
-// mfe-entry.ts - Vanilla JS MFE export
-import { MfeBridge } from '@hai3/screensets';
-
-export function mount(container: HTMLElement, bridge: MfeBridge): void {
-  container.innerHTML = '<div class="my-widget">Loading...</div>';
-
-  // Subscribe to properties
-  bridge.subscribeToProperty(
-    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1',
-    (theme) => {
-      container.style.background = theme === 'dark' ? '#333' : '#fff';
+  unregisterHandler(handledBaseTypeId: string): void {
+    const index = this.handlers.findIndex(h => h.handledBaseTypeId === handledBaseTypeId);
+    if (index !== -1) {
+      this.handlers.splice(index, 1);
     }
-  );
-}
+  }
 
-export function unmount(container: HTMLElement): void {
-  container.innerHTML = '';
+  /**
+   * Get the appropriate handler for an entry.
+   * Tries handlers in priority order until one can handle the entry.
+   *
+   * @param entry - The entry to find a handler for
+   * @returns The appropriate handler
+   * @throws Error if no handler can handle the entry type
+   */
+  private getHandlerForEntry(entry: MfeEntry): MfeHandler {
+    for (const handler of this.handlers) {
+      if (handler.canHandle(entry.id)) {
+        return handler;
+      }
+    }
+    throw new Error(
+      `No handler registered for entry type '${entry.id}'. ` +
+      `Register a handler using registry.registerHandler() that can handle this entry type.`
+    );
+  }
 }
+```
+
+### Decision 14: Handler Registry Integration
+
+**What**: The ScreensetsRegistry integrates with the MfeHandler abstraction to support multiple entry types and bridge customization.
+
+**Why**:
+- **Extensibility**: Companies can handle custom derived entry types
+- **Separation of Concerns**: Loading logic is encapsulated in handlers, not the registry
+- **Flexibility**: Different handlers can have different preload, caching, and error handling strategies
+- **Bridge Customization**: Handlers provide their own bridge factories, enabling rich bridges for internal MFEs
+
+**Registration Flow**:
+
+```typescript
+// 1. HAI3 default handler is registered automatically when mfeHandler config is provided
+const runtime = createScreensetsRegistry({
+  typeSystem: gtsPlugin,
+  mfeHandler: { timeout: 30000 },  // Enables MfeHandlerMF with config
+});
+
+// 2. Company registers their custom handler (higher priority)
+runtime.registerHandler(new MfeHandlerAcme(typeSystem, router, apiClient, services));
+
+// 3. When mounting an extension, registry finds the appropriate handler
+// Handlers are tried in priority order (highest first)
+// Bridge is created using handler.bridgeFactory
+const bridge = await runtime.mountExtension(extensionId, container);
+```
+
+**Handler Selection Algorithm**:
+
+```
+For each handler in priority order (highest first):
+  If handler.canHandle(entry.id) returns true:
+    Use this handler
+    Create bridge using handler.bridgeFactory
+    Break
+
+If no handler can handle the entry:
+  Throw Error("No handler registered for entry type")
 ```
 
 ### Decision 15: Shadow DOM Utilities
@@ -800,187 +672,6 @@ function injectStylesheet(
 // Export utilities
 export { createShadowRoot, injectCssVariables, injectStylesheet };
 export type { ShadowRootOptions, CssVariables };
-```
-
-### Decision 17: Explicit Timeout Configuration in Types
-
-Action timeouts are configured **explicitly in type definitions**, not as implicit code defaults. This ensures the platform is fully runtime-configurable and declarative.
-
-#### Timeout Resolution Model
-
-Timeouts are resolved from two levels:
-
-1. **ExtensionDomain** - Defines the default timeout for all actions targeting this domain
-2. **Action** - Can optionally override the domain's default for specific actions
-
-```
-Effective timeout = action.timeout ?? domain.defaultActionTimeout
-On timeout: execute fallback chain if defined (same as any other failure)
-```
-
-**Timeout as Failure**: Timeout is treated as just another failure case. The `ActionsChain.fallback` field handles all failures uniformly, including timeouts. There is no separate `fallbackOnTimeout` flag - the existing fallback mechanism provides complete failure handling.
-
-This model ensures:
-- **Explicit Configuration**: All timeouts are visible in type definitions
-- **Runtime Configurability**: Domains define their timeout contracts
-- **Action-Level Override**: Individual actions can specify different timeouts when needed
-- **No Hidden Defaults**: No implicit code defaults for action timeouts
-- **Unified Failure Handling**: Timeout triggers the same fallback mechanism as any other failure
-
-#### Chain-Level Configuration
-
-The only mediator-level configuration is the total chain execution limit:
-
-```typescript
-// packages/screensets/src/mfe/mediator/config.ts
-
-/**
- * Configuration for ActionsChain execution (mediator-level)
- *
- * NOTE: Individual action timeouts are NOT configured here.
- * Action timeouts are defined explicitly in ExtensionDomain (defaultActionTimeout)
- * and can be overridden per-action via Action.timeout field.
- */
-interface ActionsChainsConfig {
-  /**
-   * Maximum total time for entire chain execution (ms)
-   * This is a safety limit for the entire chain, not individual actions.
-   * Default: 120000 (2 minutes)
-   */
-  chainTimeout?: number;
-}
-
-const DEFAULT_CONFIG: Required<ActionsChainsConfig> = {
-  chainTimeout: 120000,
-};
-
-/**
- * Per-request execution options (chain-level only)
- *
- * NOTE: Action-level timeouts are defined in:
- * - ExtensionDomain.defaultActionTimeout (required)
- * - Action.timeout (optional override)
- *
- * Timeout is treated as a failure - the ActionsChain.fallback handles all failures uniformly.
- */
-interface ChainExecutionOptions {
-  /**
-   * Override chain timeout for this execution (ms)
-   * This limits the total time for the entire chain execution.
-   */
-  chainTimeout?: number;
-}
-
-/**
- * Extended ChainResult with timing information
- */
-interface ChainResult {
-  completed: boolean;
-  path: string[];  // Action type IDs executed
-  error?: string;
-  timedOut?: boolean;
-  executionTime?: number;  // Total execution time in ms
-}
-```
-
-#### Method Signatures
-
-```typescript
-/**
- * ActionsChainsMediator interface
- *
- * Action-level timeouts are resolved from type definitions:
- * - domain.defaultActionTimeout (required)
- * - action.timeout (optional override)
- *
- * Timeout is treated as a failure - the ActionsChain.fallback handles all failures uniformly.
- */
-interface ActionsChainsMediator {
-  /** The Type System plugin used by this mediator */
-  readonly typeSystem: TypeSystemPlugin;
-
-  /**
-   * Execute an action chain, routing to targets and handling success/failure branching.
-   *
-   * Action timeouts are determined by:
-   *   action.timeout ?? domain.defaultActionTimeout
-   *
-   * On timeout or any other failure: execute fallback chain if defined.
-   *
-   * @param chain - The actions chain to execute
-   * @param options - Optional chain-level execution options
-   */
-  executeActionsChain(chain: ActionsChain, options?: ChainExecutionOptions): Promise<ChainResult>;
-
-  /**
-   * Deliver an action chain (internal routing).
-   * @param chain - The actions chain to deliver
-   * @param options - Optional chain-level execution options
-   */
-  deliver(chain: ActionsChain, options?: ChainExecutionOptions): Promise<ChainResult>;
-
-  // ... other methods unchanged
-}
-
-/**
- * MfeBridgeConnection interface
- */
-interface MfeBridgeConnection extends MfeBridge {
-  /** Unique instance ID for this bridge connection */
-  readonly instanceId: string;
-
-  /**
-   * Send an actions chain to the MFE.
-   * Used for domain-to-extension communication.
-   *
-   * Action timeouts come from the Action and domain type definitions.
-   *
-   * @param chain - ActionsChain to deliver
-   * @param options - Optional chain-level execution options
-   * @returns ChainResult indicating execution outcome
-   */
-  sendActionsChain(chain: ActionsChain, options?: ChainExecutionOptions): Promise<ChainResult>;
-
-  // ... other methods unchanged
-}
-```
-
-#### Usage Example
-
-```typescript
-// Domain defines default timeout in its type definition
-const dashboardDomain: ExtensionDomain = {
-  id: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.main.v1~',
-  sharedProperties: [...],
-  actions: [...],
-  extensionsActions: [...],
-  extensionsUiMeta: {...},
-  defaultActionTimeout: 30000,  // 30 seconds default for all actions
-};
-
-// Action uses domain's default timeout
-const refreshAction: Action = {
-  type: 'gts.hai3.screensets.ext.action.v1~acme.dashboard.ext.refresh.v1~',
-  target: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.main.v1~',
-  // No timeout specified - uses domain's 30000ms default
-};
-
-// Action overrides for a long-running operation
-const exportAction: Action = {
-  type: 'gts.hai3.screensets.ext.action.v1~acme.dashboard.ext.export.v1~',
-  target: 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.main.v1~',
-  timeout: 120000,  // 2 minutes for this specific action
-  // On timeout: executes fallback chain if defined (same as any other failure)
-};
-
-// Execute chain - timeouts come from type definitions
-// On timeout or any failure: fallback chain is executed if defined
-await mediator.executeActionsChain(chain);
-
-// Override total chain timeout only (not individual action timeouts)
-await mediator.executeActionsChain(chain, {
-  chainTimeout: 300000,  // 5 minutes total for entire chain
-});
 ```
 
 ### Decision 19: Dynamic Registration Model
@@ -1146,8 +837,11 @@ class ScreensetsRegistry {
       throw new Error(`Domain '${extension.domain}' not found`);
     }
 
-    // Load MFE bundle if not cached
-    const loaded = await this.mfeLoader.load(entry as MfeEntryMF);
+    // Get appropriate handler for this entry type
+    const handler = this.getHandlerForEntry(entry);
+
+    // Load MFE bundle using handler
+    const loaded = await handler.load(entry);
 
     // Create bridge
     const bridge = this.createBridge(domainState, entry, extensionId);
@@ -1435,268 +1129,34 @@ async function swapToVariantB() {
 }
 ```
 
-### Decision 20: Domain-Specific Supported Actions
-
-**What**: Each extension domain declares which HAI3 actions it supports, allowing domains to have different action support based on their layout semantics.
-
-**Why**:
-- Not all domains can support all actions semantically
-- Screen domain cannot support `unload_ext` - you cannot have "no screen selected"
-- Popup, Sidebar, Overlay domains can support both `load_ext` and `unload_ext`
-- This enables the mediator to validate action support before delivery
-
-#### Domain Actions Field
-
-The `ExtensionDomain` type includes an `actions` field that lists which HAI3 actions (like `HAI3_ACTION_LOAD_EXT`, `HAI3_ACTION_UNLOAD_EXT`) the domain supports:
-
+**Example 5: Domain-level shared property updates**
 ```typescript
-interface ExtensionDomain {
-  id: string;
-  sharedProperties: string[];
-  /** HAI3 actions this domain supports (e.g., load_ext, unload_ext) */
-  actions: string[];  // <-- Domain declares supported HAI3 actions
-  /** Action type IDs domain can emit to extensions */
-  domainActions: string[];
-  /** Action type IDs domain can receive from extensions */
-  extensionsActions: string[];
-  extensionsUiMeta: JSONSchema;
-  defaultActionTimeout: number;
-}
+// Host updates a shared property at the domain level
+// ALL extensions in the domain that subscribe to this property receive the update
+
+const domainId = 'gts.hai3.screensets.ext.domain.v1~acme.dashboard.layout.widget_slot.v1~';
+const themePropertyId = 'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1';
+const userContextPropertyId = 'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.user_context.v1';
+
+// Single property update - all subscribed extensions in domain receive it
+runtime.updateDomainProperty(domainId, themePropertyId, 'dark');
+
+// Multiple properties at once (more efficient)
+runtime.updateDomainProperties(domainId, new Map([
+  [themePropertyId, 'dark'],
+  [userContextPropertyId, { userId: '123', permissions: ['read', 'write'] }],
+]));
+
+// Get current property value
+const currentTheme = runtime.getDomainProperty(domainId, themePropertyId);
+
+// Flow explanation:
+// 1. Domain 'widget_slot' declares sharedProperties: [themePropertyId, userContextPropertyId]
+// 2. Extension A's entry declares requiredProperties: [themePropertyId]
+// 3. Extension B's entry declares optionalProperties: [themePropertyId, userContextPropertyId]
+// 4. Extension C's entry doesn't declare either property
+// 5. When updateDomainProperty(domainId, themePropertyId, 'dark') is called:
+//    - Extension A receives 'dark' (required subscriber)
+//    - Extension B receives 'dark' (optional subscriber)
+//    - Extension C receives nothing (not subscribed)
 ```
-
-#### Base Domain Definitions with Supported Actions
-
-**Popup Domain** - Supports both load and unload (modal can be shown/hidden):
-```typescript
-const HAI3_POPUP_DOMAIN: ExtensionDomain = {
-  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.popup.v1~',
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],  // Both supported
-  sharedProperties: [...],
-  domainActions: [...],
-  extensionsActions: [...],
-  extensionsUiMeta: {...},
-  defaultActionTimeout: 30000,
-};
-```
-
-**Sidebar Domain** - Supports both load and unload (panel can be shown/hidden):
-```typescript
-const HAI3_SIDEBAR_DOMAIN: ExtensionDomain = {
-  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.sidebar.v1~',
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],  // Both supported
-  sharedProperties: [...],
-  domainActions: [...],
-  extensionsActions: [...],
-  extensionsUiMeta: {...},
-  defaultActionTimeout: 30000,
-};
-```
-
-**Overlay Domain** - Supports both load and unload (overlay can be shown/hidden):
-```typescript
-const HAI3_OVERLAY_DOMAIN: ExtensionDomain = {
-  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.overlay.v1~',
-  actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_UNLOAD_EXT],  // Both supported
-  sharedProperties: [...],
-  domainActions: [...],
-  extensionsActions: [...],
-  extensionsUiMeta: {...},
-  defaultActionTimeout: 30000,
-};
-```
-
-**Screen Domain** - Only supports load (you can navigate TO a screen, but cannot have "no screen"):
-```typescript
-const HAI3_SCREEN_DOMAIN: ExtensionDomain = {
-  id: 'gts.hai3.screensets.ext.domain.v1~hai3.screensets.layout.screen.v1~',
-  actions: [HAI3_ACTION_LOAD_EXT],  // NO unload - can't have "no screen selected"
-  sharedProperties: [...],
-  domainActions: [...],
-  extensionsActions: [...],
-  extensionsUiMeta: {...},
-  defaultActionTimeout: 30000,
-};
-```
-
-#### Action Support Validation
-
-The ActionsChainsMediator validates that the target domain supports the action before delivery:
-
-```typescript
-/**
- * Validate that the target domain supports the action.
- */
-function validateDomainActionSupport(
-  domain: ExtensionDomain,
-  actionTypeId: string
-): boolean {
-  return domain.actions.includes(actionTypeId);
-}
-
-// In ActionsChainsMediator.executeActionsChain():
-const targetDomain = this.domains.get(action.target);
-if (targetDomain && !validateDomainActionSupport(targetDomain, action.type)) {
-  throw new UnsupportedDomainActionError(
-    `Domain '${action.target}' does not support action '${action.type}'`,
-    action.type,
-    targetDomain.id
-  );
-}
-```
-
-#### Key Principles
-
-1. **`load_ext` is universal**: All domains MUST support `HAI3_ACTION_LOAD_EXT` (it's how extensions are loaded)
-2. **`unload_ext` is optional**: Some domains (like screen) cannot semantically support unloading
-3. **Domains declare support**: Each domain explicitly lists which HAI3 actions it can handle
-4. **Mediator validates**: ActionsChainsMediator checks action support before delivery
-5. **Clear error messages**: When an unsupported action is attempted, a clear error is thrown
-
-#### UnsupportedDomainActionError
-
-```typescript
-/**
- * Error thrown when an action is not supported by the target domain
- */
-class UnsupportedDomainActionError extends MfeError {
-  constructor(
-    message: string,
-    public readonly actionTypeId: string,
-    public readonly domainTypeId: string
-  ) {
-    super(message, 'UNSUPPORTED_DOMAIN_ACTION');
-    this.name = 'UnsupportedDomainActionError';
-  }
-}
-```
-
-### Decision 21: MFE Independence with Thin Public Contracts
-
-**What**: Each MFE is maximally independent with a thin public contract. The public interface (MfeEntryLifecycle, MfeBridge, actions) is the ONLY required coupling between host and MFE.
-
-**Why**:
-- Easy to version and maintain compatibility
-- Low coupling between host and MFEs
-- MFE developers take full responsibility for their own needs
-- Each MFE evolves independently
-
-#### Architecture: Thin Contracts, Full Ownership
-
-```
-+--------------------------------------------------------------------+
-|                           PUBLIC CONTRACT                           |
-|    (MfeEntryLifecycle + MfeBridge + Actions = THIN INTERFACE)      |
-+--------------------------------------------------------------------+
-         |                                          |
-         v                                          v
-+------------------+                      +------------------+
-|   HOST RUNTIME   |                      |   MFE RUNTIME    |
-+------------------+                      +------------------+
-| - Own API Client |                      | - Own API Client |
-| - Own Router     |                      | - Own Router     |
-| - Own Services   |                      | - Own Services   |
-| - Own State      |                      | - Own State      |
-+------------------+                      +------------------+
-         |                                          |
-         |        (Optional: Private Library)       |
-         +------------------+  +--------------------+
-                            |  |
-                            v  v
-                   +------------------+
-                   |  @hai3/api       |
-                   |  (Shared Code)   |
-                   +------------------+
-                   | - Cache sync     |
-                   | - Deduplication  |
-                   | (TRANSPARENT)    |
-                   +------------------+
-```
-
-Each MFE has:
-- **Own API services**: Makes its own API requests
-- **Own router**: Manages its own internal navigation
-- **Own state**: Isolated state container
-- **Full responsibility**: MFE developers control their stack
-
-#### The Trade-off and Solution
-
-**Trade-off**: Duplicate API requests may occur if multiple MFEs need the same data.
-
-**Solution**: Optimizations happen through **optional private libraries**, NOT through public contracts:
-
-| Layer | Contract Type | Example | Who Controls |
-|-------|--------------|---------|--------------|
-| Public | Thin | MfeBridge, Actions | HAI3 Architecture |
-| Private | Optional | @hai3/api with cache sync | Library Maintainers |
-
-#### Private Optimization Layer
-
-Libraries like `@hai3/api` can be used by MFEs to optimize performance:
-
-```typescript
-// MFE code - simple, independent API call
-const api = createApiClient();  // MFE gets its own instance
-const user = await api.get('/users/123');
-
-// Under the hood (TRANSPARENT to MFE):
-// - Library checks shared cache first
-// - If another MFE already fetched this, returns cached value
-// - Deduplicates in-flight requests across MFEs
-// - MFE code doesn't know or care
-```
-
-**Key Characteristics:**
-1. **Each MFE gets its own instance** - No singleton, full isolation semantics
-2. **Libraries sync cache implicitly** - Transparent to MFE code
-3. **Opt-in optimization** - MFE can use axios instead; system still works, just no cache sharing
-4. **No public contract changes** - Optimizations don't affect MfeBridge or action interfaces
-
-#### The Principle
-
-```
-PUBLIC (Architecture Level)     PRIVATE (Implementation Level)
-+---------------------------+   +---------------------------+
-| - MfeEntryLifecycle       |   | - @hai3/api cache sync    |
-| - MfeBridge               |   | - Request deduplication   |
-| - Actions                 |   | - Shared worker pools     |
-| - Shared Properties       |   | - Background prefetching  |
-+---------------------------+   +---------------------------+
-        THIN, STABLE                  OPT-IN, EVOLVABLE
-```
-
-**Applies to**:
-- API services (each MFE has its own, library may optimize)
-- Routers (each MFE has its own, no sharing needed)
-- Any potential "singleton service" pattern (avoided in favor of per-MFE instances)
-
-#### Trade-offs and Clarifications
-
-**1. Memory Overhead**
-
-The concern about duplicate service instances is about **runtime memory**, not **bundle size**. Module Federation 2.0 handles bundle sharing at load time - code isn't duplicated on disk or over the network. Only runtime instances are duplicated in memory.
-
-This is an acceptable trade-off for the independence benefits. If memory becomes a measurable issue, the private optimization layer can address it without changing public contracts.
-
-**2. Cache Invalidation Complexity**
-
-Cache invalidation would be equally complex for a singleton service approach. The challenge of invalidating stale data, coordinating updates, and handling race conditions is universal to any caching system - it's not additional complexity unique to the independent MFE approach.
-
-**3. Opt-in Optimization**
-
-MFEs can use axios, fetch, or any HTTP client instead of `@hai3/api` - the system still works, just without cross-MFE cache optimization. This is intentional: **graceful degradation over mandatory coupling**.
-
-Adding cache keys or coordination metadata to the public MFE contract would defeat the thin contracts principle. If optimization requires MFE-level declarations, we're back to tight coupling. The optimization must remain at the library level to preserve MFE independence.
-
-#### Guarantees and Scope
-
-**1. Cross-MFE Data Consistency**
-
-Cross-MFE data consistency IS guaranteed at the architecture level when HAI3's own tooling is used (e.g., `@hai3/api`). This guarantee holds even across different frameworks (React, Vue, Angular, Svelte). MFEs using third-party HTTP clients (axios, fetch) opt out of this guarantee but the system continues to function.
-
-**2. Platform-Level Shared Data**
-
-Essential platform-level data (authentication state, user context, feature flags) is shared via the SharedProperty mechanism and is guaranteed to be in sync at the architecture level. This is the appropriate channel for inherently host-level concerns, not library-level sharing.
-
-**3. Tooling Implementation (Out of Scope)**
-
-The private optimization layer (e.g., `@hai3/api` cache synchronization) is referenced in this proposal to illustrate how performance concerns will be addressed at the tooling level. The actual implementation of these libraries is out of scope for this proposal and will be addressed in separate tooling proposals.

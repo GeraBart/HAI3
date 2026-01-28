@@ -133,7 +133,7 @@
 
 - [ ] 4.1.1 Create `ScreensetsRegistryConfig` interface
 - [ ] 4.1.2 Add required `typeSystem` parameter
-- [ ] 4.1.3 Add optional `onError`, `loadingComponent`, `errorFallbackComponent`, `debug`, `mfeLoader`, `parentBridge` parameters
+- [ ] 4.1.3 Add optional `onError`, `loadingComponent`, `errorFallbackComponent`, `debug`, `mfeHandler`, `parentBridge` parameters
 - [ ] 4.1.4 Implement `createScreensetsRegistry(config)` factory
 
 **Traceability**: Requirement "Type System Plugin Abstraction" - Plugin requirement at initialization
@@ -392,13 +392,16 @@
 
 **Goal**: Implement MFE bundle loading with error handling.
 
-### 11.1 MFE Loader
+### 11.1 MFE Handler and Bridge Factory
 
-- [ ] 11.1.1 Implement `MfeLoader` class
-- [ ] 11.1.2 Implement `load(entry: MfeEntryMF)` method
-- [ ] 11.1.3 Implement manifest resolution and caching
-- [ ] 11.1.4 Implement Module Federation container loading
-- [ ] 11.1.5 Implement `preload(entries)` method
+- [ ] 11.1.1 Implement `MfeBridgeFactory` abstract class in `packages/screensets/src/mfe/handler/types.ts`
+- [ ] 11.1.2 Implement `MfeBridgeFactoryDefault` class that creates thin bridges
+- [ ] 11.1.3 Implement `MfeHandler` abstract class with `canHandle()`, `bridgeFactory`, `handledBaseTypeId`
+- [ ] 11.1.4 Implement `MfeHandlerMF` class extending `MfeHandler`
+- [ ] 11.1.5 Implement `load(entry: MfeEntryMF)` method in `MfeHandlerMF`
+- [ ] 11.1.6 Implement manifest resolution and caching in `MfeHandlerMF`
+- [ ] 11.1.7 Implement Module Federation container loading
+- [ ] 11.1.8 Implement `preload(entry)` method in `MfeHandlerMF`
 
 **Traceability**: Requirement "MFE Loading via MfeEntryMF and MfManifest"
 
@@ -677,48 +680,37 @@
 
 ---
 
-## Phase 17: Manifest Fetching and Registry
+## Phase 17: MFE Registry
 
-**Goal**: Implement manifest fetching strategies and MFE registry.
+**Goal**: Implement MFE registry for manifest and entry tracking.
 
-### 17.1 Manifest Fetchers
+### 17.1 MFE Registry
 
-- [ ] 17.1.1 Create `packages/screensets/src/mfe/loader/manifest-fetcher.ts`
-- [ ] 17.1.2 Implement `ManifestFetcher` interface
-- [ ] 17.1.3 Implement `UrlManifestFetcher` class
-- [ ] 17.1.4 Implement `RegistryManifestFetcher` class
-- [ ] 17.1.5 Implement `CompositeManifestFetcher` class
-
-**Traceability**: Design Decision 18 - Manifest Fetching Strategy
-
-### 17.2 MFE Registry
-
-- [ ] 17.2.1 Create `packages/screensets/src/mfe/registry/index.ts`
-- [ ] 17.2.2 Implement `microfrontendRegistry` singleton
-- [ ] 17.2.3 Implement `getManifest(manifestTypeId)` method
-- [ ] 17.2.4 Implement `getEntry(entryTypeId)` method
-- [ ] 17.2.5 Implement `registerManifest(manifest)` method
+- [ ] 17.1.1 Create `packages/screensets/src/mfe/registry/index.ts`
+- [ ] 17.1.2 Implement `microfrontendRegistry` singleton
+- [ ] 17.1.3 Implement `getManifest(manifestTypeId)` method
+- [ ] 17.1.4 Implement `getEntry(entryTypeId)` method
+- [ ] 17.1.5 Implement `registerManifest(manifest)` method
 
 **Traceability**: Requirement "MFE Registry Integration"
 
-### 17.3 MfeLoader Integration
+### 17.2 MfeHandlerMF Internal Manifest Resolution
 
-- [ ] 17.3.1 Update `MfeLoader` to use `ManifestFetcher`
-- [ ] 17.3.2 Replace placeholder `fetchManifestInstance` with fetcher call
-- [ ] 17.3.3 Add manifest caching integration
-- [ ] 17.3.4 Add registry registration on load
+- [ ] 17.2.1 Implement internal `fetchManifestInstance` in MfeHandlerMF
+- [ ] 17.2.2 Add manifest caching within MfeHandlerMF
+- [ ] 17.2.3 Add registry lookup integration (optional, implementation detail)
 
 **Traceability**: Requirement "MFE Loading via MfeEntryMF and MfManifest"
 
-### 17.4 Manifest and Registry Tests
+Note: Manifest resolution is an **internal implementation detail** of MfeHandlerMF, not a public architectural abstraction. Different handlers (iframe, ESM) would have completely different internal mechanisms.
 
-- [ ] 17.4.1 Test UrlManifestFetcher with mock responses
-- [ ] 17.4.2 Test RegistryManifestFetcher lookup
-- [ ] 17.4.3 Test CompositeManifestFetcher fallback
-- [ ] 17.4.4 Test microfrontendRegistry queries
-- [ ] 17.4.5 Test MfeLoader with different fetchers
+### 17.3 Registry Tests
 
-**Traceability**: Design Decision 18, Requirement "MFE Registry Integration"
+- [ ] 17.3.1 Test microfrontendRegistry manifest registration and lookup
+- [ ] 17.3.2 Test microfrontendRegistry entry queries
+- [ ] 17.3.3 Test MfeHandlerMF internal manifest resolution
+
+**Traceability**: Requirement "MFE Registry Integration"
 
 ---
 
@@ -780,7 +772,7 @@
 
 - [ ] 19.2.1 Implement `mountExtension(extensionId, container): Promise<MfeBridgeConnection>` method
 - [ ] 19.2.2 Verify extension is registered before mounting
-- [ ] 19.2.3 Integrate with MfeLoader for bundle loading
+- [ ] 19.2.3 Integrate with MfeHandler for bundle loading
 - [ ] 19.2.4 Create bridge connection on mount
 - [ ] 19.2.5 Register with RuntimeCoordinator
 - [ ] 19.2.6 Implement `unmountExtension(extensionId): Promise<void>` method

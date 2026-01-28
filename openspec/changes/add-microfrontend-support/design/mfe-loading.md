@@ -1,10 +1,20 @@
 # Design: MFE Loading and Error Handling
 
-This document covers Module Federation 2.0 bundle loading, error class hierarchy, and manifest fetching strategies.
+This document covers Module Federation 2.0 bundle loading and manifest fetching strategies.
 
-**Related Documents:**
-- [Type System](./type-system.md) - Type System Plugin interface, GTS types, contract validation
-- [Registry and Runtime](./registry-runtime.md) - Runtime isolation, action mediation, bridges
+---
+
+## Context
+
+MFE loading is the process of fetching and initializing remote MFE bundles at runtime. The system uses Module Federation 2.0 as the underlying mechanism, which provides code sharing, dependency management, and dynamic module resolution. The loader works with [MfeEntryMF](./mfe-entry-mf.md) (which defines the entry contract) and [MfManifest](./mfe-manifest.md) (which defines the Module Federation configuration).
+
+The loading process must handle network failures, validation [errors](./mfe-errors.md), and version mismatches while maintaining runtime isolation between MFEs.
+
+## Definition
+
+**MfeLoader**: An internal implementation component that loads MFE bundles using Module Federation 2.0. It resolves manifests, initializes remote containers, and returns the MfeEntryLifecycle interface for mounting.
+
+**ManifestFetcher**: A strategy interface for resolving MfManifest instances from their type IDs. Implementations include URL-based, registry-based, and composite fetchers.
 
 ---
 
@@ -80,7 +90,7 @@ Only use `singleton: true` for libraries that are **truly stateless**:
 
 Note: `MfeLoader` and its return types are **internal implementation details** of the ScreensetsRegistry. The public API is `ScreensetsRegistry.mountExtension()` which handles loading and mounting internally. This documentation is provided for implementers only.
 
-The internal MfeLoader uses the `MfeEntryMF` derived type which references an `MfManifest`:
+The internal MfeLoader uses the [`MfeEntryMF`](./mfe-entry-mf.md) derived type which references an [`MfManifest`](./mfe-manifest.md):
 
 ```typescript
 // packages/screensets/src/mfe/loader/index.ts (INTERNAL)
@@ -281,224 +291,6 @@ class MfeLoader {
     throw new Error('Not implemented');
   }
 }
-```
-
-**Example MfManifest Instance:**
-
-```typescript
-const analyticsManifest: MfManifest = {
-  id: 'gts.hai3.screensets.mfe.mf.v1~acme.analytics.mfe.manifest.v1',
-  remoteEntry: 'https://cdn.acme.com/analytics/remoteEntry.js',
-  remoteName: 'acme_analytics',
-  // sharedDependencies configures Module Federation code sharing.
-  // Two benefits are controlled independently:
-  // 1. Code sharing (always) - download once, cache it
-  // 2. Instance sharing (singleton flag) - share instance or isolate
-  sharedDependencies: [
-    // React/ReactDOM: Code shared for bundle optimization, but singleton: false
-    // ensures each MFE gets its own React instance (isolation preserved)
-    { name: 'react', requiredVersion: '^18.0.0', singleton: false },
-    { name: 'react-dom', requiredVersion: '^18.0.0', singleton: false },
-    // Stateless utilities: singleton: true is safe (no state to isolate)
-    { name: 'lodash', requiredVersion: '^4.17.0', singleton: true },
-    { name: 'date-fns', requiredVersion: '^2.30.0', singleton: true },
-    // @hai3/* packages: Must use singleton: false for runtime isolation
-    // Or omit entirely if this MFE doesn't need to share code with host
-    // { name: '@hai3/screensets', requiredVersion: '^1.0.0', singleton: false },
-  ],
-  entries: [
-    'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
-    'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.metrics.v1',
-  ],
-};
-```
-
-**Example MfeEntryMF Instance:**
-
-```typescript
-const chartEntry: MfeEntryMF = {
-  id: 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~acme.analytics.mfe.chart.v1',
-  requiredProperties: [
-    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.user_context.v1',
-    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.selected_date_range.v1',
-  ],
-  optionalProperties: [
-    'gts.hai3.screensets.ext.shared_property.v1~hai3.screensets.props.theme.v1',
-  ],
-  actions: ['gts.hai3.screensets.ext.action.v1~acme.analytics.ext.data_updated.v1~'],
-  domainActions: ['gts.hai3.screensets.ext.action.v1~acme.analytics.ext.refresh.v1~'],
-  manifest: 'gts.hai3.screensets.mfe.mf.v1~acme.analytics.mfe.manifest.v1',
-  exposedModule: './ChartWidget',
-};
-```
-
-### Decision 16: Error Class Hierarchy
-
-The MFE system defines a hierarchy of error classes for specific failure scenarios.
-
-#### Error Classes
-
-```typescript
-// packages/screensets/src/mfe/errors/index.ts
-
-/**
- * Base error class for all MFE errors
- */
-class MfeError extends Error {
-  constructor(message: string, public readonly code: string) {
-    super(message);
-    this.name = 'MfeError';
-  }
-}
-
-/**
- * Error thrown when MFE bundle fails to load
- */
-class MfeLoadError extends MfeError {
-  constructor(
-    message: string,
-    public readonly entryTypeId: string,
-    public readonly cause?: Error
-  ) {
-    super(`Failed to load MFE '${entryTypeId}': ${message}`, 'MFE_LOAD_ERROR');
-    this.name = 'MfeLoadError';
-  }
-}
-
-/**
- * Error thrown when contract validation fails
- */
-class ContractValidationError extends MfeError {
-  constructor(
-    public readonly errors: ContractError[],
-    public readonly entryTypeId?: string,
-    public readonly domainTypeId?: string
-  ) {
-    const details = errors.map(e => `  - ${e.type}: ${e.details}`).join('\n');
-    super(
-      `Contract validation failed:\n${details}`,
-      'CONTRACT_VALIDATION_ERROR'
-    );
-    this.name = 'ContractValidationError';
-  }
-}
-
-/**
- * Error thrown when uiMeta validation fails
- */
-class UiMetaValidationError extends MfeError {
-  constructor(
-    public readonly errors: ValidationError[],
-    public readonly extensionTypeId: string,
-    public readonly domainTypeId: string
-  ) {
-    const details = errors.map(e => `  - ${e.path}: ${e.message}`).join('\n');
-    super(
-      `uiMeta validation failed for extension '${extensionTypeId}' against domain '${domainTypeId}':\n${details}`,
-      'UI_META_VALIDATION_ERROR'
-    );
-    this.name = 'UiMetaValidationError';
-  }
-}
-
-/**
- * Error thrown when actions chain execution fails
- */
-class ChainExecutionError extends MfeError {
-  constructor(
-    message: string,
-    public readonly chain: ActionsChain,
-    public readonly failedAction: Action,
-    public readonly executedPath: string[],
-    public readonly cause?: Error
-  ) {
-    super(
-      `Actions chain execution failed at '${failedAction.type}': ${message}`,
-      'CHAIN_EXECUTION_ERROR'
-    );
-    this.name = 'ChainExecutionError';
-  }
-}
-
-/**
- * Error thrown when shared dependency version validation fails
- */
-class MfeVersionMismatchError extends MfeError {
-  constructor(
-    public readonly manifestTypeId: string,
-    public readonly dependency: string,
-    public readonly expected: string,
-    public readonly actual: string
-  ) {
-    super(
-      `Version mismatch for '${dependency}' in MFE '${manifestTypeId}': expected ${expected}, got ${actual}`,
-      'MFE_VERSION_MISMATCH_ERROR'
-    );
-    this.name = 'MfeVersionMismatchError';
-  }
-}
-
-/**
- * Error thrown when type conformance check fails
- */
-class MfeTypeConformanceError extends MfeError {
-  constructor(
-    public readonly typeId: string,
-    public readonly expectedBaseType: string
-  ) {
-    super(
-      `Type '${typeId}' does not conform to base type '${expectedBaseType}'`,
-      'MFE_TYPE_CONFORMANCE_ERROR'
-    );
-    this.name = 'MfeTypeConformanceError';
-  }
-}
-
-/**
- * Error thrown when domain validation fails
- */
-class DomainValidationError extends MfeError {
-  constructor(
-    public readonly errors: ValidationError[],
-    public readonly domainTypeId: string
-  ) {
-    const details = errors.map(e => `  - ${e.path}: ${e.message}`).join('\n');
-    super(
-      `Domain validation failed for '${domainTypeId}':\n${details}`,
-      'DOMAIN_VALIDATION_ERROR'
-    );
-    this.name = 'DomainValidationError';
-  }
-}
-
-/**
- * Error thrown when extension validation fails
- */
-class ExtensionValidationError extends MfeError {
-  constructor(
-    public readonly errors: ValidationError[],
-    public readonly extensionTypeId: string
-  ) {
-    const details = errors.map(e => `  - ${e.path}: ${e.message}`).join('\n');
-    super(
-      `Extension validation failed for '${extensionTypeId}':\n${details}`,
-      'EXTENSION_VALIDATION_ERROR'
-    );
-    this.name = 'ExtensionValidationError';
-  }
-}
-
-export {
-  MfeError,
-  MfeLoadError,
-  ContractValidationError,
-  UiMetaValidationError,
-  ChainExecutionError,
-  MfeVersionMismatchError,
-  MfeTypeConformanceError,
-  DomainValidationError,
-  ExtensionValidationError,
-};
 ```
 
 ### Decision 18: Manifest Fetching Strategy

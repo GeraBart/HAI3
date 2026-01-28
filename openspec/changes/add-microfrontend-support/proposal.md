@@ -74,6 +74,9 @@ interface TypeSystemPlugin {
   // Query
   query(pattern: string, limit?: number): string[];
 
+  // Type Hierarchy (REQUIRED for MfeHandler.canHandle())
+  isTypeOf(typeId: string, baseTypeId: string): boolean;
+
   // Compatibility (REQUIRED)
   checkCompatibility(oldTypeId: string, newTypeId: string): CompatibilityResult;
 
@@ -110,7 +113,15 @@ The MFE system uses these internal TypeScript interfaces. Each type has an `id: 
 |---------------------|--------|---------|
 | `MfeEntryLifecycle` | `mount(container, bridge), unmount(container)` | Lifecycle interface for MFE entries |
 
-**Note on MfeEntry Design:** MfeEntry is a **pure contract** type (abstract base) that defines ONLY the communication interface (properties, actions). Derived types like `MfeEntryMF` add loader-specific fields. This separation ensures the same entry contract works with any loader and allows future loaders (ESM, Import Maps) to add their own derived types.
+**Handler Abstraction (3 types):**
+
+| TypeScript Interface | Fields | Purpose |
+|---------------------|--------|---------|
+| `MfeBridgeFactory<TBridge>` | `create(entry, connection)` | Abstract factory for creating bridge instances |
+| `MfeHandler<TEntry, TBridge>` | `bridgeFactory, canHandle(entryTypeId), load(entry), preload?(entry), priority?` | Abstract handler class for different entry types |
+| `LoadedMfe` | `lifecycle, entry, unload()` | Result of loading an MFE bundle |
+
+**Note on MfeEntry Design:** MfeEntry is a **pure contract** type (abstract base) that defines ONLY the communication interface (properties, actions). Derived types like `MfeEntryMF` add handler-specific fields. This separation ensures the same entry contract works with any handler and allows future handlers (ESM, Import Maps) to add their own derived types.
 
 **Note on MfeEntryLifecycle Design:** MfeEntryLifecycle is the **lifecycle interface** that all MFE entries must implement. The name focuses on lifecycle semantics (mount/unmount) rather than implementation details like "Export" or "Module". This interface:
 - Defines framework-agnostic lifecycle methods any MFE entry must implement
@@ -118,7 +129,13 @@ The MFE system uses these internal TypeScript interfaces. Each type has an `id: 
 - Allows MFEs to be written in any UI framework (React, Vue, Angular, Svelte, Vanilla JS)
 - Maintains a consistent loading contract with the host
 
-**Note on MfeLoader/LoadedMfe:** These are **internal implementation details** of the ScreensetsRegistry, not part of the public API. The public API is `ScreensetsRegistry.mountExtension()` which handles loading and mounting internally.
+**Note on MfeHandler Extensibility:** The `MfeHandler` abstract class, `MfeBridgeFactory`, and handler registry enable companies to:
+- Create custom derived entry types (e.g., `MfeEntryAcme`) with richer contracts (translations, preload assets, feature flags)
+- Register custom handlers to handle their entry types
+- Create custom bridge factories that inject shared services (router, API client) into bridges for internal MFEs
+- Keep "static knowledge about MFEs" in their handlers, not HAI3 core
+
+This solves the tension between 3rd-party vendors (who need thin, stable contracts and thin bridges) and enterprises (who want richer integration for internal MFEs with rich bridges). See `design/mfe-loading.md` for the MfeHandler abstract class and `design/principles.md` for the extensibility principle.
 
 ### GTS Type ID Format
 
@@ -342,9 +359,17 @@ interface ScreensetsRegistry {
   /** Unregister domain dynamically */
   unregisterDomain(domainId: string): Promise<void>;
 
+  // === Handler Registry (for custom entry types) ===
+
+  /** Register an MFE handler for custom entry types */
+  registerHandler(handler: MfeHandler): void;
+
+  /** Unregister an MFE handler by handled base type ID */
+  unregisterHandler(handledBaseTypeId: string): void;
+
   // === MFE Loading (on-demand) ===
 
-  /** Mount extension on demand */
+  /** Mount extension on demand - uses handler registry to find appropriate handler */
   mountExtension(extensionId: string, container: Element): Promise<MfeBridgeConnection>;
 
   /** Unmount extension */
@@ -404,13 +429,15 @@ interface InstanceUpdate {
 ### Affected code
 
 **New packages:**
-- `packages/screensets/src/mfe/` - MFE runtime, loader, ActionsChainsMediator
+- `packages/screensets/src/mfe/` - MFE runtime, ActionsChainsMediator
 - `packages/screensets/src/mfe/types/` - Internal TypeScript type definitions
 - `packages/screensets/src/mfe/validation/` - Contract matching validation
 - `packages/screensets/src/mfe/mediator/` - ActionsChainsMediator for action chain delivery
 - `packages/screensets/src/mfe/plugins/` - Type System plugin interface and implementations
 - `packages/screensets/src/mfe/plugins/gts/` - GTS plugin implementation (default)
-- `packages/screensets/src/mfe/loader/` - MFE loader (Module Federation)
+- `packages/screensets/src/mfe/handler/` - MfeHandler abstract class, MfeBridgeFactory, and handler registry
+- `packages/screensets/src/mfe/handler/mf-handler.ts` - MfeHandlerMF (Module Federation default handler)
+- `packages/screensets/src/mfe/handler/bridge-factory-default.ts` - MfeBridgeFactoryDefault (thin bridge factory)
 
 **Modified packages:**
 - `packages/screensets/src/state/` - Isolated state instances (uses @hai3/state)

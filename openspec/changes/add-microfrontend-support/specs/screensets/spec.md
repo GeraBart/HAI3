@@ -999,7 +999,7 @@ The system SHALL support dynamic registration of extensions, domains, and MFEs a
 - **WHEN** an extension is registered but not yet mounted
 - **THEN** the system SHALL allow calling `runtime.mountExtension(extensionId, container)`
 - **AND** the extension MUST be registered before mounting (validation dependency)
-- **AND** the MFE bundle SHALL be loaded via MfeLoader
+- **AND** the MFE bundle SHALL be loaded via MfeHandler
 - **AND** a bridge connection SHALL be created and returned
 - **AND** the MFE SHALL be mounted into the container element
 
@@ -1099,7 +1099,7 @@ The ScreensetsRegistry SHALL provide a complete API for dynamic registration and
 - **WHEN** calling `runtime.mountExtension(extensionId, container)`
 - **THEN** the method SHALL return `Promise<MfeBridgeConnection>`
 - **AND** the extension MUST be registered
-- **AND** the MFE bundle SHALL be loaded via MfeLoader
+- **AND** the MFE bundle SHALL be loaded via MfeHandler
 - **AND** a bridge SHALL be created and connected
 - **AND** the runtime SHALL be registered with coordinator
 

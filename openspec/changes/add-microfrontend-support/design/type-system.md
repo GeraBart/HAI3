@@ -171,6 +171,18 @@ interface TypeSystemPlugin {
    */
   query(pattern: string, limit?: number): string[];
 
+  // === Type Hierarchy ===
+
+  /**
+   * Check if a type ID is of (or derived from) a base type.
+   * Used by MfeHandler.canHandle() for type hierarchy matching.
+   *
+   * @param typeId - The type ID to check
+   * @param baseTypeId - The base type ID to check against
+   * @returns true if typeId is the same as or derived from baseTypeId
+   */
+  isTypeOf(typeId: string, baseTypeId: string): boolean;
+
   // === Compatibility (REQUIRED) ===
 
   /**
@@ -252,6 +264,14 @@ export function createGtsPlugin(): TypeSystemPlugin {
       return GtsQuery.search(gtsStore, pattern, { limit });
     },
 
+    // Type Hierarchy
+    isTypeOf(typeId: string, baseTypeId: string): boolean {
+      // GTS type derivation: derived types include the base type ID as a prefix
+      // e.g., 'gts.hai3.screensets.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~'
+      // is derived from 'gts.hai3.screensets.mfe.entry.v1~'
+      return typeId.startsWith(baseTypeId) || typeId === baseTypeId;
+    },
+
     // Compatibility (REQUIRED)
     checkCompatibility(oldTypeId: string, newTypeId: string) {
       return Gts.checkCompatibility(gtsStore, oldTypeId, newTypeId);
@@ -319,296 +339,78 @@ Benefits:
 - **Future-proof**: ESM loader would add `MfeEntryEsm` derived type with its own manifest reference
 - **Clear ownership**: Entry owns its contract AND references its manifest
 
+#### Derived Entry Types and Handler Matching
+
+The GTS type system enables companies to create custom derived entry types with richer contracts. The [MfeHandler Registry](./mfe-loading.md#decision-11-mfehandler-abstraction-and-registry) uses type hierarchy matching to route entries to the correct handler:
+
+```
+TYPE SYSTEM (GTS)                           HANDLER REGISTRY
+================                            ================
+
+MfeEntry (abstract)                         MfeHandler (abstract class)
+    │                                           │
+    ├── MfeEntryMF                              ├── MfeHandlerMF
+    │   (thin, stable)                          │   handledBaseTypeId: ~hai3.screensets.mfe.entry_mf.*
+    │                                           │   bridgeFactory: MfeBridgeFactoryDefault
+    │                                           │
+    └── MfeEntryAcme                            └── MfeHandlerAcme
+        (richer contract)                           handledBaseTypeId: ~acme.corp.mfe.entry_acme.*
+                                                    bridgeFactory: MfeBridgeFactoryAcme (with shared services)
+```
+
+**Type ID Matching in Handlers**:
+
+Each handler's `canHandle()` method (inherited from base class) uses the type system to determine if it can handle an entry:
+
+```typescript
+// HAI3's default MF handler - handles MfeEntryMF
+class MfeHandlerMF extends MfeHandler<MfeEntryMF, MfeBridge> {
+  readonly bridgeFactory = new MfeBridgeFactoryDefault();
+
+  constructor(typeSystem: TypeSystemPlugin) {
+    // Pass the base type ID this handler handles
+    super(typeSystem, 'gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~');
+  }
+
+  // canHandle() inherited from base class uses:
+  // this.typeSystem.isTypeOf(entryTypeId, this.handledBaseTypeId)
+}
+
+// Company's custom handler - handles MfeEntryAcme with rich bridges
+class MfeHandlerAcme extends MfeHandler<MfeEntryAcme, MfeBridgeAcme> {
+  readonly bridgeFactory: MfeBridgeFactoryAcme;
+
+  constructor(typeSystem: TypeSystemPlugin, router: Router, apiClient: ApiClient) {
+    super(typeSystem, 'gts.hai3.screensets.mfe.entry.v1~acme.corp.mfe.entry_acme.v1~');
+    this.bridgeFactory = new MfeBridgeFactoryAcme(router, apiClient);
+  }
+}
+```
+
+**Priority-Based Selection**:
+
+When multiple handlers can handle an entry (e.g., a company handler extends MfeHandlerMF), priority determines which is used:
+
+| Handler | Priority | Handles | Bridge |
+|---------|----------|---------|--------|
+| MfeHandlerAcme | 100 | Company's richer entries | Rich (with shared services) |
+| MfeHandlerMF | 0 | HAI3's thin entries, fallback for others | Thin (minimal contract) |
+
+Company handlers use higher priority to ensure their derived types are handled by their custom handlers, not the generic MfeHandlerMF. This also ensures internal MFEs get rich bridges with shared services.
+
 #### Complete GTS JSON Schema Definitions
 
-**1. MFE Entry Schema (Abstract Base):**
+The schema definitions are distributed across the following files:
 
-MfeEntry is the **abstract base type** for all entry contracts. It defines ONLY the communication interface (properties, actions). Derived types add loader-specific fields.
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.mfe.entry.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "id": {
-      "x-gts-ref": "/$id",
-      "$comment": "The GTS type ID for this instance"
-    },
-    "requiredProperties": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.shared_property.v1~*" },
-      "$comment": "SharedProperty type IDs that MUST be provided by the domain"
-    },
-    "optionalProperties": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.shared_property.v1~*" },
-      "$comment": "SharedProperty type IDs that MAY be provided by the domain"
-    },
-    "actions": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
-      "$comment": "Action type IDs this entry can emit to the domain"
-    },
-    "domainActions": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
-      "$comment": "Action type IDs this entry can receive from the domain"
-    }
-  },
-  "required": ["id", "requiredProperties", "actions", "domainActions"]
-}
-```
-
-**1a. MFE Entry MF Schema (Derived - Module Federation):**
-
-The Module Federation derived type adds fields specific to Webpack 5 / Rspack Module Federation 2.0 implementation.
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "allOf": [
-    { "$ref": "gts://gts.hai3.screensets.mfe.entry.v1~" }
-  ],
-  "properties": {
-    "manifest": {
-      "x-gts-ref": "gts.hai3.screensets.mfe.mf.v1~*",
-      "$comment": "Reference to MfManifest type ID containing Module Federation config"
-    },
-    "exposedModule": {
-      "type": "string",
-      "minLength": 1,
-      "$comment": "Module Federation exposed module name (e.g., './ChartWidget')"
-    }
-  },
-  "required": ["manifest", "exposedModule"]
-}
-```
-
-**2. MF Manifest Schema (Standalone):**
-
-MfManifest is a **standalone type** containing Module Federation configuration.
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.mfe.mf.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "id": {
-      "x-gts-ref": "/$id",
-      "$comment": "The GTS type ID for this instance"
-    },
-    "remoteEntry": {
-      "type": "string",
-      "format": "uri",
-      "$comment": "URL to the remoteEntry.js file"
-    },
-    "remoteName": {
-      "type": "string",
-      "minLength": 1,
-      "$comment": "Module Federation container name"
-    },
-    "sharedDependencies": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "$comment": "Package name (e.g., 'react', 'lodash')" },
-          "requiredVersion": { "type": "string", "$comment": "Semver range (e.g., '^18.0.0')" },
-          "singleton": {
-            "type": "boolean",
-            "default": false,
-            "$comment": "If true, share single instance. Default false = code shared but instances isolated."
-          }
-        },
-        "required": ["name", "requiredVersion"]
-      },
-      "$comment": "Dependencies to share for bundle optimization. singleton defaults to false (isolated instances)."
-    },
-    "entries": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~*" },
-      "$comment": "Convenience field for discovery - lists MfeEntryMF type IDs"
-    }
-  },
-  "required": ["id", "remoteEntry", "remoteName"]
-}
-```
-
-**MfeEntry Type Hierarchy:**
-
-```
-gts.hai3.screensets.mfe.entry.v1~ (Base - Abstract Contract)
-  |-- id: string (GTS type ID)
-  |-- requiredProperties: x-gts-ref[] -> gts.hai3.screensets.ext.shared_property.v1~*
-  |-- optionalProperties?: x-gts-ref[] -> gts.hai3.screensets.ext.shared_property.v1~*
-  |-- actions: x-gts-ref[] -> gts.hai3.screensets.ext.action.v1~*
-  |-- domainActions: x-gts-ref[] -> gts.hai3.screensets.ext.action.v1~*
-  |
-  +-- gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~ (Module Federation)
-        |-- (inherits contract fields from base)
-        |-- manifest: x-gts-ref -> gts.hai3.screensets.mfe.mf.v1~*
-        |-- exposedModule: string
-
-gts.hai3.screensets.mfe.mf.v1~ (Standalone - Module Federation Config)
-  |-- id: string (GTS type ID)
-  |-- remoteEntry: string (URL)
-  |-- remoteName: string
-  |-- sharedDependencies?: SharedDependencyConfig[] (code sharing + optional instance sharing)
-  |     |-- name: string
-  |     |-- requiredVersion: string
-  |     |-- singleton?: boolean (default: false = isolated instances)
-  |-- entries?: x-gts-ref[] -> gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~*
-```
-
-**3. Extension Domain Schema (Base):**
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.ext.domain.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "id": {
-      "x-gts-ref": "/$id",
-      "$comment": "The GTS type ID for this instance"
-    },
-    "sharedProperties": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.shared_property.v1~*" }
-    },
-    "actions": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
-      "$comment": "Action type IDs domain can emit to extensions"
-    },
-    "extensionsActions": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.screensets.ext.action.v1~*" },
-      "$comment": "Action type IDs domain can receive from extensions"
-    },
-    "extensionsUiMeta": { "type": "object" },
-    "defaultActionTimeout": {
-      "type": "number",
-      "minimum": 1,
-      "$comment": "Default timeout in milliseconds for actions targeting this domain. REQUIRED. All actions use this unless they specify their own timeout override."
-    }
-  },
-  "required": ["id", "sharedProperties", "actions", "extensionsActions", "extensionsUiMeta", "defaultActionTimeout"]
-}
-```
-
-**4. Extension Schema:**
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.ext.extension.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "id": {
-      "x-gts-ref": "/$id",
-      "$comment": "The GTS type ID for this instance"
-    },
-    "domain": {
-      "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~*",
-      "$comment": "ExtensionDomain type ID to mount into"
-    },
-    "entry": {
-      "x-gts-ref": "gts.hai3.screensets.mfe.entry.v1~*",
-      "$comment": "MfeEntry type ID to mount"
-    },
-    "uiMeta": {
-      "type": "object",
-      "$comment": "Must conform to the domain's extensionsUiMeta schema"
-    }
-  },
-  "required": ["id", "domain", "entry", "uiMeta"]
-}
-```
-
-**5. Shared Property Schema:**
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.ext.shared_property.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "id": {
-      "x-gts-ref": "/$id",
-      "$comment": "The GTS type ID for this shared property"
-    },
-    "value": {
-      "$comment": "The shared property value"
-    }
-  },
-  "required": ["id", "value"]
-}
-```
-
-**6. Action Schema:**
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.ext.action.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "type": {
-      "x-gts-ref": "/$id",
-      "$comment": "Self-reference to this action's type ID"
-    },
-    "target": {
-      "type": "string",
-      "oneOf": [
-        { "x-gts-ref": "gts.hai3.screensets.ext.domain.v1~*" },
-        { "x-gts-ref": "gts.hai3.screensets.ext.extension.v1~*" }
-      ],
-      "$comment": "Type ID of the target ExtensionDomain or Extension"
-    },
-    "payload": {
-      "type": "object",
-      "$comment": "Optional action payload"
-    },
-    "timeout": {
-      "type": "number",
-      "minimum": 1,
-      "$comment": "Optional timeout override in milliseconds. If not specified, uses target domain's defaultActionTimeout."
-    }
-  },
-  "required": ["type", "target"]
-}
-```
-
-**7. Actions Chain Schema:**
-
-ActionsChain contains actual Action INSTANCES (embedded objects), not references. ActionsChain itself is NOT referenced by other types, so it has no `id` field.
-
-```json
-{
-  "$id": "gts://gts.hai3.screensets.ext.actions_chain.v1~",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "action": {
-      "type": "object",
-      "$ref": "gts://gts.hai3.screensets.ext.action.v1~"
-    },
-    "next": {
-      "type": "object",
-      "$ref": "gts://gts.hai3.screensets.ext.actions_chain.v1~"
-    },
-    "fallback": {
-      "type": "object",
-      "$ref": "gts://gts.hai3.screensets.ext.actions_chain.v1~"
-    }
-  },
-  "required": ["action"]
-}
-```
+- **MFE Entry Schema (Abstract Base)**: See [MFE Entry](./mfe-entry-mf.md#mfe-entry-schema-abstract-base)
+- **MFE Entry MF Schema (Derived)**: See [MFE Entry](./mfe-entry-mf.md#mfe-entry-mf-schema-derived---module-federation)
+- **MF Manifest Schema (Standalone)**: See [MFE Manifest](./mfe-manifest.md#mf-manifest-schema-standalone)
+- **Extension Domain Schema (Base)**: See [MFE Domain](./mfe-domain.md#extension-domain-schema-base)
+- **Extension Schema**: See [MFE Extension](./mfe-extension.md#extension-schema)
+- **Shared Property Schema**: See [MFE Shared Property](./mfe-shared-property.md#shared-property-schema)
+- **Action Schema**: See [MFE Actions](./mfe-actions.md#action-schema)
+- **Actions Chain Schema**: See [MFE Actions](./mfe-actions.md#actions-chain-schema)
+- **MfeEntry Type Hierarchy**: See [MFE Entry](./mfe-entry-mf.md#mfeentry-type-hierarchy)
 
 ### Decision 3: Internal TypeScript Type Definitions
 
@@ -616,204 +418,15 @@ The MFE system uses internal TypeScript interfaces with a simple `id: string` fi
 
 #### TypeScript Interface Definitions
 
-All MFE types use `id: string` as their identifier:
+All MFE types use `id: string` as their identifier. The interface definitions are distributed across the following files:
 
-```typescript
-// packages/screensets/src/mfe/types/index.ts
-
-/**
- * Defines an entry point with its communication contract (PURE CONTRACT - Abstract Base)
- * GTS Type: gts.hai3.screensets.mfe.entry.v1~
- */
-interface MfeEntry {
-  /** The GTS type ID for this entry */
-  id: string;
-  /** SharedProperty type IDs that MUST be provided by domain */
-  requiredProperties: string[];
-  /** SharedProperty type IDs that MAY be provided by domain (optional field) */
-  optionalProperties?: string[];
-  /** Action type IDs this entry can emit to the domain */
-  actions: string[];
-  /** Action type IDs this entry can receive from the domain */
-  domainActions: string[];
-}
-
-/**
- * Module Federation 2.0 implementation of MfeEntry
- * GTS Type: gts.hai3.screensets.mfe.entry.v1~hai3.screensets.mfe.entry_mf.v1~
- */
-interface MfeEntryMF extends MfeEntry {
-  /** Reference to MfManifest type ID containing Module Federation config */
-  manifest: string;
-  /** Module Federation exposed module name (e.g., './ChartWidget') */
-  exposedModule: string;
-}
-
-/**
- * Module Federation manifest containing shared configuration
- * GTS Type: gts.hai3.screensets.mfe.mf.v1~
- */
-interface MfManifest {
-  /** The GTS type ID for this manifest */
-  id: string;
-  /** URL to the remoteEntry.js file */
-  remoteEntry: string;
-  /** Module Federation container name */
-  remoteName: string;
-  /** Optional override for shared dependency configuration */
-  sharedDependencies?: SharedDependencyConfig[];
-  /** Convenience field for discovery - lists MfeEntryMF type IDs */
-  entries?: string[];
-}
-
-/**
- * Configuration for a shared dependency in Module Federation.
- *
- * Module Federation shared dependencies provide TWO independent benefits:
- * 1. **Code/bundle sharing** - Download the code once, cache it (performance)
- * 2. **Runtime instance isolation** - Control whether instances are shared or isolated
- *
- * These benefits are NOT mutually exclusive! The `singleton` parameter controls
- * instance behavior while code sharing always provides the bundle optimization.
- *
- * - `singleton: false` (DEFAULT) = Code shared, instances ISOLATED per MFE
- * - `singleton: true` = Code shared, instance SHARED across all consumers
- *
- * HAI3 Recommendation:
- * - Use `singleton: false` (default) for anything with state (React, @hai3/*, GTS)
- * - Use `singleton: true` ONLY for truly stateless utilities (lodash, date-fns)
- */
-interface SharedDependencyConfig {
-  /** Package name (e.g., 'react', 'lodash', '@hai3/screensets') */
-  name: string;
-  /** Semver range (e.g., '^18.0.0', '^4.17.0') */
-  requiredVersion: string;
-  /**
-   * Whether to share a single instance across all consumers.
-   * Default: false (each consumer gets its own isolated instance)
-   *
-   * - false: Code is shared (cached), but each MFE gets its OWN instance
-   * - true: Code is shared AND the same instance is used everywhere
-   *
-   * IMPORTANT: Only set to true for truly stateless utilities (lodash, date-fns).
-   * Libraries with state (React, Redux, GTS, @hai3/*) should use false.
-   */
-  singleton?: boolean;
-}
-
-/**
- * Defines an extension point (domain) where MFEs can be mounted
- * GTS Type: gts.hai3.screensets.ext.domain.v1~
- */
-interface ExtensionDomain {
-  /** The GTS type ID for this domain */
-  id: string;
-  /** SharedProperty type IDs provided to extensions */
-  sharedProperties: string[];
-  /** Action type IDs domain can emit to extensions */
-  actions: string[];
-  /** Action type IDs domain can receive from extensions */
-  extensionsActions: string[];
-  /** JSON Schema for UI metadata extensions must provide */
-  extensionsUiMeta: JSONSchema;
-  /** Default timeout for actions targeting this domain (milliseconds, REQUIRED) */
-  defaultActionTimeout: number;
-}
-
-/**
- * Binds an MFE entry to an extension domain
- * GTS Type: gts.hai3.screensets.ext.extension.v1~
- */
-interface Extension {
-  /** The GTS type ID for this extension */
-  id: string;
-  /** ExtensionDomain type ID to mount into */
-  domain: string;
-  /** MfeEntry type ID to mount */
-  entry: string;
-  /** UI metadata instance conforming to domain's extensionsUiMeta schema */
-  uiMeta: Record<string, unknown>;
-}
-
-/**
- * Defines a shared property instance passed from domain to extension
- * GTS Type: gts.hai3.screensets.ext.shared_property.v1~
- */
-interface SharedProperty {
-  /** The GTS type ID for this shared property */
-  id: string;
-  /** The shared property value */
-  value: unknown;
-}
-
-/**
- * An action with target, self-identifying type, and optional payload
- * GTS Type: gts.hai3.screensets.ext.action.v1~
- */
-interface Action {
-  /** Self-reference to this action's type ID */
-  type: string;
-  /** Target type ID (ExtensionDomain or Extension) */
-  target: string;
-  /** Optional action payload */
-  payload?: unknown;
-  /** Optional timeout override in milliseconds (overrides domain's defaultActionTimeout) */
-  timeout?: number;
-}
-
-/**
- * Defines a mediated chain of actions with success/failure branches
- * GTS Type: gts.hai3.screensets.ext.actions_chain.v1~
- *
- * Contains actual Action INSTANCES (embedded objects).
- * ActionsChain is NOT referenced by other types, so it has NO id field.
- */
-interface ActionsChain {
-  /** Action instance (embedded object) */
-  action: Action;
-  /** Next chain to execute on success */
-  next?: ActionsChain;
-  /** Fallback chain to execute on failure */
-  fallback?: ActionsChain;
-}
-
-/**
- * Lifecycle interface for MFE entries.
- * Defines lifecycle methods that any MFE entry must implement,
- * regardless of framework (React, Vue, Angular, Vanilla JS).
- *
- * The name "MfeEntryLifecycle" is chosen because:
- * - It focuses on lifecycle semantics (mount/unmount)
- * - It's extensible for future lifecycle methods (onSuspend, onResume, etc.)
- * - It doesn't include implementation details like "Export" or "Module" in the name
- *
- * NOTE: This is a runtime interface for MFE entries, NOT a GTS type.
- * It is not registered in the Type System - it's a TypeScript interface for code contracts.
- *
- * Example implementations:
- * - React MFE: Uses ReactDOM.createRoot(container).render(<App bridge={bridge} />)
- * - Vue MFE: Uses createApp(App, { bridge }).mount(container)
- * - Angular MFE: Uses platformBrowserDynamic().bootstrapModule(...)
- * - Svelte MFE: Uses new App({ target: container, props: { bridge } })
- * - Vanilla JS: Directly manipulates DOM
- */
-interface MfeEntryLifecycle {
-  /**
-   * Mount the MFE into a container element.
-   * @param container - The DOM element to mount into (typically a shadow root)
-   * @param bridge - The MfeBridge for host-MFE communication
-   */
-  mount(container: HTMLElement, bridge: MfeBridge): void;
-
-  /**
-   * Unmount the MFE from a container element.
-   * Called when the extension is unloaded or the container is removed.
-   * Should clean up all DOM content and unsubscribe from bridge.
-   * @param container - The DOM element to unmount from
-   */
-  unmount(container: HTMLElement): void;
-}
-```
+- **MfeEntry / MfeEntryMF**: See [MFE Entry](./mfe-entry-mf.md#typescript-interface-definitions)
+- **MfManifest / SharedDependencyConfig**: See [MFE Manifest](./mfe-manifest.md#typescript-interface-definitions)
+- **ExtensionDomain**: See [MFE Domain](./mfe-domain.md#typescript-interface-definition)
+- **Extension**: See [MFE Extension](./mfe-extension.md#typescript-interface-definition)
+- **SharedProperty**: See [MFE Shared Property](./mfe-shared-property.md#typescript-interface-definition)
+- **Action / ActionsChain**: See [MFE Actions](./mfe-actions.md#typescript-interface-definitions)
+- **MfeEntryLifecycle**: See [MFE API](./mfe-api.md#mfeentrylifecycle-interface)
 
 ### Decision 4: HAI3 Type Registration via Plugin
 
@@ -1008,7 +621,7 @@ interface ScreensetsRegistryConfig {
   debug?: boolean;
 
   /** MFE loader configuration (enables hosting nested MFEs) */
-  mfeLoader?: MfeLoaderConfig;
+  mfeHandler?: MfeHandlerConfig;
 
   /** Initial parent bridge (if loaded as MFE) */
   parentBridge?: MfeBridgeConnection;
@@ -1119,13 +732,13 @@ For an MFE entry to be mountable into an extension domain, the following conditi
 
 ```
 1. entry.requiredProperties  SUBSET_OF  domain.sharedProperties
-   (domain provides all required properties)
+   (domain provides all properties required by entry)
 
 2. entry.actions             SUBSET_OF  domain.extensionsActions
-   (domain can receive all actions entry emits)
+   (domain accepts all action types the MFE may send to it)
 
 3. domain.actions            SUBSET_OF  entry.domainActions
-   (entry can handle all actions domain emits)
+   (MFE can handle all action types that may target it)
 ```
 
 **Validation Implementation:**
@@ -1156,22 +769,22 @@ function validateContract(
     }
   }
 
-  // Rule 2: Entry actions
+  // Rule 2: Entry actions (MFE can send these to domain)
   for (const action of entry.actions) {
     if (!domain.extensionsActions.includes(action)) {
       errors.push({
         type: 'unsupported_action',
-        details: `Entry emits action '${action}' not accepted by domain`
+        details: `MFE may send action '${action}' not accepted by domain`
       });
     }
   }
 
-  // Rule 3: Domain actions
+  // Rule 3: Domain actions (can target MFE)
   for (const action of domain.actions) {
     if (!entry.domainActions.includes(action)) {
       errors.push({
         type: 'unhandled_domain_action',
-        details: `Domain emits action '${action}' not handled by entry`
+        details: `Action '${action}' may target MFE but MFE doesn't handle it`
       });
     }
   }
