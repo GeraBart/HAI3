@@ -231,11 +231,12 @@ Use \`.ai/${relativePath}\` as the single source of truth.
  */
 async function bundlePackageCommands(
   templatesDir: string
-): Promise<{ bundledVariants: number }> {
+): Promise<{ bundledVariants: number; baseCommands: Set<string> }> {
   const commandsBundleDir = path.join(templatesDir, 'commands-bundle');
   await fs.ensureDir(commandsBundleDir);
 
   let bundledVariants = 0;
+  const baseCommands = new Set<string>(); // Track base command names (without variants)
 
   // Scan packages/*/commands/ directories
   const packagesDir = path.join(PROJECT_ROOT, 'packages');
@@ -261,10 +262,84 @@ async function bundlePackageCommands(
       // Copy all variants to commands-bundle/
       await fs.copy(srcPath, destPath);
       bundledVariants++;
+
+      // Extract base command name (e.g., "hai3-new-api-service" from "hai3-new-api-service.framework.md")
+      const baseName = file.replace(/\.(sdk|framework|react)\.md$/, '').replace(/\.md$/, '');
+      baseCommands.add(baseName);
     }
   }
 
-  return { bundledVariants };
+  return { bundledVariants, baseCommands };
+}
+
+/**
+ * Generate IDE adapters for bundled package commands
+ * Creates placeholder adapters that will be populated with actual commands at project creation time
+ *
+ * @param baseCommands - Set of base command names from bundled commands
+ * @param templatesDir - Destination templates directory
+ */
+async function generateBundledCommandAdapters(
+  baseCommands: Set<string>,
+  templatesDir: string
+): Promise<{ claude: number; cursor: number; windsurf: number }> {
+  const claudeCommandsDir = path.join(templatesDir, '.claude', 'commands');
+  const cursorCommandsDir = path.join(templatesDir, '.cursor', 'commands');
+  const windsurfWorkflowsDir = path.join(templatesDir, '.windsurf', 'workflows');
+
+  await fs.ensureDir(claudeCommandsDir);
+  await fs.ensureDir(cursorCommandsDir);
+  await fs.ensureDir(windsurfWorkflowsDir);
+
+  let claudeCount = 0;
+  let cursorCount = 0;
+  let windsurfCount = 0;
+
+  // Generate adapters for each base command
+  for (const baseName of baseCommands) {
+    const cmdFileName = `${baseName}.md`;
+
+    // Read description from the first available variant in commands-bundle
+    const commandsBundleDir = path.join(templatesDir, 'commands-bundle');
+    const bundleFiles = await fs.readdir(commandsBundleDir);
+    const matchingVariant = bundleFiles.find(f => f.startsWith(baseName));
+
+    if (!matchingVariant) continue;
+
+    const description = await extractCommandDescription(path.join(commandsBundleDir, matchingVariant));
+
+    // Claude adapter
+    const claudeContent = `---
+description: ${description}
+---
+
+Use \`.ai/commands/${cmdFileName}\` as the single source of truth.
+`;
+    await fs.writeFile(path.join(claudeCommandsDir, cmdFileName), claudeContent);
+    claudeCount++;
+
+    // Cursor adapter
+    const cursorContent = `---
+description: ${description}
+---
+
+Use \`.ai/commands/${cmdFileName}\` as the single source of truth.
+`;
+    await fs.writeFile(path.join(cursorCommandsDir, cmdFileName), cursorContent);
+    cursorCount++;
+
+    // Windsurf adapter
+    const windsurfContent = `---
+description: ${description}
+---
+
+Use \`.ai/commands/${cmdFileName}\` as the single source of truth.
+`;
+    await fs.writeFile(path.join(windsurfWorkflowsDir, cmdFileName), windsurfContent);
+    windsurfCount++;
+  }
+
+  return { claude: claudeCount, cursor: cursorCount, windsurf: windsurfCount };
 }
 
 /**
@@ -304,6 +379,49 @@ trigger: always_on
 Use \`.ai/GUIDELINES.md\` as the single source of truth for HAI3 development guidelines.
 `;
   await fs.writeFile(path.join(windsurfRulesDir, 'hai3.md'), windsurfRuleContent);
+
+  // GitHub Copilot instructions
+  const githubDir = path.join(templatesDir, '.github');
+  await fs.ensureDir(githubDir);
+  const copilotInstructionsContent = `# HAI3 Development Guidelines for GitHub Copilot
+
+Always read \`.ai/GUIDELINES.md\` before making changes.
+
+## Quick Reference
+
+For detailed guidance, use these resources:
+- **Architecture**: See \`.ai/GUIDELINES.md\` and target files in \`.ai/targets/\`
+- **Event-driven patterns**: \`.ai/targets/EVENTS.md\`
+- **Screensets**: \`.ai/targets/SCREENSETS.md\`
+- **API services**: \`.ai/targets/API.md\`
+- **Styling**: \`.ai/targets/STYLING.md\`
+- **Themes**: \`.ai/targets/THEMES.md\`
+
+## Critical Rules
+
+1. **REQUIRED**: Read the appropriate target file before changing code
+2. **REQUIRED**: Event-driven architecture only (dispatch events, handle in actions)
+3. **FORBIDDEN**: Direct slice dispatch from UI components
+4. **FORBIDDEN**: Hardcoded colors or inline styles
+5. **REQUIRED**: Use \`@hai3/uikit\` components for all UI
+6. **REQUIRED**: Run \`npm run arch:check\` before committing
+
+## Available Commands
+
+Use \`.ai/commands/\` for detailed workflows:
+- \`hai3-new-screenset\` - Create new screenset
+- \`hai3-new-screen\` - Add screen to screenset
+- \`hai3-new-action\` - Create action handler
+- \`hai3-new-api-service\` - Add API service
+- \`hai3-new-component\` - Add UI component
+- \`hai3-validate\` - Validate changes
+- \`hai3-quick-ref\` - Quick reference guide
+
+## Routing
+
+Always consult \`.ai/GUIDELINES.md\` ROUTING section to find the correct target file for your task.
+`;
+  await fs.writeFile(path.join(githubDir, 'copilot-instructions.md'), copilotInstructionsContent);
 }
 
 /**
@@ -622,16 +740,24 @@ async function copyTemplates() {
   // Variant selection happens at project creation time
   const packageCounts = await bundlePackageCommands(TEMPLATES_DIR);
 
-  console.log(`  ✓ .claude/commands/ (${adapterCounts.claude} adapters from .ai/commands/)`);
-  console.log(`  ✓ .cursor/commands/ (${adapterCounts.cursor} adapters from .ai/commands/)`);
-  console.log(`  ✓ .windsurf/workflows/ (${adapterCounts.windsurf} adapters from .ai/commands/)`);
+  // Generate IDE adapters for bundled commands
+  const bundledAdapterCounts = await generateBundledCommandAdapters(packageCounts.baseCommands, TEMPLATES_DIR);
+
+  const totalClaude = adapterCounts.claude + bundledAdapterCounts.claude;
+  const totalCursor = adapterCounts.cursor + bundledAdapterCounts.cursor;
+  const totalWindsurf = adapterCounts.windsurf + bundledAdapterCounts.windsurf;
+
+  console.log(`  ✓ .claude/commands/ (${totalClaude} adapters: ${adapterCounts.claude} from .ai/commands/, ${bundledAdapterCounts.claude} from packages)`);
+  console.log(`  ✓ .cursor/commands/ (${totalCursor} adapters: ${adapterCounts.cursor} from .ai/commands/, ${bundledAdapterCounts.cursor} from packages)`);
+  console.log(`  ✓ .windsurf/workflows/ (${totalWindsurf} adapters: ${adapterCounts.windsurf} from .ai/commands/, ${bundledAdapterCounts.windsurf} from packages)`);
   console.log(`  ✓ commands-bundle/ (${packageCounts.bundledVariants} command variants from packages)`);
 
-  // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/)
+  // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/, .github/copilot-instructions.md)
   await generateIdeRules(TEMPLATES_DIR);
   console.log('  ✓ CLAUDE.md (pointer to .ai/GUIDELINES.md)');
   console.log('  ✓ .cursor/rules/hai3.mdc (pointer)');
   console.log('  ✓ .windsurf/rules/hai3.md (pointer)');
+  console.log('  ✓ .github/copilot-instructions.md (GitHub Copilot)');
 
   // ============================================
   // Write output manifest.json (runtime manifest for CLI)

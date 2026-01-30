@@ -242,10 +242,8 @@ export async function generateProject(
           'utf-8'
         );
 
-        // Copy to all IDE directories with base name
-        files.push({ path: `.claude/commands/${baseName}`, content });
-        files.push({ path: `.cursor/commands/${baseName}`, content });
-        files.push({ path: `.windsurf/workflows/${baseName}`, content });
+        // Copy to .ai/commands/ (adapters in IDE directories will reference these)
+        files.push({ path: `.ai/commands/${baseName}`, content });
       }
     }
   }
