@@ -310,3 +310,51 @@ The demo MFE CurrentThemeScreen color swatches array SHALL use the correct Tailw
 - **WHEN** the CurrentThemeScreen renders and a theme is applied
 - **THEN** the 7 color swatches SHALL each render with their own distinct background and foreground colors as defined by the active theme's CSS custom properties
 - **AND** no two semantically different swatches (e.g., Secondary vs Muted vs Accent) SHALL appear identical due to sharing the same CSS classes
+
+### Requirement: Demo MFE Translations — Restore Lost Locale Content
+
+During MFE conversion, the original translated i18n content for all 4 demo-mfe screens (helloworld, theme, profile, uikit) was overwritten with English-only text across all 35 non-English locale files. The translations SHALL be restored from the pre-MFE codebase (git history) and merged with new MFE-specific keys.
+
+#### Scenario: Non-English locale files contain translated content
+
+- **WHEN** examining any non-English locale file (e.g., `es.json`, `ru.json`, `fr.json`) for any demo-mfe screen
+- **THEN** the keys that existed in the pre-MFE version SHALL contain the original translated text (not English)
+- **AND** new keys added during MFE conversion (e.g., `bridge_info`, `domain_id`, `instance_id`, `current_theme`, `current_language`) SHALL use English fallback text
+
+#### Scenario: Translation loading produces visible language changes
+
+- **WHEN** the user switches language in the Studio Language selector
+- **THEN** the active screen's text content SHALL update to the selected language
+- **AND** the bridge communication mechanism (shared property subscription) SHALL propagate the language change to the MFE
+
+### Requirement: Blank MFE useScreenTranslations — Correct Hook Pattern
+
+The blank MFE `useScreenTranslations` hook SHALL follow the same implementation pattern as the demo-mfe version, using `useRef` for internal language tracking to prevent re-render loops.
+
+#### Scenario: Hook uses useRef for language tracking
+
+- **WHEN** examining `_blank-mfe/src/shared/useScreenTranslations.ts`
+- **THEN** the current language SHALL be tracked via `useRef` (not `useState`)
+- **AND** the effect dependency array SHALL contain only `[bridge, loadTranslations]` (not `currentLanguage`)
+
+#### Scenario: languageModules hoisted to module level
+
+- **WHEN** examining any screen component that uses `useScreenTranslations`
+- **THEN** the `import.meta.glob('./i18n/*.json')` call SHALL be hoisted to module level (outside the component function)
+- **AND** a comment `// Stable reference for translation modules (hoisted to module level to prevent re-render loops)` SHALL be present
+
+### Requirement: Menu Filtering by Active GTS Package
+
+The sidebar menu SHALL display only the screen extensions belonging to the currently active GTS package, not all registered screen extensions across all packages. This restores the pre-MFE behavior where only the current screenset's screens appeared in the menu.
+
+#### Scenario: Menu shows only active package screens
+
+- **WHEN** the active GTS package is `hai3.demo`
+- **THEN** the sidebar menu SHALL show only demo-mfe screen extensions (Hello World, Profile, Current Theme, UIKit Elements)
+- **AND** the blank-mfe screen extension (Blank Home) SHALL NOT appear in the menu
+
+#### Scenario: Package switch updates menu
+
+- **WHEN** the user switches the GTS Package selector from `hai3.demo` to `hai3.blank`
+- **THEN** the sidebar menu SHALL update to show only blank-mfe screen extensions (Blank Home)
+- **AND** the demo-mfe screen extensions SHALL no longer appear in the menu

@@ -72,6 +72,7 @@ class CurrentThemeLifecycle extends ThemeAwareReactLifecycle {
       .text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
       .bg-accent { background-color: hsl(var(--accent)); }
       .text-accent-foreground { color: hsl(var(--accent-foreground)); }
+      .text-muted-foreground { color: hsl(var(--muted-foreground)); }
       .bg-destructive { background-color: hsl(var(--destructive)); }
       .text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
       .shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }

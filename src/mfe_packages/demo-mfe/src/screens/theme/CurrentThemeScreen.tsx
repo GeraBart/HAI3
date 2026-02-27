@@ -85,7 +85,7 @@ export const CurrentThemeScreen: React.FC<CurrentThemeScreenProps> = ({ bridge }
     { nameKey: 'color_foreground', class: 'bg-foreground text-background' },
     { nameKey: 'color_primary', class: 'bg-primary text-primary-foreground' },
     { nameKey: 'color_secondary', class: 'bg-secondary text-secondary-foreground' },
-    { nameKey: 'color_muted', class: 'bg-muted text-foreground' },
+    { nameKey: 'color_muted', class: 'bg-muted text-muted-foreground' },
     { nameKey: 'color_accent', class: 'bg-accent text-accent-foreground' },
     { nameKey: 'color_destructive', class: 'bg-destructive text-destructive-foreground' },
   ];

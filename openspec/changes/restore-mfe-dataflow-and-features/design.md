@@ -199,6 +199,28 @@ The `colorSwatches` array in `CurrentThemeScreen.tsx` has 3 incorrect entries:
 
 This causes 3 swatches to render with wrong colors (Secondary and Accent both look like Muted; Destructive looks like Primary). The fix is a direct class string replacement in the `colorSwatches` array. Each swatch must use its own semantic `bg-<name>` and `text-<name>-foreground` classes so the theme demonstration screen actually demonstrates the theme's distinct colors.
 
+### Decision 12: Restore Lost Demo MFE Translations
+
+During MFE conversion (commit `c1c534d`), all 140 non-English i18n locale files across the 4 demo-mfe screens were overwritten with English-only text. The original translated content from the pre-MFE codebase (commit `2ed18ae`) must be restored and merged with new MFE-specific keys.
+
+The merge strategy: for each locale file, take the old translated values for keys that existed pre-MFE, and use English fallback text for new keys (`bridge_info`, `domain_id`, etc.) that were added during MFE conversion.
+
+### Decision 13: Blank MFE useScreenTranslations Hook Fix
+
+The blank MFE's `useScreenTranslations` hook had two bugs compared to the working demo-mfe version:
+1. Used `useState` for `currentLanguage` tracking instead of `useRef`, causing unnecessary state updates and effect re-runs
+2. Included `currentLanguage` in the effect dependency array, creating a circular dependency
+
+The fix aligns the blank MFE hook with the demo-mfe pattern: `useRef` for internal language tracking, effect deps `[bridge, loadTranslations]` only.
+
+Additionally, the `import.meta.glob('./i18n/*.json')` call must be hoisted to module level in all screen components to prevent creating new object references on each render (which triggers `useCallback`/`useEffect` dependency changes in the hook).
+
+### Decision 14: Menu Filtering by Active GTS Package
+
+The sidebar `Menu.tsx` used `getExtensionsForDomain(HAI3_SCREEN_DOMAIN)` which returns ALL screen extensions from ALL registered packages. This caused extensions from both `hai3.demo` and `hai3.blank` to appear simultaneously in the menu — a regression from the pre-MFE behavior where only the active screenset's screens were visible.
+
+The fix uses `useActivePackage()` (from `@hai3/react`) to get the currently mounted screen's GTS package, then `getExtensionsForPackage(activePackage)` filtered by screen domain to show only the active package's screens. Falls back to `getExtensionsForDomain()` when no package is active yet.
+
 ## Risks / Trade-offs
 
 **[Duplicate AccountsApiService]** → Two copies of the same service definition exist (host and MFE). Accepted as architectural cost of runtime independence. Future `@hai3/api` cache sharing mitigates the network cost. If service definitions diverge, that's a feature (each runtime evolves independently).

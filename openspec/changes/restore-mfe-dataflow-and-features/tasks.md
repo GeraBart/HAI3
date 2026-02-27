@@ -78,3 +78,25 @@ Fixes discovered during chrome-devtools-runtime-tester testing. Three independen
   - Traces to: Requirement "Blank MFE Screen Consistency — Bridge Info Section" Scenario "Blank MFE HomeScreen uses i18n keys for Bridge Info labels", Requirement "Blank MFE Presentation Metadata — Proper Values" Scenario "Blank MFE appears correctly in sidebar navigation", Requirement "CurrentThemeScreen Color Swatches — Correct CSS Classes" Scenario "All 7 swatches render with visually distinct colors"
 
 - [x] 8.6 Add missing color CSS class definitions to `lifecycle-theme.tsx` shadow DOM stylesheet — the `initializeStyles()` method must include CSS rules for all Tailwind color classes used by CurrentThemeScreen's color swatches: `bg-foreground`, `text-background`, `bg-secondary`, `text-secondary-foreground`, `bg-accent`, `text-accent-foreground`, `bg-destructive`, `text-destructive-foreground`
+
+- [x] 8.7 Fix Muted swatch CSS class in `CurrentThemeScreen.tsx` — change Muted swatch from `bg-muted text-foreground` to `bg-muted text-muted-foreground`, and add `.text-muted-foreground { color: hsl(var(--muted-foreground)); }` CSS rule to `lifecycle-theme.tsx` shadow DOM stylesheet
+  - Traces to: Requirement "CurrentThemeScreen Color Swatches — Correct CSS Classes", Scenario "Color swatches use correct semantic Tailwind classes"
+
+## 9. Lost Functionality Restoration — Translations, Hook Bugs, Menu Filtering
+
+Fixes discovered during runtime testing. Four independent issues: lost demo-mfe translations, blank-mfe hook bugs, languageModules re-render loop, and menu showing all packages' screens.
+
+- [x] 9.1 Restore all 140 non-English demo-mfe i18n locale files from pre-MFE git history (commit `2ed18ae`) — merge strategy: take old translated values for pre-existing keys, use English fallback for new MFE-specific keys (`bridge_info`, `domain_id`, `instance_id`, `current_theme`, `current_language`)
+  - Traces to: Requirement "Demo MFE Translations — Restore Lost Locale Content", Scenario "Non-English locale files contain translated content"
+
+- [x] 9.2 Fix blank-mfe `useScreenTranslations` hook (`src/mfe_packages/_blank-mfe/src/shared/useScreenTranslations.ts`) — change `useState` to `useRef` for `currentLanguageRef`, remove `currentLanguage` from effect dependency array (deps: `[bridge, loadTranslations]` only)
+  - Traces to: Requirement "Blank MFE useScreenTranslations — Correct Hook Pattern", Scenario "Hook uses useRef for language tracking"
+
+- [x] 9.3 Hoist `import.meta.glob('./i18n/*.json')` to module level in blank-mfe `HomeScreen.tsx` — move from inside component function to module scope with comment explaining stable reference purpose
+  - Traces to: Requirement "Blank MFE useScreenTranslations — Correct Hook Pattern", Scenario "languageModules hoisted to module level"
+
+- [x] 9.4 Update `Menu.tsx` (`src/app/layout/Menu.tsx`) to filter by active GTS package — use `useActivePackage()` to get active package, then `getExtensionsForPackage(activePackage)` filtered by `HAI3_SCREEN_DOMAIN` to show only active package's screens. Fallback to `getExtensionsForDomain()` when no package is active.
+  - Traces to: Requirement "Menu Filtering by Active GTS Package", Scenario "Menu shows only active package screens"
+
+- [x] 9.5 Rebuild both MFEs and verify all fixes in browser — translations load in non-English languages (Spanish on HelloWorld shows "Hola Mundo"), blank-mfe translations work, menu filters by active package (hai3.demo shows 4 screens, hai3.blank shows 1 screen)
+  - Traces to: Requirement "Demo MFE Translations — Restore Lost Locale Content" Scenario "Translation loading produces visible language changes", Requirement "Menu Filtering by Active GTS Package" Scenario "Package switch updates menu"
