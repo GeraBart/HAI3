@@ -6,7 +6,7 @@ The system SHALL provide a `microfrontends()` plugin in `@hai3/framework` that e
 
 **Key Principles:**
 - Screensets is built-in to HAI3 - NOT a `.use()` plugin
-- Microfrontends plugin enables MFE capabilities with optional handler and domain configuration
+- Microfrontends plugin enables MFE capabilities with optional handler configuration
 - All MFE registrations (domains, extensions) happen dynamically at runtime via actions/API
 - The plugin does NOT manage `globalThis.__federation_shared__` — shared dependency isolation is handled entirely by MfeHandlerMF at the handler level
 - The plugin does NOT own shared property propagation — each plugin that owns data (themes, i18n) propagates its own properties
@@ -20,11 +20,9 @@ import { gtsPlugin } from '@hai3/screensets/plugins/gts';
 
 // Screensets is CORE - automatically initialized by createHAI3()
 // Microfrontends plugin enables MFE capabilities
-// Domains are explicitly declared — no implicit defaults
 const app = createHAI3()
   .use(microfrontends({
     mfeHandlers: [new MfeHandlerMF(gtsPlugin)],
-    domains: [screenDomain, sidebarDomain, popupDomain, overlayDomain],
   }))
   .build();
 ```
@@ -32,7 +30,7 @@ const app = createHAI3()
 - **WHEN** building an app with microfrontends plugin
 - **THEN** the plugin SHALL enable MFE capabilities
 - **AND** screensets SHALL be automatically available (core to HAI3)
-- **AND** the plugin SHALL accept an optional configuration object with `mfeHandlers?: MfeHandler[]` and `domains?: ExtensionDomain[]`
+- **AND** the plugin SHALL accept an optional configuration object with `mfeHandlers?: MfeHandler[]`
 - **AND** the plugin SHALL NOT accept `hostSharedDependencies` (removed — blob URL isolation handles dependency isolation at the handler level)
 - **AND** the plugin SHALL NOT subscribe to `theme/changed` or `i18n/language/changed` events
 - **AND** the plugin SHALL NOT call `updateSharedProperty` for any shared property

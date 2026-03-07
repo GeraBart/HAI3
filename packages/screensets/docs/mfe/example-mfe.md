@@ -521,12 +521,11 @@ await registry.registerDomain({
 await registerAnalyticsMfe(runtime);
 ```
 
-## Step 5: Update Domain Properties
+## Step 5: Update Shared Properties
 
 ```typescript
-// Update theme from host
-runtime.updateDomainProperty(
-  'gts.hai3.mfes.ext.domain.v1~hai3.screensets.layout.sidebar.v1',
+// Update theme for all domains that declare this shared property
+runtime.updateSharedProperty(
   'gts.hai3.mfes.comm.shared_property.v1~acme.analytics.theme.v1',
   {
     mode: 'dark',

@@ -354,45 +354,56 @@ export class DefaultExtensionManager extends ExtensionManager {
   }
 
   /**
-   * Update a single domain property.
+   * Broadcast a shared property value to all registered domains that declare the property.
+   * Performs GTS validation once before propagating to any matching domain.
+   * Domains that do not include propertyId in their sharedProperties array are skipped.
+   * If no registered domains declare the property, this is a silent no-op.
    *
-   * @param domainId - ID of the domain
-   * @param propertyTypeId - Type ID of the property to update
+   * @param propertyId - Type ID of the shared property
    * @param value - New property value
+   * @throws if GTS validation fails — no domain receives the value in that case
    */
-  updateDomainProperty(domainId: string, propertyTypeId: string, value: unknown): void {
-    const domainState = this.domains.get(domainId);
-    if (!domainState) {
-      throw new Error(`Domain '${domainId}' not registered`);
+  updateSharedProperty(propertyId: string, value: unknown): void {
+    // Collect all domains that declare this property
+    const matchingDomainStates: ExtensionDomainState[] = [];
+    for (const domainState of this.domains.values()) {
+      if (domainState.domain.sharedProperties.includes(propertyId)) {
+        matchingDomainStates.push(domainState);
+      }
     }
 
-    if (!domainState.domain.sharedProperties.includes(propertyTypeId)) {
-      throw new Error(`Property '${propertyTypeId}' not declared in domain '${domainId}'`);
+    // If no domains declare this property, silently succeed
+    if (matchingDomainStates.length === 0) {
+      return;
     }
 
-    // GTS runtime validation: register a named instance and validate against the derived schema.
-    // The ephemeral ID is a valid chained GTS instance ID — gts-ts extracts the schema from
-    // the chained ID automatically (same named instance pattern as actions chains).
+    // GTS runtime validation: perform once for the property type since the schema
+    // is derived from the property type ID, identical across all declaring domains.
+    // The ephemeral ID is a valid chained GTS instance ID — gts-ts extracts the schema
+    // from the chained ID automatically (same named instance pattern as actions chains).
     // The deterministic ephemeralId ensures each call overwrites the previous instance (no store growth).
     // No `type` field needed: the schema is resolved from the chained ID structure.
-    const ephemeralId = `${propertyTypeId}hai3.mfes.comm.runtime.v1`;
+    const ephemeralId = `${propertyId}hai3.mfes.comm.runtime.v1`;
     this.typeSystem.register({ id: ephemeralId, value });
     const validation = this.typeSystem.validateInstance(ephemeralId);
     if (!validation.valid) {
       throw new Error(
-        `Property value for '${propertyTypeId}' failed validation: ` +
+        `Property value for '${propertyId}' failed validation: ` +
         validation.errors.map(e => e.message).join(', ')
       );
     }
 
-    // Store raw value in domain state
-    domainState.properties.set(propertyTypeId, value);
+    // Propagate to all matching domains
+    for (const domainState of matchingDomainStates) {
+      // Store raw value in domain state
+      domainState.properties.set(propertyId, value);
 
-    // Notify property subscribers with (propertyTypeId, value)
-    const subscribers = domainState.propertySubscribers.get(propertyTypeId);
-    if (subscribers) {
-      for (const callback of subscribers) {
-        callback(propertyTypeId, value);
+      // Notify property subscribers with (propertyId, value)
+      const subscribers = domainState.propertySubscribers.get(propertyId);
+      if (subscribers) {
+        for (const callback of subscribers) {
+          callback(propertyId, value);
+        }
       }
     }
   }

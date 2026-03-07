@@ -11,13 +11,11 @@
 import {
   screensetsRegistryFactory,
   type MfeHandler,
-  HAI3_SHARED_PROPERTY_THEME,
-  HAI3_SHARED_PROPERTY_LANGUAGE,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
 } from '@hai3/screensets';
 import { gtsPlugin } from '@hai3/screensets/plugins/gts';
-import { getStore, eventBus } from '@hai3/state';
+import { getStore } from '@hai3/state';
 import type { HAI3Plugin } from '../../types';
 import { mfeSlice, setExtensionMounted, setExtensionUnmounted } from './slice';
 import { initMfeEffects } from './effects';
@@ -29,12 +27,6 @@ import {
   unregisterExtension,
   setMfeRegistry,
 } from './actions';
-import {
-  HAI3_SCREEN_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_POPUP_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
-} from './constants';
 
 /**
  * Configuration for the microfrontends plugin.
@@ -116,7 +108,6 @@ export function microfrontends(config: MicrofrontendsConfig = {}): HAI3Plugin {
 
   // Store cleanup functions in closure (encapsulated per plugin instance)
   let effectsCleanup: (() => void) | null = null;
-  let propagationCleanup: (() => void) | null = null;
 
   return {
     name: 'microfrontends',
@@ -149,34 +140,6 @@ export function microfrontends(config: MicrofrontendsConfig = {}): HAI3Plugin {
       // Initialize effects and store cleanup references
       effectsCleanup = initMfeEffects(screensetsRegistry);
 
-      // Set up theme propagation
-      const themeUnsub = eventBus.on('theme/changed', (payload) => {
-        for (const domainId of [HAI3_SCREEN_DOMAIN, HAI3_SIDEBAR_DOMAIN, HAI3_POPUP_DOMAIN, HAI3_OVERLAY_DOMAIN]) {
-          try {
-            screensetsRegistry.updateDomainProperty(domainId, HAI3_SHARED_PROPERTY_THEME, payload.themeId);
-          } catch {
-            // Domain may not be registered yet -- skip silently
-          }
-        }
-      });
-
-      // Set up language propagation
-      const langUnsub = eventBus.on('i18n/language/changed', (payload) => {
-        for (const domainId of [HAI3_SCREEN_DOMAIN, HAI3_SIDEBAR_DOMAIN, HAI3_POPUP_DOMAIN, HAI3_OVERLAY_DOMAIN]) {
-          try {
-            screensetsRegistry.updateDomainProperty(domainId, HAI3_SHARED_PROPERTY_LANGUAGE, payload.language);
-          } catch {
-            // Domain may not be registered yet -- skip silently
-          }
-        }
-      });
-
-      // Compose propagation cleanup
-      propagationCleanup = () => {
-        themeUnsub.unsubscribe();
-        langUnsub.unsubscribe();
-      };
-
       // Plugin is now initialized
       // TypeSystemPlugin: bound to screensetsRegistry
       // MFE handlers: registered via config.mfeHandlers
@@ -193,10 +156,6 @@ export function microfrontends(config: MicrofrontendsConfig = {}): HAI3Plugin {
       if (effectsCleanup) {
         effectsCleanup();
         effectsCleanup = null;
-      }
-      if (propagationCleanup) {
-        propagationCleanup();
-        propagationCleanup = null;
       }
     },
   };

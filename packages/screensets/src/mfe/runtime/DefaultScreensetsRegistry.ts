@@ -353,15 +353,15 @@ export class DefaultScreensetsRegistry extends ScreensetsRegistry {
   }
 
   /**
-   * Update a single domain property.
+   * Broadcast a shared property value to all registered domains that declare the property.
    * Delegates to ExtensionManager.
    *
-   * @param domainId - ID of the domain
-   * @param propertyTypeId - Type ID of the property to update
+   * @param propertyId - Type ID of the shared property
    * @param value - New property value
+   * @throws if GTS validation fails
    */
-  updateDomainProperty(domainId: string, propertyTypeId: string, value: unknown): void {
-    this.extensionManager.updateDomainProperty(domainId, propertyTypeId, value);
+  updateSharedProperty(propertyId: string, value: unknown): void {
+    this.extensionManager.updateSharedProperty(propertyId, value);
   }
 
   /**
@@ -399,21 +399,6 @@ export class DefaultScreensetsRegistry extends ScreensetsRegistry {
   getParentBridge(extensionId: string): ParentMfeBridge | null {
     return this.extensionManager.getExtensionState(extensionId)?.bridge ?? null;
   }
-
-  /**
-   * Update multiple domain properties at once.
-   * More efficient than calling updateDomainProperty multiple times.
-   *
-   * @param domainId - ID of the domain
-   * @param properties - Map of property type IDs to values
-   */
-  updateDomainProperties(domainId: string, properties: Map<string, unknown>): void {
-    for (const [propertyTypeId, value] of properties) {
-      this.updateDomainProperty(domainId, propertyTypeId, value);
-    }
-  }
-
-  // NOTE: Bridge factory is injected into DefaultMountManager via constructor (used by mountExtension)
 
   /**
    * Register an extension dynamically at runtime.

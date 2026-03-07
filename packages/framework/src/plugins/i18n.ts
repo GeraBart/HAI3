@@ -6,6 +6,7 @@
 
 import { eventBus } from '@hai3/state';
 import { i18nRegistry as singletonI18nRegistry, Language } from '@hai3/i18n';
+import { HAI3_SHARED_PROPERTY_LANGUAGE } from '@hai3/screensets';
 import type { HAI3Plugin, SetLanguagePayload } from '../types';
 
 // Define i18n events for module augmentation
@@ -56,10 +57,15 @@ export function i18n(): HAI3Plugin {
       },
     },
 
-    onInit(_app) {
+    onInit(app) {
       // Language change effect
       eventBus.on('i18n/language/changed', async (payload: SetLanguagePayload) => {
         await i18nRegistry.setLanguage(payload.language as Language);
+        try {
+          app.screensetsRegistry?.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, payload.language);
+        } catch (error) {
+          console.error('[HAI3] Failed to propagate language to MFE domains', error);
+        }
       });
 
       // Bootstrap: Set initial language to trigger translation loading

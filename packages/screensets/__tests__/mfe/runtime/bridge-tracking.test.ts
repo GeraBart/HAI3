@@ -96,11 +96,14 @@ describe('ScreensetsRegistry - Bridge Tracking', () => {
 
       // Should have domain and property management methods
       expect(registryPublicAPI).toContain('registerDomain');
-      expect(registryPublicAPI).toContain('updateDomainProperty');
+      expect(registryPublicAPI).toContain('updateSharedProperty');
       expect(registryPublicAPI).toContain('getDomainProperty');
-      expect(registryPublicAPI).toContain('updateDomainProperties');
       expect(registryPublicAPI).toContain('executeActionsChain');
       expect(registryPublicAPI).toContain('dispose');
+
+      // Old per-domain write methods must no longer exist
+      expect(registryPublicAPI).not.toContain('updateDomainProperty');
+      expect(registryPublicAPI).not.toContain('updateDomainProperties');
     });
   });
 });

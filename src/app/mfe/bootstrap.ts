@@ -65,14 +65,10 @@ export async function bootstrapMFE(
   screensetsRegistry.registerDomain(overlayDomain, overlayContainerProvider);
 
   // Step 2: Initialize domain shared properties
-  // Set initial theme and language values for all domains
-  const domainIds = [screenDomain.id, sidebarDomain.id, popupDomain.id, overlayDomain.id];
+  // Set initial theme and language values for all registered domains
   const currentThemeId = app.themeRegistry.getCurrent()?.id ?? 'default';
-
-  for (const domainId of domainIds) {
-    screensetsRegistry.updateDomainProperty(domainId, HAI3_SHARED_PROPERTY_THEME, currentThemeId);
-    screensetsRegistry.updateDomainProperty(domainId, HAI3_SHARED_PROPERTY_LANGUAGE, 'en');
-  }
+  screensetsRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, currentThemeId);
+  screensetsRegistry.updateSharedProperty(HAI3_SHARED_PROPERTY_LANGUAGE, 'en');
 
   // Step 3: Register the MFE manifest
   // Register the single manifest with type system

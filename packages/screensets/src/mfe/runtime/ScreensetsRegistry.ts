@@ -114,14 +114,16 @@ export abstract class ScreensetsRegistry {
   // --- Domain Properties ---
 
   /**
-   * Update a single domain property.
-   * Notifies all subscribers (bridges) of the update.
+   * Broadcast a shared property value to all registered domains that declare the property.
+   * The value is validated against the property's GTS-derived schema before propagation.
+   * Domains that do not include propertyId in their sharedProperties array are not updated.
+   * If no registered domains declare the property, this is a silent no-op.
    *
-   * @param domainId - ID of the domain
-   * @param propertyTypeId - Type ID of the property to update
+   * @param propertyId - Type ID of the shared property (e.g. HAI3_SHARED_PROPERTY_THEME)
    * @param value - New property value
+   * @throws if GTS validation fails — no domain receives the value in that case
    */
-  abstract updateDomainProperty(domainId: string, propertyTypeId: string, value: unknown): void;
+  abstract updateSharedProperty(propertyId: string, value: unknown): void;
 
   /**
    * Get a domain property value.
@@ -131,15 +133,6 @@ export abstract class ScreensetsRegistry {
    * @returns Property value, or undefined if not set
    */
   abstract getDomainProperty(domainId: string, propertyTypeId: string): unknown;
-
-  /**
-   * Update multiple domain properties at once.
-   * More efficient than calling updateDomainProperty multiple times.
-   *
-   * @param domainId - ID of the domain
-   * @param properties - Map of property type IDs to values
-   */
-  abstract updateDomainProperties(domainId: string, properties: Map<string, unknown>): void;
 
   // --- Action Chains ---
 

@@ -2,9 +2,8 @@
 
 The `microfrontends()` plugin currently owns three concerns that don't belong to it:
 
-1. **Domain topology** — The 4 base domain objects (`screenDomain`, etc.) are hardcoded constants in `base-domains.ts` with baked-in shared properties `[THEME, LANGUAGE]` and fixed action sets. Projects cannot customize contracts or add domains.
-2. **Theme propagation** — `onInit` subscribes to `theme/changed` and pushes to all 4 domain IDs.
-3. **Language propagation** — `onInit` subscribes to `i18n/language/changed` and pushes to all 4 domain IDs.
+1. **Theme propagation** — `onInit` subscribes to `theme/changed` and pushes to all 4 domain IDs.
+2. **Language propagation** — `onInit` subscribes to `i18n/language/changed` and pushes to all 4 domain IDs.
 
 The themes plugin (`themes.ts`) and i18n plugin (`i18n.ts`) already subscribe to their respective events in `onInit` but only to update their own registries. They don't touch domain properties because the microfrontends plugin took that responsibility.
 
@@ -14,10 +13,9 @@ The `ScreensetsRegistry` currently has `updateDomainProperty(domainId, propertyT
 
 **Goals:**
 
-- Make extension domain contracts (shared properties, actions, lifecycle stages) configurable per project via the `microfrontends()` plugin config
 - Move shared property propagation to owning plugins (themes, i18n) so each plugin owns the full lifecycle of its data
 - Replace `updateDomainProperty()`/`updateDomainProperties()` with `updateSharedProperty()` on `ScreensetsRegistry` — a single global write method so property producers don't need to know which domains exist
-- Keep `createHAI3App()` usable without MFE config (no domains by default — explicit is better than implicit)
+- Keep `createHAI3App()` usable without MFE config
 
 **Non-Goals:**
 
@@ -30,41 +28,7 @@ The `ScreensetsRegistry` currently has `updateDomainProperty(domainId, propertyT
 
 ## Decisions
 
-### Decision 1: `domains` as explicit config parameter on `microfrontends()`
-
-**Choice:** Add `domains?: ExtensionDomain[]` to `MicrofrontendsConfig`. When provided, the plugin stores the domain definitions. When omitted, no domains are configured — the project has no pre-declared domain topology.
-
-**No implicit defaults.** Neither the plugin nor the preset silently injects domain objects. If you want the 4 base domains, you import them and pass them explicitly. This keeps definitions visible, tree-shakeable, and under project control.
-
-```typescript
-// Explicit — you see exactly what you get
-microfrontends({
-  domains: [screenDomain, sidebarDomain, popupDomain, overlayDomain],
-})
-
-// Minimal — only what you need, unused domains are tree-shaken
-microfrontends({
-  domains: [screenDomain],
-})
-
-// No domains — valid, you register them later via registerDomain()
-microfrontends()
-```
-
-**Why not on `createHAI3App` only:** The `microfrontends()` plugin is the natural owner of domain configuration since it creates the `screensetsRegistry`. The preset forwards config to the plugin.
-
-**Alternatives considered:**
-- Separate `domains()` plugin — Over-engineered for what is essentially configuration. Domains are data, not behavior.
-- Preset supplies defaults when omitted — Makes definitions implicit and prevents tree-shaking of unused domain objects. Rejected.
-- Auto-registering domains in `onInit` — The current design intentionally keeps domain registration at runtime (the app calls `registerDomain()`). The config declares *what* domains exist; the app decides *when* to register them.
-
-**Note on domain registration:** The `domains` config does NOT auto-register domains. It provides the domain definitions as structured data. The consuming app (or preset) reads the stored domains back from the plugin's config and uses them when calling `registerDomain()` at runtime with a `ContainerProvider`. The config is about *declaring available domain contracts*, not *registering them*.
-
-**Consumption flow:** The plugin exposes the stored domain definitions (e.g., via a getter or by placing them on the app context). The app's domain registration logic iterates the stored domains and calls `registerDomain(domain, containerProvider)` for each one. This keeps registration explicit and runtime-controlled — the app decides *when* and *with which container provider* each domain is registered.
-
-**CLI template impact:** The `hai3 create` template will scaffold the explicit domain list in the app entry point, so new projects get the standard 4 domains by default in their source code (visible, editable, tree-shakeable).
-
-### Decision 2: `updateSharedProperty()` replaces `updateDomainProperty()`/`updateDomainProperties()` on ScreensetsRegistry (L1)
+### Decision 1: `updateSharedProperty()` replaces `updateDomainProperty()`/`updateDomainProperties()` on ScreensetsRegistry (L1)
 
 **Choice:** Replace the existing per-domain write methods (`updateDomainProperty`, `updateDomainProperties`) with a single `updateSharedProperty(propertyId: string, value: unknown): void` abstract method on `ScreensetsRegistry`. `getDomainProperty()` remains as the read path.
 
@@ -86,7 +50,7 @@ microfrontends()
 - Utility function outside the registry — Breaks encapsulation. The registry owns domain state and property subscriptions.
 - Event-based broadcast — Over-engineered. Direct method call is simpler and synchronous.
 
-### Decision 3: Move theme propagation to `themes()` plugin
+### Decision 2: Move theme propagation to `themes()` plugin
 
 **Choice:** In `themes.ts` `onInit`, after applying the theme to the registry, also broadcast to MFE domains:
 
@@ -109,7 +73,7 @@ onInit(app) {
 
 **Why not a hard dependency:** Themes should work without MFEs. A minimal app with just themes and screensets shouldn't require the microfrontends plugin.
 
-### Decision 4: Move language propagation to `i18n()` plugin
+### Decision 3: Move language propagation to `i18n()` plugin
 
 **Choice:** Same pattern as themes. In `i18n.ts` `onInit`:
 
@@ -128,7 +92,7 @@ onInit(app) {
 
 Same error handling and soft dependency guard as themes. The `i18nRegistry.setLanguage()` completes before the propagation attempt, so a GTS validation failure in `updateSharedProperty` does not affect the i18n registry's own language state.
 
-### Decision 5: Full preset passes config through without defaults
+### Decision 4: Full preset passes config through without defaults
 
 **Choice:** The `full()` preset forwards `config?.microfrontends` directly to `microfrontends()` without injecting domain defaults:
 
@@ -141,20 +105,9 @@ export function full(config?: FullPresetConfig): HAI3Plugin[] {
 }
 ```
 
-No implicit injection. `createHAI3App()` with zero args builds a valid app with no pre-declared domains. The CLI template scaffolds the explicit domain list in the project's source code, making it visible and editable.
+No implicit injection. `createHAI3App()` with zero args builds a valid app with no pre-declared domains.
 
-```typescript
-// CLI-scaffolded app entry point (visible in project source)
-import { createHAI3App, screenDomain, sidebarDomain, popupDomain, overlayDomain } from '@hai3/react';
-
-const app = createHAI3App({
-  microfrontends: {
-    domains: [screenDomain, sidebarDomain, popupDomain, overlayDomain],
-  },
-});
-```
-
-### Decision 6: Shared property constants remain as vocabulary
+### Decision 5: Shared property constants remain as vocabulary
 
 **Choice:** `HAI3_SHARED_PROPERTY_THEME` and `HAI3_SHARED_PROPERTY_LANGUAGE` stay in `@hai3/screensets/constants` and continue to be re-exported through the chain (screensets → framework → react).
 
@@ -165,7 +118,7 @@ const app = createHAI3App({
 
 They're vocabulary — identifiers for a communication channel. They stop implying automatic behavior because the propagation moves to owning plugins.
 
-### Decision 7: Remove propagation from `microfrontends()` onInit
+### Decision 6: Remove propagation from `microfrontends()` onInit
 
 **Choice:** Delete the `eventBus.on('theme/changed', ...)` and `eventBus.on('i18n/language/changed', ...)` listeners from `microfrontends/index.ts` `onInit`. Remove the `propagationCleanup` closure and its call in `onDestroy`.
 
@@ -173,7 +126,7 @@ The plugin's `onInit` retains only:
 - `setMfeRegistry(screensetsRegistry)` — wiring actions module
 - `initMfeEffects(screensetsRegistry)` — MFE-specific effects
 
-### Decision 8: Manual bridge forwarding for nested MFE hosts
+### Decision 7: Manual bridge forwarding for nested MFE hosts
 
 **Choice:** MFEs that act as nested hosts (creating their own child registry with domains) must manually forward shared properties from the parent bridge to their child registry:
 

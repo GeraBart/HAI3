@@ -110,13 +110,16 @@ export abstract class ExtensionManager {
   abstract unregisterExtension(extensionId: string): Promise<void>;
 
   /**
-   * Update a single domain property.
+   * Broadcast a shared property value to all registered domains that declare the property.
+   * Performs GTS validation once before propagating to any matching domain.
+   * Domains that do not include propertyId in their sharedProperties array are skipped.
+   * If no registered domains declare the property, this is a silent no-op.
    *
-   * @param domainId - ID of the domain
-   * @param propertyTypeId - Type ID of the property to update
+   * @param propertyId - Type ID of the shared property
    * @param value - New property value
+   * @throws if GTS validation fails — no domain receives the value in that case
    */
-  abstract updateDomainProperty(domainId: string, propertyTypeId: string, value: unknown): void;
+  abstract updateSharedProperty(propertyId: string, value: unknown): void;
 
   /**
    * Get a domain property value.

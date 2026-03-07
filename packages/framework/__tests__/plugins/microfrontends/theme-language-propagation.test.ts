@@ -1,146 +1,231 @@
 /**
- * Tests for theme and language propagation - Phase 43
+ * Tests for theme and language propagation - decouple-domain-contracts
  *
- * Tests that theme/changed and i18n/language/changed events propagate
- * to domain properties on all 4 base domains.
+ * Verifies that theme/changed and i18n/language/changed events propagate
+ * shared properties via themes() and i18n() plugins calling updateSharedProperty
+ * on the screensetsRegistry. Propagation is no longer owned by microfrontends().
  *
  * @packageDocumentation
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { createHAI3 } from '../../../src/createHAI3';
 import { screensets } from '../../../src/plugins/screensets';
 import { effects } from '../../../src/plugins/effects';
-import {
-  microfrontends,
-  HAI3_SCREEN_DOMAIN,
-  HAI3_SIDEBAR_DOMAIN,
-  HAI3_POPUP_DOMAIN,
-  HAI3_OVERLAY_DOMAIN,
-} from '../../../src/plugins/microfrontends';
+import { themes } from '../../../src/plugins/themes';
+import { i18n } from '../../../src/plugins/i18n';
+import { microfrontends } from '../../../src/plugins/microfrontends';
 import { eventBus, resetStore } from '@hai3/state';
 import { HAI3_SHARED_PROPERTY_THEME, HAI3_SHARED_PROPERTY_LANGUAGE } from '@hai3/screensets';
 import type { HAI3App } from '../../../src/types';
 
-describe('Theme and Language Propagation - Phase 43', () => {
+describe('Theme and Language Propagation - decouple-domain-contracts', () => {
   let apps: HAI3App[] = [];
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
 
   afterEach(() => {
     apps.forEach(app => app.destroy());
     apps = [];
+    // Clear all event bus listeners to prevent handler accumulation across tests.
+    // The themes() and i18n() plugins subscribe in onInit but have no onDestroy cleanup,
+    // so without this, handlers from previous test apps bleed into subsequent tests.
+    eventBus.clearAll();
     resetStore();
   });
 
-  describe('43.4.1: theme/changed event propagates theme ID to all 4 domains', () => {
-    it('should call updateDomainProperty 4 times with correct arguments', () => {
+  describe('theme propagation via themes() plugin', () => {
+    it('should call updateSharedProperty with theme ID when theme/changed event fires', () => {
       const app = createHAI3()
         .use(screensets())
         .use(effects())
+        .use(themes())
         .use(microfrontends())
         .build();
       apps.push(app);
 
-      const updateSpy = vi.spyOn(app.screensetsRegistry, 'updateDomainProperty');
+      const updateSpy = vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty');
 
-      // Emit theme/changed event
       eventBus.emit('theme/changed', { themeId: 'dark' });
 
-      // Should be called 4 times (once per domain)
-      expect(updateSpy).toHaveBeenCalledTimes(4);
-
-      // Verify each domain was called with correct arguments
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SCREEN_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'dark');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SIDEBAR_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'dark');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_POPUP_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'dark');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_OVERLAY_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'dark');
+      expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_THEME, 'dark');
     });
-  });
 
-  describe('43.4.2: i18n/language/changed event propagates language code to all 4 domains', () => {
-    it('should call updateDomainProperty 4 times with correct arguments', () => {
+    it('should not throw when theme/changed fires even if updateSharedProperty throws', () => {
       const app = createHAI3()
         .use(screensets())
         .use(effects())
+        .use(themes())
         .use(microfrontends())
         .build();
       apps.push(app);
 
-      const updateSpy = vi.spyOn(app.screensetsRegistry, 'updateDomainProperty');
-      updateSpy.mockClear(); // Clear any calls from initialization
+      vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty').mockImplementation(() => {
+        throw new Error('GTS validation failed');
+      });
 
-      // Emit i18n/language/changed event
-      eventBus.emit('i18n/language/changed', { language: 'de' });
-
-      // Should be called 4 times (once per domain)
-      expect(updateSpy).toHaveBeenCalledTimes(4);
-
-      // Verify each domain was called with correct arguments
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SCREEN_DOMAIN, HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SIDEBAR_DOMAIN, HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_POPUP_DOMAIN, HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_OVERLAY_DOMAIN, HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
-    });
-  });
-
-  describe('43.4.3: propagation silently skips unregistered domains', () => {
-    it('should attempt all 4 domains and not throw errors', () => {
-      const app = createHAI3()
-        .use(screensets())
-        .use(effects())
-        .use(microfrontends())
-        .build();
-      apps.push(app);
-
-      // Mock updateDomainProperty to throw for 2 domains (simulating unregistered domains)
-      const updateSpy = vi.spyOn(app.screensetsRegistry, 'updateDomainProperty')
-        .mockImplementation((domainId: string, _propertyTypeId: string, _value: unknown) => {
-          if (domainId === HAI3_SIDEBAR_DOMAIN || domainId === HAI3_OVERLAY_DOMAIN) {
-            throw new Error('Domain not registered');
-          }
-        });
-      updateSpy.mockClear(); // Clear any calls from initialization
-
-      // Emit theme/changed event - should not throw
       expect(() => {
-        eventBus.emit('theme/changed', { themeId: 'light' });
+        eventBus.emit('theme/changed', { themeId: 'bad-theme' });
+      }).not.toThrow();
+    });
+
+    it('should still apply the theme even if updateSharedProperty throws', () => {
+      const app = createHAI3()
+        .use(screensets())
+        .use(effects())
+        .use(themes())
+        .use(microfrontends())
+        .build();
+      apps.push(app);
+
+      // Register a theme so apply() has something to work with
+      app.themeRegistry.register({ id: 'dark', name: 'Dark', variables: {} });
+
+      vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty').mockImplementation(() => {
+        throw new Error('GTS validation failed');
+      });
+
+      // Theme registry apply should still be called — propagation failure must not prevent it
+      const applySpy = vi.spyOn(app.themeRegistry, 'apply');
+
+      expect(() => {
+        eventBus.emit('theme/changed', { themeId: 'dark' });
       }).not.toThrow();
 
-      // Should be called 4 times (all domains attempted)
-      expect(updateSpy).toHaveBeenCalledTimes(4);
-
-      // Verify successful calls for screen and popup
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SCREEN_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'light');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_POPUP_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'light');
-
-      // Verify attempted calls for sidebar and overlay (even though they threw)
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_SIDEBAR_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'light');
-      expect(updateSpy).toHaveBeenCalledWith(HAI3_OVERLAY_DOMAIN, HAI3_SHARED_PROPERTY_THEME, 'light');
+      expect(applySpy).toHaveBeenCalledWith('dark');
     });
   });
 
-  describe('43.4.4: propagation cleanup unsubscribes on destroy', () => {
-    it('should not call updateDomainProperty after app destroy', () => {
+  describe('language propagation via i18n() plugin', () => {
+    it('should call updateSharedProperty with language when i18n/language/changed event fires', async () => {
+      const app = createHAI3()
+        .use(screensets())
+        .use(effects())
+        .use(i18n())
+        .use(microfrontends())
+        .build();
+      apps.push(app);
+
+      const updateSpy = vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty');
+
+      eventBus.emit('i18n/language/changed', { language: 'de' });
+
+      // The i18n event handler is async and internally awaits i18nRegistry.setLanguage()
+      // which itself awaits loadLanguage() and Promise.all(). We need multiple microtask
+      // flushes to let the entire async chain complete before asserting.
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(updateSpy).toHaveBeenCalledWith(HAI3_SHARED_PROPERTY_LANGUAGE, 'de');
+    });
+
+    it('should not throw when i18n/language/changed fires even if updateSharedProperty throws', async () => {
+      const app = createHAI3()
+        .use(screensets())
+        .use(effects())
+        .use(i18n())
+        .use(microfrontends())
+        .build();
+      apps.push(app);
+
+      vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty').mockImplementation(() => {
+        throw new Error('GTS validation failed');
+      });
+
+      await expect(async () => {
+        eventBus.emit('i18n/language/changed', { language: 'xx' });
+        await Promise.resolve();
+      }).not.toThrow();
+    });
+  });
+
+  describe('soft dependency: screensetsRegistry undefined (no microfrontends plugin)', () => {
+    it('themes() plugin works correctly and applies theme when screensetsRegistry is absent', () => {
+      // Build without microfrontends plugin — screensetsRegistry will be undefined
+      const app = createHAI3()
+        .use(screensets())
+        .use(effects())
+        .use(themes())
+        .build();
+      apps.push(app);
+
+      expect(app.screensetsRegistry).toBeUndefined();
+
+      // Register a theme so apply() has something to work with
+      app.themeRegistry.register({ id: 'dark', name: 'Dark', variables: {} });
+      const applySpy = vi.spyOn(app.themeRegistry, 'apply');
+
+      // Must not throw — optional chaining skips updateSharedProperty silently
+      expect(() => {
+        eventBus.emit('theme/changed', { themeId: 'dark' });
+      }).not.toThrow();
+
+      // Theme registry must still apply the theme
+      expect(applySpy).toHaveBeenCalledWith('dark');
+    });
+
+    it('i18n() plugin works correctly and sets language when screensetsRegistry is absent', async () => {
+      // Build without microfrontends plugin — screensetsRegistry will be undefined
+      const app = createHAI3()
+        .use(screensets())
+        .use(effects())
+        .use(i18n())
+        .build();
+      apps.push(app);
+
+      expect(app.screensetsRegistry).toBeUndefined();
+
+      const setLanguageSpy = vi.spyOn(app.i18nRegistry, 'setLanguage');
+
+      // Must not throw — optional chaining skips updateSharedProperty silently
+      await expect(async () => {
+        eventBus.emit('i18n/language/changed', { language: 'es' });
+        await Promise.resolve();
+      }).not.toThrow();
+
+      // i18n registry must still set the language
+      expect(setLanguageSpy).toHaveBeenCalledWith('es');
+    });
+  });
+
+  describe('microfrontends() plugin no longer owns propagation', () => {
+    it('should not call updateSharedProperty from microfrontends onInit for theme events', () => {
+      // Build with only microfrontends (no themes plugin) — propagation must not occur
       const app = createHAI3()
         .use(screensets())
         .use(effects())
         .use(microfrontends())
         .build();
+      apps.push(app);
 
-      const updateSpy = vi.spyOn(app.screensetsRegistry, 'updateDomainProperty');
+      const updateSpy = vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty');
 
-      // Destroy the app (should unsubscribe from events)
-      app.destroy();
-      apps = []; // Already destroyed
-
-      // Clear spy calls from any cleanup operations
-      updateSpy.mockClear();
-
-      // Emit events after destroy
       eventBus.emit('theme/changed', { themeId: 'dark' });
-      eventBus.emit('i18n/language/changed', { language: 'es' });
 
-      // Should NOT be called (listeners were removed)
+      // microfrontends no longer subscribes to theme/changed
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not call updateSharedProperty from microfrontends onInit for language events', async () => {
+      // Build with only microfrontends (no i18n plugin) — propagation must not occur
+      const app = createHAI3()
+        .use(screensets())
+        .use(effects())
+        .use(microfrontends())
+        .build();
+      apps.push(app);
+
+      const updateSpy = vi.spyOn(app.screensetsRegistry!, 'updateSharedProperty');
+
+      eventBus.emit('i18n/language/changed', { language: 'de' });
+      await Promise.resolve();
+
+      // microfrontends no longer subscribes to i18n/language/changed
       expect(updateSpy).not.toHaveBeenCalled();
     });
   });

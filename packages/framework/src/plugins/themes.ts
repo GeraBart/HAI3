@@ -5,6 +5,7 @@
  */
 
 import { eventBus } from '@hai3/state';
+import { HAI3_SHARED_PROPERTY_THEME } from '@hai3/screensets';
 import type { HAI3Plugin, ChangeThemePayload, ThemesConfig } from '../types';
 import { createThemeRegistry } from '../registries/themeRegistry';
 
@@ -60,10 +61,15 @@ export function themes(config?: ThemesConfig): HAI3Plugin {
       },
     },
 
-    onInit(_app) {
+    onInit(app) {
       // Subscribe to theme changes
       eventBus.on('theme/changed', (payload: ChangeThemePayload) => {
         themeRegistry.apply(payload.themeId);
+        try {
+          app.screensetsRegistry?.updateSharedProperty(HAI3_SHARED_PROPERTY_THEME, payload.themeId);
+        } catch (error) {
+          console.error('[HAI3] Failed to propagate theme to MFE domains', error);
+        }
       });
 
       // Bootstrap: Apply the first registered theme (or default)
