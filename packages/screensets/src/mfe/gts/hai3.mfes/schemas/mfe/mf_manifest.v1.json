@@ -25,10 +25,6 @@
         },
         "required": ["name"]
       }
-    },
-    "entries": {
-      "type": "array",
-      "items": { "x-gts-ref": "gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~*" }
     }
   },
   "required": ["id", "remoteEntry", "remoteName"]

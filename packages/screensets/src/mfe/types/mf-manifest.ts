@@ -47,6 +47,4 @@ export interface MfManifest {
   remoteName: string;
   /** Optional override for shared dependency configuration */
   sharedDependencies?: SharedDependencyConfig[];
-  /** Convenience field for discovery - lists MfeEntryMF type IDs */
-  entries?: string[];
 }

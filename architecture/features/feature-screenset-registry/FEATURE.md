@@ -381,7 +381,7 @@ All MFE TypeScript interfaces are defined with the correct shapes as derived fro
 
 - `MfeEntry`: `id`, `requiredProperties`, `actions`, `domainActions`, optional `optionalProperties`
 - `MfeEntryMF` extends `MfeEntry`: adds `manifest` (`string | MfManifest`), `exposedModule`
-- `MfManifest`: `id`, `remoteEntry`, `remoteName`, optional `sharedDependencies`, optional `entries`; `SharedDependencyConfig` has `name`, optional `requiredVersion`; no `singleton` field
+- `MfManifest`: `id`, `remoteEntry`, `remoteName`, optional `sharedDependencies`; `SharedDependencyConfig` has `name`, optional `requiredVersion`; no `singleton` field
 - `ExtensionDomain`: `id`, `sharedProperties`, `actions`, `extensionsActions`, `defaultActionTimeout` (required number), `lifecycleStages` (required), `extensionsLifecycleStages` (required), optional `extensionsTypeId`, optional `lifecycle`
 - `Extension`: `id`, `domain`, `entry`, optional `lifecycle`
 - `ScreenExtension` extends `Extension`: adds required `presentation` (`ExtensionPresentation`)
