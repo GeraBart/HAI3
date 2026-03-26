@@ -2,7 +2,7 @@
 # hai3:new-screenset - Create New Screenset
 
 ## PREREQUISITES (CRITICAL - STOP IF FAILED)
-Run `hai3 --version`.
+Run `frontx --version`.
 STOP: If fails, tell user to install.
 FORBIDDEN: Proceeding without CLI tools.
 FORBIDDEN: Creating screenset manually or by copying peers.
@@ -53,7 +53,7 @@ Add new {category} screenset "{screensetName}" with {screens} screen(s).
 ### tasks.md minimum required tasks
 NOTE: Proposal may include additional tasks, but MUST include these:
 ```
-- [ ] Create screenset: `hai3 screenset create {name} --category={category}`
+- [ ] Create screenset: `frontx screenset create {name} --category={category}`
 - [ ] Create components per Component Plan (BEFORE screen file)
 - [ ] Implement data flow per EVENTS.md (actions emit events, effects update slices)
 - [ ] Add API service with mocks
@@ -69,7 +69,7 @@ Tell user: "Execute openspec:apply command to implement."
 BEFORE executing openspec:apply, verify tasks.md contains all minimum required tasks above.
 Execute openspec:apply command (see `.claude/commands/openspec-apply.md`).
 Follow tasks.md strictly:
-1) Create screenset via `hai3 screenset create` (REQUIRED).
+1) Create screenset via `frontx screenset create` (REQUIRED).
 2) Create components BEFORE screen file per Component Plan.
 3) Implement data flow per .ai/targets/EVENTS.md:
    - Actions emit events via eventBus.emit()

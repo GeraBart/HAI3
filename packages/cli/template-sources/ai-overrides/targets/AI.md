@@ -30,11 +30,11 @@
 
 ## THREE-LEVEL GUIDELINES HIERARCHY
 HAI3 projects support a 3-level guidelines hierarchy:
-- Level 1 (HAI3): .ai/GUIDELINES.md and .ai/targets/ - managed by CLI, updated via hai3 update.
+- Level 1 (HAI3): .ai/GUIDELINES.md and .ai/targets/ - managed by CLI, updated via frontx update.
 - Level 2 (Company): .ai/company/GUIDELINES.md and .ai/company/targets/ - preserved on update.
 - Level 3 (Project): .ai/project/GUIDELINES.md and .ai/project/targets/ - preserved on update.
 Routing: GUIDELINES.md routes to company/ and project/ when relevant to context.
-Preservation: hai3 update NEVER modifies company/ or project/ directories.
+Preservation: frontx update NEVER modifies company/ or project/ directories.
 Commands: See .ai/targets/AI_COMMANDS.md for command hierarchy.
 
 ## RULE FORMAT

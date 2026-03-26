@@ -281,6 +281,7 @@ export async function generateProject(
     'tsconfig.json',
     '.dependency-cruiser.cjs',
     '.pre-commit-config.yaml',
+    '.nvmrc',
   ];
   for (const file of rootConfigFiles) {
     const filePath = path.join(templatesDir, file);
@@ -288,6 +289,13 @@ export async function generateProject(
       const content = await fs.readFile(filePath, 'utf-8');
       files.push({ path: file, content });
     }
+  }
+
+  // 3.5 Copy _npmrc as .npmrc (npm strips .npmrc from published packages)
+  const npmrcPath = path.join(templatesDir, '_npmrc');
+  if (await fs.pathExists(npmrcPath)) {
+    const content = await fs.readFile(npmrcPath, 'utf-8');
+    files.push({ path: '.npmrc', content });
   }
 
   // 4. Copy screensets from templates
@@ -320,11 +328,10 @@ export async function generateProject(
   });
 
   // 5.2 package.json
-  // Use 'alpha' tag for @hai3 packages during alpha phase
-  // This resolves to the latest alpha version from npm
+  // Use 'latest' dist-tag for @hai3 packages
   // Only L3 packages allowed: @hai3/react (required), @hai3/uikit (conditional)
   const dependencies: Record<string, string> = {
-    '@hai3/react': 'alpha',
+    '@hai3/react': '0.3.0-alpha.0',
     '@hookform/resolvers': '5.2.2',
     '@iconify/react': '5.0.2',
     '@reduxjs/toolkit': '2.11.2',
@@ -342,7 +349,7 @@ export async function generateProject(
   };
 
   const devDependencies: Record<string, string> = {
-    '@hai3/cli': 'alpha',
+    '@cyberfabric/cli': '0.1.0',
     '@j178/prek': '0.2.25',
     '@types/lodash': '4.17.20',
     '@types/react': '19.0.8',
@@ -365,12 +372,12 @@ export async function generateProject(
   };
 
   if (studio) {
-    devDependencies['@hai3/studio'] = 'alpha';
+    devDependencies['@hai3/studio'] = '0.3.0-alpha.2';
   }
 
   // Conditionally add @hai3/uikit dependency
   if (uikit === 'hai3') {
-    dependencies['@hai3/uikit'] = 'alpha';
+    dependencies['@hai3/uikit'] = '0.3.0-alpha.1';
   }
 
   const packageJson = {

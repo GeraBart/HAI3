@@ -18,7 +18,7 @@ Ask user for:
 
 ## STEP 1: Copy Screenset via CLI
 ```bash
-hai3 screenset copy SOURCE TARGET --category={category}
+frontx screenset copy SOURCE TARGET --category={category}
 ```
 The CLI automatically:
 - Copies all files (screens, slices, actions, events, effects, API, icons, i18n).
@@ -50,7 +50,7 @@ STOP: If MCP connection is broken, fix it first. NEVER skip testing.
 
 ## CHECKLIST
 - [ ] Gather requirements (source, target name, category).
-- [ ] Run `hai3 screenset copy SOURCE TARGET --category={category}`.
+- [ ] Run `frontx screenset copy SOURCE TARGET --category={category}`.
 - [ ] Run type-check (MUST pass).
 - [ ] Run arch:check (MUST pass).
 - [ ] Run lint (MUST pass).

@@ -1,7 +1,7 @@
 {
   "name": "eslint-plugin-local",
   "version": "1.0.0",
-  "description": "ESLint rules for HAI3 screenset architecture",
+  "description": "ESLint rules for FrontX screenset architecture",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -10,7 +10,7 @@
     "clean": "rm -rf dist"
   },
   "keywords": ["eslint", "eslintplugin", "eslint-plugin"],
-  "author": "HAI3 Team",
+  "author": "Cyber Fabric",
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/eslint": "^9.6.0",

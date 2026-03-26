@@ -49,13 +49,13 @@ function getLayerDependencies(layer: LayerType): {
       return {
         dependencies: {},
         peerDependencies: {
-          '@hai3/events': 'alpha',
-          '@hai3/store': 'alpha',
+          '@hai3/state': '0.2.0-alpha.0',
+          '@hai3/screensets': '0.2.0-alpha.1',
         },
         devDependencies: {
           ...eslintDevDeps,
-          '@hai3/events': 'alpha',
-          '@hai3/store': 'alpha',
+          '@hai3/state': '0.2.0-alpha.0',
+          '@hai3/screensets': '0.2.0-alpha.1',
           typescript: '^5.4.0',
           tsup: '^8.0.0',
         },
@@ -66,14 +66,14 @@ function getLayerDependencies(layer: LayerType): {
       return {
         dependencies: {},
         peerDependencies: {
-          '@hai3/framework': 'alpha',
+          '@hai3/framework': '0.2.0-alpha.4',
           react: '^19.2.4',
           'react-dom': '^19.2.4',
         },
         devDependencies: {
           ...eslintDevDeps,
           'eslint-plugin-react-hooks': '^5.0.0',
-          '@hai3/framework': 'alpha',
+          '@hai3/framework': '0.2.0-alpha.4',
           '@types/react': '^19.0.0',
           '@types/react-dom': '^19.0.0',
           react: '^19.2.4',

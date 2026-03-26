@@ -14,7 +14,7 @@ openspec:*: OpenSpec workflow commands (managed by openspec update).
 ## OPENSPEC WORKFLOW COMMANDS
 - hai3-new-screenset, hai3-new-screen, hai3-new-component, hai3-new-action, hai3-new-api-service.
 - REQUIRED: These commands create OpenSpec proposals first, then implement after approval.
-- REQUIRED: hai3-new-screenset must use CLI (hai3 screenset create) during apply step.
+- REQUIRED: hai3-new-screenset must use CLI (frontx screenset create) during apply step.
 - Pattern: Gather requirements -> Create proposal -> Wait for approval -> Apply implementation.
 
 ## NAMING CONVENTIONS
@@ -62,7 +62,7 @@ Content: Description frontmatter + reference to .ai/commands/hai3-example.md.
 REQUIRED: Adapters must NOT contain command logic.
 
 ## UPDATE MECHANISM
-- hai3: commands -> Updated by hai3 update.
+- hai3: commands -> Updated by frontx update.
 - openspec: commands -> Updated by openspec update.
 - hai3dev: commands -> Manual updates (not shipped to standalone).
 
@@ -76,7 +76,7 @@ REQUIRED: Adapters must NOT contain command logic.
 ## MODIFYING EXISTING COMMANDS
 1) Edit ONLY the canonical file in .ai/commands/.
 2) IDE adapters auto-update (they just reference canonical).
-3) Changes propagate via hai3 update to standalone projects.
+3) Changes propagate via frontx update to standalone projects.
 
 ## DETECT RULES
 - DETECT: grep -rn "hai3dev-" packages/cli/templates/.ai (must be 0).

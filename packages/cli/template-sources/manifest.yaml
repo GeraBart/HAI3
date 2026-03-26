@@ -1,4 +1,4 @@
-# HAI3 CLI Template Assembly Manifest
+# FrontX CLI Template Assembly Manifest
 # This file drives the template assembly process in copy-templates.ts
 # Version: 1.0.0
 
@@ -13,7 +13,7 @@ project:
     - configs/             # ESLint, depcruise, pre-commit configs (flattened to root)
     - eslint-plugin-local/ # Local ESLint plugin with HAI3 rules
     - scripts/             # Utility scripts (generate-colors, test-architecture)
-    - .npmrc               # NPM configuration
+    - _npmrc               # NPM configuration (renamed to .npmrc on scaffold; npm strips .npmrc from packages)
     - .nvmrc               # Node version
     - README.md            # Project README template
 
@@ -62,7 +62,7 @@ root:
     - src/app/events      # Bootstrap events
   screensets:
     - demo            # Default screenset for new projects
-  screensetTemplate: _blank  # Template for hai3 screenset create
+  screensetTemplate: _blank  # Template for frontx screenset create
 
 # Stage 1c: AI documentation overrides
 ai_overrides:

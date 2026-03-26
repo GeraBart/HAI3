@@ -7,7 +7,7 @@
 
 ## COMMAND HIERARCHY
 HAI3 projects support a 3-level command hierarchy:
-- Level 1 (HAI3): .ai/commands/ - managed by CLI, updated via hai3 update.
+- Level 1 (HAI3): .ai/commands/ - managed by CLI, updated via frontx update.
 - Level 2 (Company): .ai/company/commands/ - preserved on update.
 - Level 3 (Project): .ai/project/commands/ - preserved on update.
 
@@ -22,7 +22,7 @@ openspec:*: OpenSpec workflow commands (managed by openspec update).
 ## OPENSPEC WORKFLOW COMMANDS
 - hai3-new-screenset, hai3-new-screen, hai3-new-component, hai3-new-action, hai3-new-api-service.
 - REQUIRED: These commands create OpenSpec proposals first, then implement after approval.
-- REQUIRED: hai3-new-screenset must use CLI (hai3 screenset create) during apply step.
+- REQUIRED: hai3-new-screenset must use CLI (frontx screenset create) during apply step.
 - Pattern: Gather requirements -> Create proposal -> Wait for approval -> Apply implementation.
 
 ## NAMING CONVENTIONS
@@ -58,12 +58,12 @@ Example: hai3-new-screenset.md (React-only) is excluded from SDK/Framework layer
 Company commands (.ai/company/commands/):
 - Use for organization-wide commands (code review, deployment, security checks).
 - Naming: company-specific prefix recommended (e.g., acme-deploy.md).
-- Preserved on hai3 update.
+- Preserved on frontx update.
 
 Project commands (.ai/project/commands/):
 - Use for project-specific commands (migrations, domain operations, testing).
 - Naming: project-specific prefix recommended (e.g., myapp-migrate.md).
-- Preserved on hai3 update.
+- Preserved on frontx update.
 
 ## COMMAND FORMAT
 All commands (HAI3, company, project) use the same README.md-based format:
@@ -74,7 +74,7 @@ All commands (HAI3, company, project) use the same README.md-based format:
 - REQUIRED, MUST, FORBIDDEN keywords for rules
 
 ## COMMAND DISCOVERY
-Run npx hai3 ai:sync to:
+Run npx frontx ai:sync to:
 - Scan .ai/commands/, .ai/company/commands/, .ai/project/commands/
 - Generate IDE adapters in .claude/commands/, .cursor/commands/, .windsurf/workflows/
 - Apply precedence rules (project > company > hai3)
@@ -91,7 +91,7 @@ Content: Description frontmatter + reference to .ai/commands/hai3-example.md.
 REQUIRED: Adapters must NOT contain command logic.
 
 ## UPDATE MECHANISM
-- hai3: commands -> Updated by hai3 update.
+- hai3: commands -> Updated by frontx update.
 - openspec: commands -> Updated by openspec update.
 
 ## USING COMMANDS

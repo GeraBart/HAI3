@@ -49,5 +49,5 @@ Use keywords: MUST, REQUIRED, FORBIDDEN, STOP, DETECT
 - No duplicated rules across files?
 
 ## PRESERVATION
-Company and project guidelines are preserved on hai3 update.
-They will never be overwritten by HAI3 CLI updates.
+Company and project guidelines are preserved on frontx update.
+They will never be overwritten by FrontX CLI updates.

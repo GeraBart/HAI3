@@ -1,10 +1,10 @@
 {
-  "name": "@hai3/cli",
-  "version": "0.3.0-alpha.2",
-  "description": "HAI3 CLI - Project scaffolding and screenset management tools",
+  "name": "@cyberfabric/cli",
+  "version": "0.1.5",
+  "description": "FrontX CLI - Project scaffolding and screenset management tools",
   "type": "module",
   "bin": {
-    "hai3": "./dist/index.js"
+    "frontx": "./dist/index.js"
   },
   "main": "./dist/api.cjs",
   "module": "./dist/api.js",
@@ -27,23 +27,23 @@
     "dev": "tsup --watch"
   },
   "keywords": [
-    "hai3",
+    "frontx",
     "cli",
     "scaffolding",
     "screenset",
     "saas"
   ],
-  "author": "HAI3org",
+  "author": "Cyber Fabric",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/HAI3org/HAI3.git",
+    "url": "https://github.com/cyberfabric/frontx.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com/HAI3org/HAI3/issues"
+    "url": "https://github.com/cyberfabric/frontx/issues"
   },
-  "homepage": "https://github.com/HAI3org/HAI3#readme",
+  "homepage": "https://github.com/cyberfabric/frontx#readme",
   "publishConfig": {
     "access": "public"
   },
