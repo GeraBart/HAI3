@@ -1,6 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-externalize-plugin:p1
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-build:p2
 import type { Plugin, ResolvedConfig } from 'vite';
+import { trim } from 'lodash';
 
 export interface Hai3MfeExternalizeOptions {
   shared: string[];
@@ -318,7 +319,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
             ),
             (_match, namedClause: string) => {
               const bindings = namedClause.split(',').map((s: string) => {
-                const stripped = s.replace(/^\s+|\s+$/g, '');
+                const stripped = trim(s);
                 const asMatch = /^(\w+)\s+as\s+(\w+)$/.exec(stripped);
                 return asMatch ? asMatch[2] : stripped;
               });

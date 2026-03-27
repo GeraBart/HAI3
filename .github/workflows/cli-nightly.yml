@@ -41,8 +41,8 @@ jobs:
         run: npm run test:e2e:nightly --workspace=@cyberfabric/cli
         env:
           CLI_E2E_ARTIFACT_DIR: .artifacts/cli-e2e/nightly
-          FrontX_USE_LOCAL: '1'
-          FrontX_MONOREPO_ROOT: ${{ github.workspace }}
+          FRONTX_USE_LOCAL: '1'
+          FRONTX_MONOREPO_ROOT: ${{ github.workspace }}
 
       - name: Upload CLI E2E artifacts
         if: always()

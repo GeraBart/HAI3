@@ -340,8 +340,8 @@ export const createCommand: CommandDefinition<
     logger.info(`Creating project '${args.projectName}'...`);
     logger.newline();
 
-    // Resolve local packages when --local or HAI3_USE_LOCAL
-    const useLocal = args.local ?? (process.env.HAI3_USE_LOCAL === '1' || process.env.HAI3_USE_LOCAL === 'true');
+    // Resolve local packages when --local or FRONTX_USE_LOCAL
+    const useLocal = args.local ?? (process.env.FRONTX_USE_LOCAL === '1' || process.env.FRONTX_USE_LOCAL === 'true');
     let monorepoRoot: string | null = null;
     if (useLocal) {
       monorepoRoot = await findMonorepoRoot(getTemplatesDir());
