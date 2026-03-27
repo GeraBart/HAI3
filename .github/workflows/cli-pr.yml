@@ -2,7 +2,7 @@ name: CLI PR E2E
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 permissions:
   contents: read

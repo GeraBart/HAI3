@@ -2,7 +2,7 @@ name: AI Guidelines Validation
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - '.ai/**'
       - '.claude/**'
@@ -10,7 +10,7 @@ on:
       - 'packages/**/llms.txt'
       - 'packages/**/commands/**'
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
     paths:
       - '.ai/**'
       - '.claude/**'
