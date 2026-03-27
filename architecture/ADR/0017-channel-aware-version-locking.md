@@ -5,7 +5,7 @@ date: 2026-03-27
 
 # Channel-Aware Version Locking via Build-Time Injection
 
-**ID**: `cpt-hai3-adr-channel-aware-version-locking`
+**ID**: `cpt-frontx-adr-channel-aware-version-locking`
 
 <!-- toc -->
 

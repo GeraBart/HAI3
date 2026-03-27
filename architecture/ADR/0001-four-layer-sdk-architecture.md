@@ -23,7 +23,7 @@ date: 2025-12-21
 
 <!-- /toc -->
 
-**ID**: `cpt-hai3-adr-four-layer-sdk-architecture`
+**ID**: `cpt-frontx-adr-four-layer-sdk-architecture`
 ## Context and Problem Statement
 
 HAI3 needed a modular architecture allowing users to pick individual SDK pieces while maintaining a cohesive framework, without imposing React on SDK consumers. The predecessor `@cyberfabric/uicore` monolith bundled state, API, i18n, and UI concerns in a single package. This made it impossible to adopt individual capabilities independently, forced React on non-UI consumers, and created circular dependency risks as the codebase grew.
@@ -81,9 +81,9 @@ Chosen option: "Four-layer architecture with strict downward-only dependency dir
 - **DESIGN**: [DESIGN.md](../DESIGN.md)
 
 This decision directly addresses:
-* `cpt-hai3-fr-sdk-flat-packages` — each SDK concern lives in its own package with no cross-L1 dependencies
-* `cpt-hai3-fr-sdk-layer-deps` — downward-only dependency direction enforced by dependency-cruiser
-* `cpt-hai3-nfr-maint-zero-crossdeps` — zero cross-dependencies at L1 as a non-functional requirement
-* `cpt-hai3-principle-layer-isolation` — architectural principle mandating layer boundary enforcement
-* `cpt-hai3-constraint-zero-cross-deps-at-l1` — hard constraint on L1 package dependency graph
-* `cpt-hai3-tech-layer-architecture` — technology decision capturing the four-layer model
+* `cpt-frontx-fr-sdk-flat-packages` — each SDK concern lives in its own package with no cross-L1 dependencies
+* `cpt-frontx-fr-sdk-layer-deps` — downward-only dependency direction enforced by dependency-cruiser
+* `cpt-frontx-nfr-maint-zero-crossdeps` — zero cross-dependencies at L1 as a non-functional requirement
+* `cpt-frontx-principle-layer-isolation` — architectural principle mandating layer boundary enforcement
+* `cpt-frontx-constraint-zero-cross-deps-at-l1` — hard constraint on L1 package dependency graph
+* `cpt-frontx-tech-layer-architecture` — technology decision capturing the four-layer model

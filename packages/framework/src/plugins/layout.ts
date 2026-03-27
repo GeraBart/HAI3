@@ -6,8 +6,8 @@
  * NOTE: Layout slices are owned by @cyberfabric/framework (not @cyberfabric/uicore which is deprecated)
  */
 
-// @cpt-dod:cpt-hai3-dod-framework-composition-layout:p1
-// @cpt-flow:cpt-hai3-flow-framework-composition-app-config:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-layout:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-app-config:p1
 
 import type { Dispatch, UnknownAction } from '@reduxjs/toolkit';
 import { eventBus } from '@cyberfabric/state';
@@ -101,7 +101,7 @@ function setHeaderVisible(_visible: boolean): void {
  *   .build();
  * ```
  */
-// @cpt-begin:cpt-hai3-dod-framework-composition-layout:p1:inst-1
+// @cpt-begin:cpt-frontx-dod-framework-composition-layout:p1:inst-1
 export function layout(): HAI3Plugin {
 
   return {
@@ -169,4 +169,4 @@ export function layout(): HAI3Plugin {
     },
   };
 }
-// @cpt-end:cpt-hai3-dod-framework-composition-layout:p1:inst-1
+// @cpt-end:cpt-frontx-dod-framework-composition-layout:p1:inst-1

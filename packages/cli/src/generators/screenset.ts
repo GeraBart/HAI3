@@ -1,4 +1,4 @@
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-replacements
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-replacements
 import path from 'path';
 import fs from 'fs-extra';
 import { getTemplatesDir } from '../core/templates.js';
@@ -47,7 +47,7 @@ function toPascalCase(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// @cpt-flow:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2
+// @cpt-flow:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2
 /**
  * Apply placeholder replacements to file content
  * Exported for use by project generator (demo MFE scaffolding)
@@ -96,9 +96,9 @@ export function applyMfeReplacements(content: string, name: string, namePascal: 
     // Replace monorepo file: refs with npm versions (standalone projects can't resolve file: paths)
     .replace(/"file:\.\.\/\.\.\/\.\.\/packages\/[a-z0-9-]+"/g, `"alpha"`);
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-replacements
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-replacements
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-rename
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-rename
 /**
  * Rename a file if it contains blank placeholders
  * Exported for use by project generator (demo MFE scaffolding)
@@ -108,9 +108,9 @@ export function applyMfeFileRename(fileName: string, name: string): string {
   return fileName
     .replace(/_BlankApiService/g, `_${namePascal}ApiService`);
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-rename
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-mfe-rename
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-read-dir
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-read-dir
 /**
  * Recursively read all files from a directory
  */
@@ -140,9 +140,9 @@ async function readDirRecursive(
 
   return files;
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-read-dir
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-read-dir
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-scan
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-scan
 /**
  * Scan existing mfe_packages to find used ports
  */
@@ -175,9 +175,9 @@ export async function getUsedMfePorts(projectRoot: string): Promise<Set<number>>
 
   return usedPorts;
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-scan
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-scan
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-assign
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-assign
 /**
  * Find next available MFE port starting from startPort
  */
@@ -189,9 +189,9 @@ export async function assignMfePort(projectRoot: string, startPort = 3001): Prom
   }
   return port;
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-assign
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-port-assign
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-regenerate-manifests
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-regenerate-manifests
 /**
  * Regenerate generated-mfe-manifests.ts by scanning all MFE packages.
  *
@@ -223,9 +223,9 @@ async function regenerateMfeManifests(projectRoot: string): Promise<void> {
   await fs.ensureDir(path.dirname(outputFile));
   await fs.writeFile(outputFile, content, 'utf-8');
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-regenerate-manifests
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-regenerate-manifests
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-build-manifests
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-build-manifests
 /**
  * Build the content of generated-mfe-manifests.ts from a list of MFE package directory names.
  * Shared by both the screenset generator (writes to disk) and the project generator (in-memory).
@@ -263,7 +263,7 @@ export function getMfeManifests() {
 }
 `;
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-build-manifests
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-build-manifests
 
 const COMPONENTS_UI_PREFIX = path.join('src', 'components', 'ui') + path.sep;
 const COMPONENTS_UI_IMPORT_PATTERN = /(from\s+)(['"])([^'"]*?components\/ui)\/[^'"]+\2/g;
@@ -275,8 +275,8 @@ const COMPONENTS_UI_IMPORT_PATTERN = /(from\s+)(['"])([^'"]*?components\/ui)\/[^
  * from the library and updates screen imports to use the barrel. This ensures
  * AI agents see imports from the library, not local shadcn patterns.
  */
-// @cpt-dod:cpt-hai3-dod-ui-libraries-choice-screenset-generation:p2
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-5
+// @cpt-dod:cpt-frontx-dod-ui-libraries-choice-screenset-generation:p2
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-5
 export function adaptMfeForCustomUikit(files: GeneratedFile[], uikit: string): GeneratedFile[] {
   assertValidUikitForCodegen(uikit);
 
@@ -313,11 +313,11 @@ export function adaptMfeForCustomUikit(files: GeneratedFile[], uikit: string): G
 
   return result;
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-5
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-5
 
 /* ---------- Plain-CSS templates for uikit === 'none' ---------- */
 
-// @cpt-begin:cpt-hai3-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-none-css-templates
+// @cpt-begin:cpt-frontx-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-none-css-templates
 const NONE_COMPONENTS_CSS = `/* Plain-CSS component styles — no Tailwind required.
    Uses CSS custom properties from globals.css (theme tokens). */
 
@@ -590,9 +590,9 @@ export function cn(...inputs: ClassInput[]) {
   return inputs.filter(Boolean).join(' ');
 }
 `;
-// @cpt-end:cpt-hai3-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-none-css-templates
+// @cpt-end:cpt-frontx-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-none-css-templates
 
-// @cpt-begin:cpt-hai3-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-adapt-none
+// @cpt-begin:cpt-frontx-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-adapt-none
 /**
  * Adapt MFE template files for uikit === 'none' (no UI library).
  *
@@ -623,9 +623,9 @@ function adaptMfeForNoneUikit(files: GeneratedFile[]): GeneratedFile[] {
 
   return result;
 }
-// @cpt-end:cpt-hai3-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-adapt-none
+// @cpt-end:cpt-frontx-dod-ui-libraries-choice-screenset-generation:p2:inst-screenset-adapt-none
 
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-strip-shadcn-deps
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-strip-shadcn-deps
 /** Shadcn-specific dependency keys to strip from MFE package.json for non-shadcn projects. */
 const SHADCN_ONLY_PKG_KEYS = [
   'tailwindcss',
@@ -679,21 +679,21 @@ function stripShadcnDepsFromMfe(files: GeneratedFile[], uikit: string): Generate
     }
   });
 }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-strip-shadcn-deps
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-strip-shadcn-deps
 
 /**
  * Generate a new MFE screenset package from the _blank-mfe template
  */
-// @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-setup
+// @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-setup
 export async function generateScreenset(
   input: ScreensetGeneratorInput
 ): Promise<ScreensetGeneratorOutput> {
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-1
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-1
   const { name, port, projectRoot } = input;
   const nameKebab = toKebabCase(name);
   const mfeDirName = `${nameKebab}-mfe`;
   const mfePath = path.join(projectRoot, 'src', 'mfe_packages', mfeDirName);
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-1
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-1
 
   const templatesDir = getTemplatesDir();
   const mfeTemplateDir = path.join(templatesDir, 'mfe-template');
@@ -703,9 +703,9 @@ export async function generateScreenset(
       'MFE template not found. Run `npm run build` in packages/cli first.'
     );
   }
-// @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-setup
+// @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-setup
 
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-6
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-6
   // Read all template files
   const templateFiles = await readDirRecursive(mfeTemplateDir);
 
@@ -722,9 +722,9 @@ export async function generateScreenset(
 
     return { path: renamedPath, content: transformedContent };
   });
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-6
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-6
 
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-2
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-2
   // For custom uikit projects, replace shadcn component files with a barrel re-export
   // so AI agents discover and use the library's components instead of creating new ones.
   const configResult = await loadConfig(projectRoot);
@@ -732,8 +732,8 @@ export async function generateScreenset(
     throw new Error(configResult.message);
   }
   const uikit = normalizeUikit(configResult.config.uikit ?? 'shadcn');
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-3
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-4
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-3
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-4
   // For shadcn: outputFiles are used as-is (base template already includes shadcn imports).
   // For none: replace shadcn components with plain-CSS equivalents (no Tailwind compilation
   //   exists in none projects, so shadcn components would render unstyled).
@@ -746,11 +746,11 @@ export async function generateScreenset(
   }
   // Non-shadcn: remove shadcn-specific deps from MFE package.json.
   outputFiles = stripShadcnDepsFromMfe(outputFiles, uikit);
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-4
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-3
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-2
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-4
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-3
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-2
 
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-finalize
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-finalize
   // Ensure mfe_packages/shared/ exists (may be missing in projects created before shared was universal)
   const sharedDir = path.join(projectRoot, 'src', 'mfe_packages', 'shared');
   if (!(await fs.pathExists(sharedDir))) {
@@ -765,12 +765,12 @@ export async function generateScreenset(
 
   // Regenerate generated-mfe-manifests.ts so bootstrap picks up the new MFE
   await regenerateMfeManifests(projectRoot);
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-finalize
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-finalize
 
-  // @cpt-begin:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-7
+  // @cpt-begin:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-7
   return {
     mfePath,
     files: writtenFiles,
   };
-  // @cpt-end:cpt-hai3-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-7
+  // @cpt-end:cpt-frontx-flow-ui-libraries-choice-screenset-generate:p2:inst-screenset-generate-7
 }

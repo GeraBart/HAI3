@@ -11,8 +11,8 @@
  *   frontx migrate --status           # Show migration status
  *   frontx migrate --path <dir>       # Target specific directory
  */
-// @cpt-flow:cpt-hai3-flow-cli-tooling-migrate:p2
-// @cpt-dod:cpt-hai3-dod-cli-tooling-migrations:p2
+// @cpt-flow:cpt-frontx-flow-cli-tooling-migrate:p2
+// @cpt-dod:cpt-frontx-dod-cli-tooling-migrations:p2
 
 import path from 'path';
 import type { CommandDefinition } from '../../core/command.js';
@@ -86,7 +86,7 @@ function createMigrationLogger(ctx: {
 /**
  * Migrate command implementation
  */
-// @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-invoke-migrate
+// @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-invoke-migrate
 export const migrateCommand: CommandDefinition<
   MigrateCommandArgs,
   MigrateCommandResult
@@ -154,7 +154,7 @@ export const migrateCommand: CommandDefinition<
       ? path.resolve(args.targetPath)
       : projectRoot || process.cwd();
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-handle-list
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-handle-list
     // Handle --list flag
     if (args.list) {
       logger.newline();
@@ -180,9 +180,9 @@ export const migrateCommand: CommandDefinition<
         results: [],
       };
     }
-    // @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-handle-list
+    // @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-handle-list
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-handle-status
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-handle-status
     // Handle --status flag
     if (args.status) {
       logger.newline();
@@ -226,13 +226,13 @@ export const migrateCommand: CommandDefinition<
         results: [],
       };
     }
-    // @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-handle-status
+    // @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-handle-status
 
     // Parse include/exclude patterns
     const include = args.include?.split(',').map((s: string) => s.replace(/^\s+|\s+$/g, ''));
     const exclude = args.exclude?.split(',').map((s: string) => s.replace(/^\s+|\s+$/g, ''));
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-run-resolve-pending
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-run-resolve-pending
     // Run migrations
     logger.newline();
     if (args.dryRun) {
@@ -252,9 +252,9 @@ export const migrateCommand: CommandDefinition<
       },
       migrationLogger
     );
-    // @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-run-resolve-pending
+    // @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-run-resolve-pending
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-dry-run-preview
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-dry-run-preview
     // Display results
     for (const result of results) {
       if (args.dryRun) {
@@ -271,12 +271,12 @@ export const migrateCommand: CommandDefinition<
           logger.newline();
         }
       } else {
-        // @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-apply-migrations
+        // @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-apply-migrations
         logger.log(formatResult(result));
-        // @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-apply-migrations
+        // @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-apply-migrations
       }
     }
-    // @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-dry-run-preview
+    // @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-dry-run-preview
 
     const totalFilesModified = results.reduce(
       (sum, r) => sum + r.filesModified,
@@ -298,14 +298,14 @@ export const migrateCommand: CommandDefinition<
       logger.error('Some migrations failed. Check the output above for details.');
     }
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-migrate:p2:inst-return-migrate
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-migrate:p2:inst-return-migrate
     return {
       success: allSuccess,
       migrationsApplied: results.length,
       filesModified: totalFilesModified,
       results,
     };
-    // @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-return-migrate
+    // @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-return-migrate
   },
 };
-// @cpt-end:cpt-hai3-flow-cli-tooling-migrate:p2:inst-invoke-migrate
+// @cpt-end:cpt-frontx-flow-cli-tooling-migrate:p2:inst-invoke-migrate

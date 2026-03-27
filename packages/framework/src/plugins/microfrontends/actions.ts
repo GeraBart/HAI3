@@ -6,9 +6,9 @@
  * Registration actions emit events that MFE effects handle.
  */
 
-// @cpt-flow:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1
-// @cpt-flow:cpt-hai3-flow-framework-composition-mfe-registration:p1
-// @cpt-dod:cpt-hai3-dod-framework-composition-mfe-plugin:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-mfe-registration:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-mfe-plugin:p1
 
 import { eventBus } from '@cyberfabric/state';
 import { MfeEvents } from './constants';
@@ -89,7 +89,7 @@ declare module '@cyberfabric/state' {
  * loadExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
-// @cpt-begin:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-1
+// @cpt-begin:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-1
 export function loadExtension(extensionId: string): void {
   const domainId = resolveDomainId(extensionId);
 
@@ -104,7 +104,7 @@ export function loadExtension(extensionId: string): void {
     console.error(`[MFE] Load failed for ${extensionId}:`, error);
   });
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-1
+// @cpt-end:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-1
 
 /**
  * Mount an MFE extension.
@@ -120,7 +120,7 @@ export function loadExtension(extensionId: string): void {
  * mountExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
-// @cpt-begin:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-2
+// @cpt-begin:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-2
 export function mountExtension(extensionId: string): void {
   const domainId = resolveDomainId(extensionId);
 
@@ -135,7 +135,7 @@ export function mountExtension(extensionId: string): void {
     console.error(`[MFE] Mount failed for ${extensionId}:`, error);
   });
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-2
+// @cpt-end:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-2
 
 /**
  * Unmount an MFE extension from its container.
@@ -149,7 +149,7 @@ export function mountExtension(extensionId: string): void {
  * unmountExtension('gts.hai3.mfes.ext.extension.v1~my.extension.v1');
  * ```
  */
-// @cpt-begin:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-3
+// @cpt-begin:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-3
 export function unmountExtension(extensionId: string): void {
   const domainId = resolveDomainId(extensionId);
 
@@ -164,7 +164,7 @@ export function unmountExtension(extensionId: string): void {
     console.error(`[MFE] Unmount failed for ${extensionId}:`, error);
   });
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-mfe-lifecycle:p1:inst-3
+// @cpt-end:cpt-frontx-flow-framework-composition-mfe-lifecycle:p1:inst-3
 
 /**
  * Register an extension dynamically at runtime.
@@ -183,11 +183,11 @@ export function unmountExtension(extensionId: string): void {
  * registerExtension(extension);
  * ```
  */
-// @cpt-begin:cpt-hai3-flow-framework-composition-mfe-registration:p1:inst-1
+// @cpt-begin:cpt-frontx-flow-framework-composition-mfe-registration:p1:inst-1
 export function registerExtension(extension: Extension): void {
   eventBus.emit(MfeEvents.RegisterExtensionRequested, { extension });
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-mfe-registration:p1:inst-1
+// @cpt-end:cpt-frontx-flow-framework-composition-mfe-registration:p1:inst-1
 
 /**
  * Unregister an extension dynamically at runtime.

@@ -1,6 +1,6 @@
-// @cpt-flow:cpt-hai3-flow-cli-tooling-validate-components:p1
-// @cpt-algo:cpt-hai3-algo-cli-tooling-scan-component-violations:p1
-// @cpt-dod:cpt-hai3-dod-cli-tooling-validate:p1
+// @cpt-flow:cpt-frontx-flow-cli-tooling-validate-components:p1
+// @cpt-algo:cpt-frontx-algo-cli-tooling-scan-component-violations:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-validate:p1
 import path from 'path';
 import fs from 'fs/promises';
 import type { CommandDefinition } from '../../core/command.js';
@@ -72,7 +72,7 @@ function isInComponentsUiFolder(filePath: string): boolean {
 /**
  * Scan a file for component violations
  */
-// @cpt-begin:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-iterate-source-files
+// @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-iterate-source-files
 async function scanFile(
   filePath: string,
   relativePath: string
@@ -83,9 +83,9 @@ async function scanFile(
 
   const isScreenFile = filePath.endsWith('Screen.tsx');
   const isUiComponentFile = isInComponentsUiFolder(filePath);
-  // @cpt-end:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-iterate-source-files
+  // @cpt-end:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-iterate-source-files
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-components
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-components
   // Check for inline components in Screen files
   if (isScreenFile) {
     // Find all FC declarations
@@ -114,9 +114,9 @@ async function scanFile(
         });
       }
     }
-    // @cpt-end:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-components
+    // @cpt-end:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-components
 
-    // @cpt-begin:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-data
+    // @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-data
     // Check for inline data arrays
     const dataPattern = new RegExp(INLINE_DATA_PATTERN.source, 'g');
     while ((match = dataPattern.exec(content)) !== null) {
@@ -149,10 +149,10 @@ async function scanFile(
         });
       }
     }
-    // @cpt-end:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-data
+    // @cpt-end:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-data
   }
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-ui-component-impurity
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-ui-component-impurity
   // Check for @cyberfabric/react or @cyberfabric/framework imports in UI component files
   if (isUiComponentFile) {
     if (BUSINESS_LOGIC_IMPORT_PATTERN.test(content)) {
@@ -176,9 +176,9 @@ async function scanFile(
       });
     }
   }
-  // @cpt-end:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-ui-component-impurity
+  // @cpt-end:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-ui-component-impurity
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-styles
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-styles
   // Check for inline styles (all files except components/ui/)
   if (!isInComponentsUiFolder(filePath)) {
     let match: RegExpExecArray | null;
@@ -213,11 +213,11 @@ async function scanFile(
       });
     }
   }
-  // @cpt-end:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-styles
+  // @cpt-end:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-detect-inline-styles
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-return-violations
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-return-violations
   return violations;
-  // @cpt-end:cpt-hai3-algo-cli-tooling-scan-component-violations:p1:inst-return-violations
+  // @cpt-end:cpt-frontx-algo-cli-tooling-scan-component-violations:p1:inst-return-violations
 }
 
 /**
@@ -261,7 +261,7 @@ async function scanDirectory(
 /**
  * Validate components command implementation
  */
-// @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-invoke-validate
+// @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-invoke-validate
 export const validateComponentsCommand: CommandDefinition<
   ValidateComponentsArgs,
   ValidateComponentsResult
@@ -278,7 +278,7 @@ export const validateComponentsCommand: CommandDefinition<
   ],
   options: [],
 
-  // @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-check-project-root-validate
+  // @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-check-project-root-validate
   validate(_args, ctx) {
     // Must be inside a project
     if (!ctx.projectRoot) {
@@ -290,12 +290,12 @@ export const validateComponentsCommand: CommandDefinition<
 
     return validationOk();
   },
-  // @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-check-project-root-validate
+  // @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-check-project-root-validate
 
   async execute(args, ctx): Promise<ValidateComponentsResult> {
     const { logger, projectRoot } = ctx;
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-resolve-scan-path
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-resolve-scan-path
     // Determine scan path
     let scanPath: string;
     if (args.path) {
@@ -305,27 +305,27 @@ export const validateComponentsCommand: CommandDefinition<
     } else {
       scanPath = getScreensetsDir(projectRoot!);
     }
-    // @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-resolve-scan-path
+    // @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-resolve-scan-path
 
     logger.info(`Validating components in ${path.relative(projectRoot!, scanPath) || scanPath}...`);
     logger.newline();
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-run-scan
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-run-scan
     // Scan for violations
     const { violations, fileCount } = await scanDirectory(scanPath, projectRoot!);
-    // @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-run-scan
+    // @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-run-scan
 
     // Group violations by severity
     const errors = violations.filter((v) => v.severity === 'error');
     const warnings = violations.filter((v) => v.severity === 'warning');
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-report-violations
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-report-violations
     // Report results
     if (violations.length === 0) {
       logger.success(`No violations found in ${fileCount} files`);
-      // @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-return-clean
+      // @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-return-clean
       return { violations: [], scannedFiles: fileCount, passed: true };
-      // @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-return-clean
+      // @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-return-clean
     }
 
     // Print violations grouped by file
@@ -356,15 +356,15 @@ export const validateComponentsCommand: CommandDefinition<
     if (warnings.length > 0) {
       logger.warn(`${warnings.length} warning(s)`);
     }
-    // @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-report-violations
+    // @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-report-violations
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-return-validate
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-return-validate
     return {
       violations,
       scannedFiles: fileCount,
       passed: errors.length === 0,
     };
-    // @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-return-validate
+    // @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-return-validate
   },
 };
-// @cpt-end:cpt-hai3-flow-cli-tooling-validate-components:p1:inst-invoke-validate
+// @cpt-end:cpt-frontx-flow-cli-tooling-validate-components:p1:inst-invoke-validate

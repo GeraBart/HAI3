@@ -20,7 +20,7 @@
  * }
  * ```
  */
-// @cpt-dod:cpt-hai3-dod-cli-tooling-package:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-package:p1
 
 // Import commands for the commands object
 import {

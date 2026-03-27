@@ -4,10 +4,10 @@
  * Framework Layer: L2
  */
 
-// @cpt-flow:cpt-hai3-flow-framework-composition-i18n-propagation:p1
-// @cpt-flow:cpt-hai3-flow-framework-composition-shared-property-broadcast:p1
-// @cpt-dod:cpt-hai3-dod-framework-composition-propagation:p1
-// @cpt-dod:cpt-hai3-dod-framework-composition-shared-property:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-i18n-propagation:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-shared-property-broadcast:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-propagation:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-shared-property:p1
 
 import { eventBus } from '@cyberfabric/state';
 import { i18nRegistry as singletonI18nRegistry, Language } from '@cyberfabric/i18n';
@@ -28,11 +28,11 @@ declare module '@cyberfabric/state' {
  *
  * @param payload - The language change payload
  */
-// @cpt-begin:cpt-hai3-flow-framework-composition-i18n-propagation:p1:inst-1
+// @cpt-begin:cpt-frontx-flow-framework-composition-i18n-propagation:p1:inst-1
 function setLanguage(payload: SetLanguagePayload): void {
   eventBus.emit('i18n/language/changed', payload);
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-i18n-propagation:p1:inst-1
+// @cpt-end:cpt-frontx-flow-framework-composition-i18n-propagation:p1:inst-1
 
 /**
  * I18n plugin factory.
@@ -65,8 +65,8 @@ export function i18n(): HAI3Plugin {
       },
     },
 
-    // @cpt-begin:cpt-hai3-flow-framework-composition-i18n-propagation:p1:inst-2
-    // @cpt-begin:cpt-hai3-dod-framework-composition-propagation:p1:inst-2
+    // @cpt-begin:cpt-frontx-flow-framework-composition-i18n-propagation:p1:inst-2
+    // @cpt-begin:cpt-frontx-dod-framework-composition-propagation:p1:inst-2
     onInit(app) {
       // Language change effect
       eventBus.on('i18n/language/changed', async (payload: SetLanguagePayload) => {
@@ -85,7 +85,7 @@ export function i18n(): HAI3Plugin {
         console.warn('[HAI3] Failed to load initial translations:', err);
       });
     },
-    // @cpt-end:cpt-hai3-flow-framework-composition-i18n-propagation:p1:inst-2
-    // @cpt-end:cpt-hai3-dod-framework-composition-propagation:p1:inst-2
+    // @cpt-end:cpt-frontx-flow-framework-composition-i18n-propagation:p1:inst-2
+    // @cpt-end:cpt-frontx-dod-framework-composition-propagation:p1:inst-2
   };
 }

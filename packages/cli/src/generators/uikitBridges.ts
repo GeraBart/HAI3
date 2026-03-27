@@ -1,6 +1,6 @@
-// @cpt-algo:cpt-hai3-algo-ui-libraries-choice-bridge-generation:p1
-// @cpt-dod:cpt-hai3-dod-ui-libraries-choice-bridge-generation:p1
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-1
+// @cpt-algo:cpt-frontx-algo-ui-libraries-choice-bridge-generation:p1
+// @cpt-dod:cpt-frontx-dod-ui-libraries-choice-bridge-generation:p1
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-1
 import type { ThemeConfig } from '../core/types.js';
 
 /**
@@ -108,26 +108,26 @@ const KNOWN_BRIDGES: Record<string, UikitBridge> = {
     },
   },
 };
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-1
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-1
 
 /**
  * Look up a known bridge for the given npm package name.
  * Returns null if the package is not recognized.
  */
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-2
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-2
 export function getUikitBridge(packageName: string): UikitBridge | null {
   return KNOWN_BRIDGES[packageName] ?? null;
 }
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-2
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-bridge-generation:p1:inst-bridge-generation-2
 
 /**
  * Generate generic themes for unknown UI libraries.
  * Produces default (light) and dark ThemeConfig objects with inline HSL values
  * so the Studio theme selector works out of the box.
  */
-// @cpt-algo:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1
-// @cpt-dod:cpt-hai3-dod-ui-libraries-choice-theme-propagation:p1
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-1
+// @cpt-algo:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1
+// @cpt-dod:cpt-frontx-dod-ui-libraries-choice-theme-propagation:p1
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-1
 export function generateGenericThemes(): { themes: ThemeConfig[]; defaultId: string } {
   const defaultTheme: ThemeConfig = {
     id: 'default',
@@ -200,14 +200,14 @@ export function generateGenericThemes(): { themes: ThemeConfig[]; defaultId: str
 
   return { themes: [defaultTheme, darkTheme], defaultId: 'default' };
 }
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-1
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-1
 
 /**
  * Generate generic globals.css for unknown UI libraries.
  * Provides :root fallback CSS variables and base body styling
  * so the Studio panel renders correctly.
  */
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-5
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-5
 export function generateGenericGlobalsCss(): string {
   const { themes } = generateGenericThemes();
   const defaultTheme = themes[0];
@@ -234,4 +234,4 @@ body {
 }
 `;
 }
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-5
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1:inst-theme-propagation-5

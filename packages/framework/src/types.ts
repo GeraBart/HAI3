@@ -4,9 +4,9 @@
  * Core types for HAI3 framework with plugin architecture.
  * Integrates all SDK packages into a cohesive framework.
  */
-// @cpt-dod:cpt-hai3-dod-framework-composition-builder:p1
-// @cpt-dod:cpt-hai3-dod-framework-composition-app-config:p1
-// @cpt-dod:cpt-hai3-dod-framework-composition-mfe-plugin:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-builder:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-app-config:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-mfe-plugin:p1
 
 // ============================================================================
 // Type Imports from SDK Packages

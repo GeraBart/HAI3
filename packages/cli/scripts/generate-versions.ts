@@ -5,7 +5,7 @@
  * and writes src/generated/versions.ts so generators ship with locked versions
  * matching the CLI's publication channel.
  *
- * ADR: cpt-hai3-adr-channel-aware-version-locking
+ * ADR: cpt-frontx-adr-channel-aware-version-locking
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'fs';
@@ -49,13 +49,13 @@ if (!existsSync(OUT_DIR)) {
 
 const lines = [
   '// AUTO-GENERATED — do not edit. Run `npm run generate-versions` to update.',
-  '// @cpt-begin cpt-hai3-adr-channel-aware-version-locking',
+  '// @cpt-begin cpt-frontx-adr-channel-aware-version-locking',
   'export const PACKAGE_VERSIONS: Record<string, string> = {',
   ...entries.map(([name, version]) => `  '${name}': '${version}',`),
   '};',
   '',
   `export const CLI_VERSION = '${cliVersion}';`,
-  '// @cpt-end cpt-hai3-adr-channel-aware-version-locking',
+  '// @cpt-end cpt-frontx-adr-channel-aware-version-locking',
   '',
 ];
 

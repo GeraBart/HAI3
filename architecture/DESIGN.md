@@ -18,6 +18,7 @@
   - [3.5 External Dependencies](#35-external-dependencies)
   - [3.6 Interactions & Sequences](#36-interactions--sequences)
   - [3.7 Database schemas & tables](#37-database-schemas--tables)
+- [3.8 Publishing Pipeline Architecture](#38-publishing-pipeline-architecture)
 - [4. Additional context](#4-additional-context)
 - [5. Traceability](#5-traceability)
 
@@ -38,120 +39,120 @@ The architecture is event-driven throughout. Components communicate exclusively 
 Requirements that significantly influence architecture decisions.
 
 **ADRs**:
-`cpt-hai3-adr-four-layer-sdk-architecture`,
-`cpt-hai3-adr-event-driven-flux-dataflow`,
-`cpt-hai3-adr-plugin-based-framework-composition`,
-`cpt-hai3-adr-blob-url-mfe-isolation`,
-`cpt-hai3-adr-esm-first-module-format`,
-`cpt-hai3-adr-screenset-vertical-slice-isolation`,
-`cpt-hai3-adr-mandatory-screen-lazy-loading`,
-`cpt-hai3-adr-hybrid-namespace-localization`,
-`cpt-hai3-adr-standalone-studio-dev-conditional`,
-`cpt-hai3-adr-protocol-separated-api-architecture`,
-`cpt-hai3-adr-react-19-ref-as-prop`,
-`cpt-hai3-adr-automated-layer-ordered-publishing`,
-`cpt-hai3-adr-symbol-based-mock-plugin-identification`,
-`cpt-hai3-adr-global-shared-property-broadcast`,
-`cpt-hai3-adr-cli-template-based-code-generation`,
-`cpt-hai3-adr-two-tier-cli-e2e-verification`,
-`cpt-hai3-adr-channel-aware-version-locking`
+`cpt-frontx-adr-four-layer-sdk-architecture`,
+`cpt-frontx-adr-event-driven-flux-dataflow`,
+`cpt-frontx-adr-plugin-based-framework-composition`,
+`cpt-frontx-adr-blob-url-mfe-isolation`,
+`cpt-frontx-adr-esm-first-module-format`,
+`cpt-frontx-adr-screenset-vertical-slice-isolation`,
+`cpt-frontx-adr-mandatory-screen-lazy-loading`,
+`cpt-frontx-adr-hybrid-namespace-localization`,
+`cpt-frontx-adr-standalone-studio-dev-conditional`,
+`cpt-frontx-adr-protocol-separated-api-architecture`,
+`cpt-frontx-adr-react-19-ref-as-prop`,
+`cpt-frontx-adr-automated-layer-ordered-publishing`,
+`cpt-frontx-adr-symbol-based-mock-plugin-identification`,
+`cpt-frontx-adr-global-shared-property-broadcast`,
+`cpt-frontx-adr-cli-template-based-code-generation`,
+`cpt-frontx-adr-two-tier-cli-e2e-verification`,
+`cpt-frontx-adr-channel-aware-version-locking`
 
 #### Functional Drivers
 
 | Requirement | Design Response |
 |-------------|------------------|
-| `cpt-hai3-fr-sdk-flat-packages` | Four separate L1 packages with independent `package.json`; npm workspaces for monorepo orchestration |
-| `cpt-hai3-fr-sdk-layer-deps` | Strict layer dependency graph enforced by `dependency-cruiser` rules: L3→L2→L1 only |
-| `cpt-hai3-fr-sdk-plugin-arch` | `createHAI3()` builder at L2 with `use()` chaining; each plugin receives `HAI3PluginContext` |
-| `cpt-hai3-fr-sdk-action-pattern` | All mutations flow through `createAction()` → eventBus dispatch → effect handler → Redux reducer |
-| `cpt-hai3-fr-mfe-dynamic-registration` | Runtime MFE registration via `screensetsRegistryFactory.build()` with handler injection |
-| `cpt-hai3-fr-blob-fresh-eval` | Blob URL isolation: each MFE bundle fetched, rewritten, and evaluated in a fresh blob context |
-| `cpt-hai3-fr-blob-import-rewriting` | Import specifiers in MFE bundles rewritten to blob URLs via `importRewriter` before evaluation |
-| `cpt-hai3-fr-dataflow-no-redux` | MFEs use internal `useReducer`/`useState`; no access to host Redux store |
-| `cpt-hai3-fr-broadcast-write-api` | Shared properties bridge host↔MFE via `setSharedProperty()`/`useSharedProperty()` |
-| `cpt-hai3-fr-appconfig-event-api` | Application-level config changes propagated via `app/*` events, not direct store mutations |
-| `cpt-hai3-fr-sse-protocol` | `@cyberfabric/api` abstracts REST and SSE behind `createApiService()` with protocol-specific adapters |
-| `cpt-hai3-fr-i18n-lazy-chunks` | Namespace-based lazy loading: translation chunks loaded on demand per screen-set |
-| `cpt-hai3-fr-externalize-transform` | Vite plugin externalizes `@cyberfabric/*` imports in MFE builds; host provides shared scope at runtime |
-| `cpt-hai3-fr-mfe-plugin` | `microfrontends()` plugin integrates MFE lifecycle, theme propagation, i18n, and shared property bridging into framework |
-| `cpt-hai3-fr-mock-toggle` | `mock()` plugin with `toggleMockMode` action enabling runtime switch between real and mock API responses |
-| `cpt-hai3-fr-sdk-state-interface` | `@cyberfabric/state` exports EventBus, `createStore`, slice management APIs, and all associated types |
-| `cpt-hai3-fr-sdk-flux-terminology` | FrontX Flux terms (Action, Event, Effect, Reducer, Slice) used consistently; Redux terms excluded from public API |
-| `cpt-hai3-fr-sdk-screensets-package` | `@cyberfabric/screensets` exports full MFE type system, registry, handler, bridge, and constants with zero `@cyberfabric/*` deps |
-| `cpt-hai3-fr-sdk-api-package` | `@cyberfabric/api` exports `BaseApiService`, REST/SSE protocols, mock plugins, `apiRegistry`, and type guards; only `axios` as peer dep |
-| `cpt-hai3-fr-sdk-i18n-package` | `@cyberfabric/i18n` exports I18nRegistry, Language enum, formatters, and metadata utilities with zero dependencies |
-| `cpt-hai3-fr-sdk-framework-layer` | `@cyberfabric/framework` wires SDK capabilities; depends only on SDK packages, provides `createHAI3()` and `createHAI3App()` |
-| `cpt-hai3-fr-sdk-react-layer` | `@cyberfabric/react` depends only on `@cyberfabric/framework`; provides `HAI3Provider` and typed hooks; no layout components |
-| `cpt-hai3-fr-sdk-module-augmentation` | TypeScript module augmentation for `EventPayloadMap` and `RootState` extensibility; custom events type-safe |
-| `cpt-hai3-fr-appconfig-tenant` | `Tenant` type with `{ id: string }`; tenant change events via event bus (`app/tenant/changed`, `app/tenant/cleared`) |
-| `cpt-hai3-fr-appconfig-router-config` | `HAI3Config.routerMode` supporting `'browser'`, `'hash'`, `'memory'` routing strategies |
-| `cpt-hai3-fr-appconfig-layout-visibility` | Imperative actions (`setFooterVisible`, `setMenuVisible`, `setSidebarVisible`) control layout region visibility |
-| `cpt-hai3-fr-sse-mock-mode` | `SseMockPlugin` short-circuits `EventSource` creation; returns `MockEventSource` for dev/test environments |
-| `cpt-hai3-fr-sse-protocol-registry` | `BaseApiService` uses protocol registry; protocols registered by constructor name via type-safe `protocol<T>()` |
-| `cpt-hai3-fr-sse-type-safe-events` | SSE events typed via `EventPayloadMap` module augmentation for compile-time safety |
-| `cpt-hai3-fr-mfe-entry-types` | `MfeEntry`, `MfeEntryMF`, `Extension`, `ScreenExtension` types define MFE communication contracts |
-| `cpt-hai3-fr-mfe-ext-domain` | `ExtensionDomain` type defines id, sharedProperties, actions, lifecycleStages, and timeout contract |
-| `cpt-hai3-fr-mfe-shared-property` | `SharedProperty` type with `id: string` and `value: unknown`; constants are GTS type IDs |
-| `cpt-hai3-fr-mfe-action-types` | `Action` and `ActionsChain` types enable chain-based MFE action execution with fallback support |
-| `cpt-hai3-fr-mfe-theme-propagation` | `themes()` plugin propagates theme changes to all MFE extensions via `screensetsRegistry.updateSharedProperty()` |
-| `cpt-hai3-fr-mfe-i18n-propagation` | `i18n()` plugin propagates language changes to all MFE extensions via `screensetsRegistry.updateSharedProperty()` |
-| `cpt-hai3-fr-blob-no-revoke` | Blob URLs kept alive for page lifetime; `URL.revokeObjectURL()` never called after `import()` resolves |
-| `cpt-hai3-fr-blob-source-cache` | In-memory cache of fetched source text keyed by chunk URL; at most one network fetch per chunk across all loads |
-| `cpt-hai3-fr-blob-recursive-chain` | `createBlobUrlChain` recursively creates blob URLs for chunk and all static dependencies |
-| `cpt-hai3-fr-blob-per-load-map` | `blobUrlMap` scoped per MFE load; different loads have independent instances preventing cross-load reuse |
-| `cpt-hai3-fr-externalize-filenames` | Shared dependency chunks use deterministic filenames without content hashes for stable MFE manifests |
-| `cpt-hai3-fr-externalize-build-only` | `hai3-mfe-externalize` plugin operates at `vite build` only; does not transform imports during `vite dev` |
-| `cpt-hai3-fr-dataflow-internal-app` | Each MFE creates isolated `HAI3App` via `createHAI3().use(effects()).use(mock()).build()` with `HAI3Provider` |
-| `cpt-hai3-fr-sharescope-construction` | `MfeHandlerMF` constructs `shareScope` from manifest, writes to `globalThis.__federation_shared__` |
-| `cpt-hai3-fr-sharescope-concurrent` | Concurrent MFE loads have independent `LoadBlobState`; at most one network fetch per chunk URL |
-| `cpt-hai3-fr-broadcast-matching` | `updateSharedProperty()` propagates only to domains declaring the property in their `sharedProperties` array |
-| `cpt-hai3-fr-broadcast-validate` | GTS validation occurs before propagation; invalid values never stored or broadcast to any domain |
-| `cpt-hai3-fr-validation-gts` | `typeSystem.register()` + `typeSystem.validateInstance()` pattern validates shared property values |
-| `cpt-hai3-fr-validation-reject` | `updateSharedProperty()` throws with validation details on failure; value not stored or propagated |
-| `cpt-hai3-fr-i18n-formatters` | Locale-aware formatters (`formatDate`, `formatNumber`, `formatCurrency`, etc.) using `Intl.*` APIs |
-| `cpt-hai3-fr-i18n-formatter-exports` | Formatters exported from `@cyberfabric/i18n`, re-exported from `@cyberfabric/framework`, accessible via `useFormatters()` |
-| `cpt-hai3-fr-i18n-graceful-invalid` | All formatters return `''` for null, undefined, or invalid inputs; never throw |
-| `cpt-hai3-fr-i18n-hybrid-namespace` | Two-tier namespaces: `screenset.<id>` for shared content, `screen.<setId>.<screenId>` for screen-specific |
-| `cpt-hai3-fr-studio-panel` | `StudioPanel` floating overlay: draggable, resizable, collapsible; visible only in dev mode; state in localStorage |
-| `cpt-hai3-fr-studio-controls` | StudioPanel provides: theme selector, MFE package selector, language selector, mock/real API toggle |
-| `cpt-hai3-fr-studio-persistence` | Theme, language, mock API state, GTS package persisted to localStorage; restored on Studio mount |
-| `cpt-hai3-fr-studio-viewport` | Studio button and panel clamped to viewport (20px margin) on load and window resize |
-| `cpt-hai3-fr-studio-independence` | `@cyberfabric/studio` standalone package; `"sideEffects": false`; excluded from production via `import.meta.env.DEV` |
-| `cpt-hai3-fr-cli-package` | `@cyberfabric/cli` workspace package with binary `frontx`; ESM (Node 18+) and programmatic API |
-| `cpt-hai3-fr-cli-commands` | CLI commands: create, update, scaffold layout/screenset, validate components, ai sync, migrate |
-| `cpt-hai3-fr-cli-templates` | Template system with `copy-templates.ts` build script, `manifest.json`; templates are user-owned |
-| `cpt-hai3-fr-cli-skills` | CLI build generates IDE guidance files and command adapters for Claude, Cursor, Windsurf, and GitHub Copilot |
-| `cpt-hai3-fr-cli-e2e-verification` | Two-tier CI verification: required PR workflow (`cli-pr-e2e`) validates critical scaffold path; nightly workflow covers broader scenarios; shared scripted harness with artifact upload |
-| `cpt-hai3-fr-pub-metadata` | All `@cyberfabric/*` packages include complete NPM metadata: author, license, repository, engines, exports |
-| `cpt-hai3-fr-pub-versions` | All `@cyberfabric/*` packages use aligned (same) version numbers |
-| `cpt-hai3-fr-pub-esm` | ESM-first module format: `"type": "module"`, dual exports (ESM + CJS), TypeScript declarations |
-| `cpt-hai3-fr-pub-ci` | CI auto-publishes affected packages to NPM in layer order on version change merge; stops on first failure |
+| `cpt-frontx-fr-sdk-flat-packages` | Four separate L1 packages with independent `package.json`; npm workspaces for monorepo orchestration |
+| `cpt-frontx-fr-sdk-layer-deps` | Strict layer dependency graph enforced by `dependency-cruiser` rules: L3→L2→L1 only |
+| `cpt-frontx-fr-sdk-plugin-arch` | `createHAI3()` builder at L2 with `use()` chaining; each plugin receives `HAI3PluginContext` |
+| `cpt-frontx-fr-sdk-action-pattern` | All mutations flow through `createAction()` → eventBus dispatch → effect handler → Redux reducer |
+| `cpt-frontx-fr-mfe-dynamic-registration` | Runtime MFE registration via `screensetsRegistryFactory.build()` with handler injection |
+| `cpt-frontx-fr-blob-fresh-eval` | Blob URL isolation: each MFE bundle fetched, rewritten, and evaluated in a fresh blob context |
+| `cpt-frontx-fr-blob-import-rewriting` | Import specifiers in MFE bundles rewritten to blob URLs via `importRewriter` before evaluation |
+| `cpt-frontx-fr-dataflow-no-redux` | MFEs use internal `useReducer`/`useState`; no access to host Redux store |
+| `cpt-frontx-fr-broadcast-write-api` | Shared properties bridge host↔MFE via `setSharedProperty()`/`useSharedProperty()` |
+| `cpt-frontx-fr-appconfig-event-api` | Application-level config changes propagated via `app/*` events, not direct store mutations |
+| `cpt-frontx-fr-sse-protocol` | `@cyberfabric/api` abstracts REST and SSE behind `createApiService()` with protocol-specific adapters |
+| `cpt-frontx-fr-i18n-lazy-chunks` | Namespace-based lazy loading: translation chunks loaded on demand per screen-set |
+| `cpt-frontx-fr-externalize-transform` | Vite plugin externalizes `@cyberfabric/*` imports in MFE builds; host provides shared scope at runtime |
+| `cpt-frontx-fr-mfe-plugin` | `microfrontends()` plugin integrates MFE lifecycle, theme propagation, i18n, and shared property bridging into framework |
+| `cpt-frontx-fr-mock-toggle` | `mock()` plugin with `toggleMockMode` action enabling runtime switch between real and mock API responses |
+| `cpt-frontx-fr-sdk-state-interface` | `@cyberfabric/state` exports EventBus, `createStore`, slice management APIs, and all associated types |
+| `cpt-frontx-fr-sdk-flux-terminology` | FrontX Flux terms (Action, Event, Effect, Reducer, Slice) used consistently; Redux terms excluded from public API |
+| `cpt-frontx-fr-sdk-screensets-package` | `@cyberfabric/screensets` exports full MFE type system, registry, handler, bridge, and constants with zero `@cyberfabric/*` deps |
+| `cpt-frontx-fr-sdk-api-package` | `@cyberfabric/api` exports `BaseApiService`, REST/SSE protocols, mock plugins, `apiRegistry`, and type guards; only `axios` as peer dep |
+| `cpt-frontx-fr-sdk-i18n-package` | `@cyberfabric/i18n` exports I18nRegistry, Language enum, formatters, and metadata utilities with zero dependencies |
+| `cpt-frontx-fr-sdk-framework-layer` | `@cyberfabric/framework` wires SDK capabilities; depends only on SDK packages, provides `createHAI3()` and `createHAI3App()` |
+| `cpt-frontx-fr-sdk-react-layer` | `@cyberfabric/react` depends only on `@cyberfabric/framework`; provides `HAI3Provider` and typed hooks; no layout components |
+| `cpt-frontx-fr-sdk-module-augmentation` | TypeScript module augmentation for `EventPayloadMap` and `RootState` extensibility; custom events type-safe |
+| `cpt-frontx-fr-appconfig-tenant` | `Tenant` type with `{ id: string }`; tenant change events via event bus (`app/tenant/changed`, `app/tenant/cleared`) |
+| `cpt-frontx-fr-appconfig-router-config` | `HAI3Config.routerMode` supporting `'browser'`, `'hash'`, `'memory'` routing strategies |
+| `cpt-frontx-fr-appconfig-layout-visibility` | Imperative actions (`setFooterVisible`, `setMenuVisible`, `setSidebarVisible`) control layout region visibility |
+| `cpt-frontx-fr-sse-mock-mode` | `SseMockPlugin` short-circuits `EventSource` creation; returns `MockEventSource` for dev/test environments |
+| `cpt-frontx-fr-sse-protocol-registry` | `BaseApiService` uses protocol registry; protocols registered by constructor name via type-safe `protocol<T>()` |
+| `cpt-frontx-fr-sse-type-safe-events` | SSE events typed via `EventPayloadMap` module augmentation for compile-time safety |
+| `cpt-frontx-fr-mfe-entry-types` | `MfeEntry`, `MfeEntryMF`, `Extension`, `ScreenExtension` types define MFE communication contracts |
+| `cpt-frontx-fr-mfe-ext-domain` | `ExtensionDomain` type defines id, sharedProperties, actions, lifecycleStages, and timeout contract |
+| `cpt-frontx-fr-mfe-shared-property` | `SharedProperty` type with `id: string` and `value: unknown`; constants are GTS type IDs |
+| `cpt-frontx-fr-mfe-action-types` | `Action` and `ActionsChain` types enable chain-based MFE action execution with fallback support |
+| `cpt-frontx-fr-mfe-theme-propagation` | `themes()` plugin propagates theme changes to all MFE extensions via `screensetsRegistry.updateSharedProperty()` |
+| `cpt-frontx-fr-mfe-i18n-propagation` | `i18n()` plugin propagates language changes to all MFE extensions via `screensetsRegistry.updateSharedProperty()` |
+| `cpt-frontx-fr-blob-no-revoke` | Blob URLs kept alive for page lifetime; `URL.revokeObjectURL()` never called after `import()` resolves |
+| `cpt-frontx-fr-blob-source-cache` | In-memory cache of fetched source text keyed by chunk URL; at most one network fetch per chunk across all loads |
+| `cpt-frontx-fr-blob-recursive-chain` | `createBlobUrlChain` recursively creates blob URLs for chunk and all static dependencies |
+| `cpt-frontx-fr-blob-per-load-map` | `blobUrlMap` scoped per MFE load; different loads have independent instances preventing cross-load reuse |
+| `cpt-frontx-fr-externalize-filenames` | Shared dependency chunks use deterministic filenames without content hashes for stable MFE manifests |
+| `cpt-frontx-fr-externalize-build-only` | `hai3-mfe-externalize` plugin operates at `vite build` only; does not transform imports during `vite dev` |
+| `cpt-frontx-fr-dataflow-internal-app` | Each MFE creates isolated `HAI3App` via `createHAI3().use(effects()).use(mock()).build()` with `HAI3Provider` |
+| `cpt-frontx-fr-sharescope-construction` | `MfeHandlerMF` constructs `shareScope` from manifest, writes to `globalThis.__federation_shared__` |
+| `cpt-frontx-fr-sharescope-concurrent` | Concurrent MFE loads have independent `LoadBlobState`; at most one network fetch per chunk URL |
+| `cpt-frontx-fr-broadcast-matching` | `updateSharedProperty()` propagates only to domains declaring the property in their `sharedProperties` array |
+| `cpt-frontx-fr-broadcast-validate` | GTS validation occurs before propagation; invalid values never stored or broadcast to any domain |
+| `cpt-frontx-fr-validation-gts` | `typeSystem.register()` + `typeSystem.validateInstance()` pattern validates shared property values |
+| `cpt-frontx-fr-validation-reject` | `updateSharedProperty()` throws with validation details on failure; value not stored or propagated |
+| `cpt-frontx-fr-i18n-formatters` | Locale-aware formatters (`formatDate`, `formatNumber`, `formatCurrency`, etc.) using `Intl.*` APIs |
+| `cpt-frontx-fr-i18n-formatter-exports` | Formatters exported from `@cyberfabric/i18n`, re-exported from `@cyberfabric/framework`, accessible via `useFormatters()` |
+| `cpt-frontx-fr-i18n-graceful-invalid` | All formatters return `''` for null, undefined, or invalid inputs; never throw |
+| `cpt-frontx-fr-i18n-hybrid-namespace` | Two-tier namespaces: `screenset.<id>` for shared content, `screen.<setId>.<screenId>` for screen-specific |
+| `cpt-frontx-fr-studio-panel` | `StudioPanel` floating overlay: draggable, resizable, collapsible; visible only in dev mode; state in localStorage |
+| `cpt-frontx-fr-studio-controls` | StudioPanel provides: theme selector, MFE package selector, language selector, mock/real API toggle |
+| `cpt-frontx-fr-studio-persistence` | Theme, language, mock API state, GTS package persisted to localStorage; restored on Studio mount |
+| `cpt-frontx-fr-studio-viewport` | Studio button and panel clamped to viewport (20px margin) on load and window resize |
+| `cpt-frontx-fr-studio-independence` | `@cyberfabric/studio` standalone package; `"sideEffects": false`; excluded from production via `import.meta.env.DEV` |
+| `cpt-frontx-fr-cli-package` | `@cyberfabric/cli` workspace package with binary `frontx`; ESM (Node 18+) and programmatic API |
+| `cpt-frontx-fr-cli-commands` | CLI commands: create, update, scaffold layout/screenset, validate components, ai sync, migrate |
+| `cpt-frontx-fr-cli-templates` | Template system with `copy-templates.ts` build script, `manifest.json`; templates are user-owned |
+| `cpt-frontx-fr-cli-skills` | CLI build generates IDE guidance files and command adapters for Claude, Cursor, Windsurf, and GitHub Copilot |
+| `cpt-frontx-fr-cli-e2e-verification` | Two-tier CI verification: required PR workflow (`cli-pr-e2e`) validates critical scaffold path; nightly workflow covers broader scenarios; shared scripted harness with artifact upload |
+| `cpt-frontx-fr-pub-metadata` | All `@cyberfabric/*` packages include complete NPM metadata: author, license, repository, engines, exports |
+| `cpt-frontx-fr-pub-versions` | All `@cyberfabric/*` packages use aligned (same) version numbers |
+| `cpt-frontx-fr-pub-esm` | ESM-first module format: `"type": "module"`, dual exports (ESM + CJS), TypeScript declarations |
+| `cpt-frontx-fr-pub-ci` | CI auto-publishes affected packages to NPM in layer order on version change merge; stops on first failure |
 
 #### NFR Allocation
 
 | NFR ID | NFR Summary | Allocated To | Design Response | Verification Approach |
 |--------|-------------|--------------|-----------------|----------------------|
-| `cpt-hai3-nfr-perf-lazy-loading` | Screensets and MFE code loaded on demand | `cpt-hai3-component-screensets`, `cpt-hai3-component-framework` | Dynamic `import()` per screen-set; MFE bundles fetched at registration time | Bundle analysis; network waterfall in DevTools |
-| `cpt-hai3-nfr-perf-treeshake` | Unused SDK exports eliminated at build | `cpt-hai3-component-state`, all L1 packages | ESM-only output via tsup; no side-effect barrel files | `knip` unused-export detection in CI |
-| `cpt-hai3-nfr-perf-blob-overhead` | Blob URL creation < 50ms for typical MFE | `cpt-hai3-component-screensets` | Source text cached after first fetch; import rewriting operates on string, not AST | Performance benchmark in test suite |
-| `cpt-hai3-nfr-perf-action-timeout` | Actions complete or timeout within defined bounds | `cpt-hai3-component-state` | Effect handlers responsible for timeout; framework does not enforce global timeout | Unit tests with async action scenarios |
-| `cpt-hai3-nfr-rel-error-handling` | Plugin/MFE errors do not crash host | `cpt-hai3-component-framework`, `cpt-hai3-component-react` | React error boundaries per MFE; plugin `init()` failures logged, not thrown | Integration tests with failing plugins |
-| `cpt-hai3-nfr-rel-api-retry` | API calls support retry with backoff | `cpt-hai3-component-api` | Axios interceptor layer; retry configuration per service instance | Unit tests with mock server |
-| `cpt-hai3-nfr-rel-serialization` | State serializable for persistence/debugging | `cpt-hai3-component-state` | Redux Toolkit enforces serializable state by default; custom middleware logs violations | Redux DevTools inspection |
-| `cpt-hai3-nfr-sec-shadow-dom` | MFE CSS isolated from host | `cpt-hai3-component-react` | Shadow DOM wrapper for MFE render containers | Visual regression tests |
-| `cpt-hai3-nfr-sec-csp-blob` | Blob URLs compatible with CSP policies | `cpt-hai3-component-screensets` | `blob:` scheme added to `script-src`; no `eval()` or `new Function()` used | CSP violation reporting in staging |
-| `cpt-hai3-nfr-sec-type-validation` | Shared properties validated at boundary | `cpt-hai3-component-framework` | GTS plugin validates shared property values against declared schemas | Unit tests with invalid payloads |
-| `cpt-hai3-nfr-compat-node` | Packages installable on Node ≥ 18 | All packages | `engines` field in each `package.json`; CI matrix tests Node 18/20/22 | CI build matrix |
-| `cpt-hai3-nfr-compat-typescript` | TypeScript ≥ 5.5 | All packages | `tsconfig.json` targets ES2022; strict mode enabled | CI type-check step |
-| `cpt-hai3-nfr-compat-esm` | ESM-first output | All packages | tsup configured with `format: ['esm']`; `"type": "module"` in `package.json` | Import resolution tests |
-| `cpt-hai3-nfr-compat-react` | Compatible with React 19 | `cpt-hai3-component-react` | React 19 as peer dependency; `ref` as prop (no `forwardRef`) | CI tests against React 19 |
-| `cpt-hai3-nfr-maint-zero-crossdeps` | L1 packages have zero cross-dependencies | All L1 packages | Each L1 `package.json` lists no `@cyberfabric/*` dependencies; `dependency-cruiser` rule blocks violations | CI dependency-cruiser check |
-| `cpt-hai3-nfr-maint-event-driven` | Cross-domain communication via events only | `cpt-hai3-component-state`, `cpt-hai3-component-framework` | `eventBus` is the sole cross-domain channel; no direct store imports across domains | Architecture lint rules |
-| `cpt-hai3-nfr-maint-arch-enforcement` | Layer violations detected automatically | Build system | `dependency-cruiser` config with forbidden dependency rules; `knip` for unused exports | CI gate on lint failure |
+| `cpt-frontx-nfr-perf-lazy-loading` | Screensets and MFE code loaded on demand | `cpt-frontx-component-screensets`, `cpt-frontx-component-framework` | Dynamic `import()` per screen-set; MFE bundles fetched at registration time | Bundle analysis; network waterfall in DevTools |
+| `cpt-frontx-nfr-perf-treeshake` | Unused SDK exports eliminated at build | `cpt-frontx-component-state`, all L1 packages | ESM-only output via tsup; no side-effect barrel files | `knip` unused-export detection in CI |
+| `cpt-frontx-nfr-perf-blob-overhead` | Blob URL creation < 50ms for typical MFE | `cpt-frontx-component-screensets` | Source text cached after first fetch; import rewriting operates on string, not AST | Performance benchmark in test suite |
+| `cpt-frontx-nfr-perf-action-timeout` | Actions complete or timeout within defined bounds | `cpt-frontx-component-state` | Effect handlers responsible for timeout; framework does not enforce global timeout | Unit tests with async action scenarios |
+| `cpt-frontx-nfr-rel-error-handling` | Plugin/MFE errors do not crash host | `cpt-frontx-component-framework`, `cpt-frontx-component-react` | React error boundaries per MFE; plugin `init()` failures logged, not thrown | Integration tests with failing plugins |
+| `cpt-frontx-nfr-rel-api-retry` | API calls support retry with backoff | `cpt-frontx-component-api` | Axios interceptor layer; retry configuration per service instance | Unit tests with mock server |
+| `cpt-frontx-nfr-rel-serialization` | State serializable for persistence/debugging | `cpt-frontx-component-state` | Redux Toolkit enforces serializable state by default; custom middleware logs violations | Redux DevTools inspection |
+| `cpt-frontx-nfr-sec-shadow-dom` | MFE CSS isolated from host | `cpt-frontx-component-react` | Shadow DOM wrapper for MFE render containers | Visual regression tests |
+| `cpt-frontx-nfr-sec-csp-blob` | Blob URLs compatible with CSP policies | `cpt-frontx-component-screensets` | `blob:` scheme added to `script-src`; no `eval()` or `new Function()` used | CSP violation reporting in staging |
+| `cpt-frontx-nfr-sec-type-validation` | Shared properties validated at boundary | `cpt-frontx-component-framework` | GTS plugin validates shared property values against declared schemas | Unit tests with invalid payloads |
+| `cpt-frontx-nfr-compat-node` | Packages installable on Node ≥ 18 | All packages | `engines` field in each `package.json`; CI matrix tests Node 18/20/22 | CI build matrix |
+| `cpt-frontx-nfr-compat-typescript` | TypeScript ≥ 5.5 | All packages | `tsconfig.json` targets ES2022; strict mode enabled | CI type-check step |
+| `cpt-frontx-nfr-compat-esm` | ESM-first output | All packages | tsup configured with `format: ['esm']`; `"type": "module"` in `package.json` | Import resolution tests |
+| `cpt-frontx-nfr-compat-react` | Compatible with React 19 | `cpt-frontx-component-react` | React 19 as peer dependency; `ref` as prop (no `forwardRef`) | CI tests against React 19 |
+| `cpt-frontx-nfr-maint-zero-crossdeps` | L1 packages have zero cross-dependencies | All L1 packages | Each L1 `package.json` lists no `@cyberfabric/*` dependencies; `dependency-cruiser` rule blocks violations | CI dependency-cruiser check |
+| `cpt-frontx-nfr-maint-event-driven` | Cross-domain communication via events only | `cpt-frontx-component-state`, `cpt-frontx-component-framework` | `eventBus` is the sole cross-domain channel; no direct store imports across domains | Architecture lint rules |
+| `cpt-frontx-nfr-maint-arch-enforcement` | Layer violations detected automatically | Build system | `dependency-cruiser` config with forbidden dependency rules; `knip` for unused exports | CI gate on lint failure |
 
 ### 1.3 Architecture Layers
 
-- [x] `p1` - **ID**: `cpt-hai3-tech-layer-architecture`
+- [x] `p1` - **ID**: `cpt-frontx-tech-layer-architecture`
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -188,9 +189,9 @@ Requirements that significantly influence architecture decisions.
 
 #### Event-Driven Architecture
 
-- [x] `p1` - **ID**: `cpt-hai3-principle-event-driven-architecture`
+- [x] `p1` - **ID**: `cpt-frontx-principle-event-driven-architecture`
 
-**ADRs**: `cpt-hai3-adr-event-driven-flux-dataflow`
+**ADRs**: `cpt-frontx-adr-event-driven-flux-dataflow`
 
 All cross-domain communication flows through a typed event bus (`eventBus` in `@cyberfabric/state`). No component may directly call methods on or import internal state from another domain. This ensures loose coupling, enables replay/debugging of all system interactions, and allows MFE extensions to participate in host events without tight integration.
 
@@ -198,9 +199,9 @@ The event bus uses a publish/subscribe model with typed event names and payloads
 
 #### Layer Isolation
 
-- [x] `p1` - **ID**: `cpt-hai3-principle-layer-isolation`
+- [x] `p1` - **ID**: `cpt-frontx-principle-layer-isolation`
 
-**ADRs**: `cpt-hai3-adr-four-layer-sdk-architecture`
+**ADRs**: `cpt-frontx-adr-four-layer-sdk-architecture`
 
 Dependencies flow strictly downward: L3 → L2 → L1. No upward or lateral dependencies are permitted within the layer hierarchy. L1 packages have zero `@cyberfabric/*` dependencies. L2 depends only on L1 packages. L3 depends only on L2 (which re-exports L1 surface). This enables each layer to be tested, built, and versioned independently.
 
@@ -208,9 +209,9 @@ Standalone packages (`@cyberfabric/studio`, `@cyberfabric/cli`) exist outside th
 
 #### Plugin-First Composition
 
-- [x] `p1` - **ID**: `cpt-hai3-principle-plugin-first-composition`
+- [x] `p1` - **ID**: `cpt-frontx-principle-plugin-first-composition`
 
-**ADRs**: `cpt-hai3-adr-plugin-based-framework-composition`
+**ADRs**: `cpt-frontx-adr-plugin-based-framework-composition`
 
 All framework capabilities are delivered through plugins. The framework core (`createHAI3()`) is a minimal builder that assembles a plugin chain. Each plugin implements the `HAI3Plugin` interface with an `init(context: HAI3PluginContext)` method. Plugins register slices, effects, event listeners, and UI extensions through the context object.
 
@@ -218,7 +219,7 @@ The host application composes its feature set by chaining `.use()` calls: `creat
 
 #### Self-Registering Registries
 
-- [x] `p2` - **ID**: `cpt-hai3-principle-self-registering-registries`
+- [x] `p2` - **ID**: `cpt-frontx-principle-self-registering-registries`
 
 Registries (screensets, themes, API services, routes, i18n namespaces) populate themselves at import time through side-effect registrations. Consumers never edit a central registry file to add entries. Each screen-set, component, or service registers itself in its own module. The registry root file only provides the registry factory/accessor — it never contains an item list.
 
@@ -226,9 +227,9 @@ This eliminates merge conflicts on registry files and enables tree-shaking of un
 
 #### Action → Event → Effect → Reducer Flux
 
-- [x] `p1` - **ID**: `cpt-hai3-principle-action-event-effect-reducer-flux`
+- [x] `p1` - **ID**: `cpt-frontx-principle-action-event-effect-reducer-flux`
 
-**ADRs**: `cpt-hai3-adr-event-driven-flux-dataflow`
+**ADRs**: `cpt-frontx-adr-event-driven-flux-dataflow`
 
 All state mutations follow a fixed sequence: (1) Component calls `createAction()`, (2) action dispatches an event via `eventBus`, (3) registered effects handle the event (API calls, validation, side effects), (4) effects dispatch Redux actions, (5) reducers produce new state. Components never dispatch Redux actions directly. This ensures every state change is traceable and debuggable.
 
@@ -236,9 +237,9 @@ The terminology follows Redux Toolkit conventions: slices, reducers, selectors, 
 
 #### MFE Isolation
 
-- [x] `p1` - **ID**: `cpt-hai3-principle-mfe-isolation`
+- [x] `p1` - **ID**: `cpt-frontx-principle-mfe-isolation`
 
-**ADRs**: `cpt-hai3-adr-blob-url-mfe-isolation`
+**ADRs**: `cpt-frontx-adr-blob-url-mfe-isolation`
 
 Microfrontend extensions execute in an isolated context. JavaScript isolation is achieved through blob URL evaluation: each MFE bundle is fetched, its import specifiers are rewritten to point to blob URLs of shared dependencies, and the rewritten bundle is evaluated in a new module scope. CSS isolation uses Shadow DOM containers. MFEs have no access to the host Redux store; they communicate with the host exclusively through shared properties and the event bus.
 
@@ -246,9 +247,9 @@ Microfrontend extensions execute in an isolated context. JavaScript isolation is
 
 #### No React Below L3
 
-- [x] `p1` - **ID**: `cpt-hai3-constraint-no-react-below-l3`
+- [x] `p1` - **ID**: `cpt-frontx-constraint-no-react-below-l3`
 
-**ADRs**: `cpt-hai3-adr-four-layer-sdk-architecture`
+**ADRs**: `cpt-frontx-adr-four-layer-sdk-architecture`
 
 L1 SDK and L2 Framework packages SHALL NOT import React or any React-specific APIs. This ensures the SDK and framework are usable in non-React environments (Node.js scripts, web workers, alternative renderers). React appears only in L3 (`@cyberfabric/react`) and standalone packages (`@cyberfabric/studio`).
 
@@ -256,9 +257,9 @@ L1 SDK and L2 Framework packages SHALL NOT import React or any React-specific AP
 
 #### Zero Cross-Dependencies at L1
 
-- [x] `p1` - **ID**: `cpt-hai3-constraint-zero-cross-deps-at-l1`
+- [x] `p1` - **ID**: `cpt-frontx-constraint-zero-cross-deps-at-l1`
 
-**ADRs**: `cpt-hai3-adr-four-layer-sdk-architecture`
+**ADRs**: `cpt-frontx-adr-four-layer-sdk-architecture`
 
 No L1 SDK package may depend on another L1 SDK package. `@cyberfabric/state` SHALL NOT import from `@cyberfabric/api`, `@cyberfabric/i18n`, or `@cyberfabric/screensets`, and vice versa. This keeps each SDK package independently deployable and prevents coupling between orthogonal concerns.
 
@@ -266,7 +267,7 @@ No L1 SDK package may depend on another L1 SDK package. `@cyberfabric/state` SHA
 
 #### No Package Internals Imports
 
-- [x] `p2` - **ID**: `cpt-hai3-constraint-no-package-internals-imports`
+- [x] `p2` - **ID**: `cpt-frontx-constraint-no-package-internals-imports`
 
 Consumers SHALL NOT import from sub-paths of workspace packages (e.g., `@cyberfabric/state/src/eventBus`). All public API is exported through the package entry point. Internal module structure is an implementation detail that may change without notice.
 
@@ -274,13 +275,13 @@ Consumers SHALL NOT import from sub-paths of workspace packages (e.g., `@cyberfa
 
 #### No Barrel Exports for Registries
 
-- [x] `p2` - **ID**: `cpt-hai3-constraint-no-barrel-exports-for-registries`
+- [x] `p2` - **ID**: `cpt-frontx-constraint-no-barrel-exports-for-registries`
 
 Registry root files SHALL NOT re-export individual registry items. Each registered item (screen-set, component, service) self-registers via side-effect import. The registry file provides only the factory, accessor, or type — never the item list. This prevents barrel files from defeating tree-shaking and eliminates merge conflicts on central export lists.
 
 #### TypeScript Strict Mode
 
-- [x] `p1` - **ID**: `cpt-hai3-constraint-typescript-strict-mode`
+- [x] `p1` - **ID**: `cpt-frontx-constraint-typescript-strict-mode`
 
 All packages compile with `"strict": true` in `tsconfig.json`. Use of `any`, `as unknown as`, or `@ts-ignore` is forbidden. Type safety is enforced at compile time across all layers. Module augmentation (`declare module`) is the approved mechanism for extending framework types from plugins.
 
@@ -288,9 +289,9 @@ All packages compile with `"strict": true` in `tsconfig.json`. Use of `any`, `as
 
 #### ESM-First Module Format
 
-- [x] `p1` - **ID**: `cpt-hai3-constraint-esm-first-module-format`
+- [x] `p1` - **ID**: `cpt-frontx-constraint-esm-first-module-format`
 
-**ADRs**: `cpt-hai3-adr-esm-first-module-format`
+**ADRs**: `cpt-frontx-adr-esm-first-module-format`
 
 All packages output ESM as the primary module format. `package.json` files include `"type": "module"` and `"exports"` field with ESM entry points. CJS is not supported. This ensures compatibility with modern bundlers, enables tree-shaking, and aligns with the platform direction of Node.js and browsers.
 
@@ -362,7 +363,7 @@ All packages output ESM as the primary module format. `package.json` files inclu
 
 #### @cyberfabric/state (L1)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-state`
+- [x] `p1` - **ID**: `cpt-frontx-component-state`
 
 ##### Why this component exists
 
@@ -379,19 +380,19 @@ Provides the foundational state management and event infrastructure that all oth
 
 ##### Responsibility boundaries
 
-- Does NOT provide UI bindings (React hooks, components) — delegated to `cpt-hai3-component-react`
+- Does NOT provide UI bindings (React hooks, components) — delegated to `cpt-frontx-component-react`
 - Does NOT define domain-specific slices — each plugin registers its own slices
 - Does NOT depend on any other `@cyberfabric/*` package
 - Does NOT implement persistence or devtools — relies on Redux Toolkit's built-in middleware
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-framework` — depends on: framework registers slices and effects via plugin context
-- `cpt-hai3-component-react` — depends on: provides hooks (`useSelector`, `useDispatch`) over this store
+- `cpt-frontx-component-framework` — depends on: framework registers slices and effects via plugin context
+- `cpt-frontx-component-react` — depends on: provides hooks (`useSelector`, `useDispatch`) over this store
 
 #### @cyberfabric/screensets (L1)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-screensets`
+- [x] `p1` - **ID**: `cpt-frontx-component-screensets`
 
 ##### Why this component exists
 
@@ -407,19 +408,19 @@ Defines the contract between the host application and microfrontend extensions. 
 
 ##### Responsibility boundaries
 
-- Does NOT render MFE content (React mounting) — delegated to `cpt-hai3-component-react`
-- Does NOT manage theme or i18n propagation into MFEs — delegated to `cpt-hai3-component-framework`
+- Does NOT render MFE content (React mounting) — delegated to `cpt-frontx-component-react`
+- Does NOT manage theme or i18n propagation into MFEs — delegated to `cpt-frontx-component-framework`
 - Does NOT depend on any other `@cyberfabric/*` package
 - Does NOT handle CSS isolation (Shadow DOM) — delegated to rendering layer
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-framework` — depends on: framework's `microfrontends()` plugin orchestrates MFE lifecycle using screensets API
-- `cpt-hai3-component-react` — depends on: `MfeContainer` component renders loaded MFE content
+- `cpt-frontx-component-framework` — depends on: framework's `microfrontends()` plugin orchestrates MFE lifecycle using screensets API
+- `cpt-frontx-component-react` — depends on: `MfeContainer` component renders loaded MFE content
 
 #### @cyberfabric/api (L1)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-api`
+- [x] `p1` - **ID**: `cpt-frontx-component-api`
 
 ##### Why this component exists
 
@@ -443,12 +444,12 @@ Provides a unified API service layer that abstracts protocol differences (REST, 
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-framework` — depends on: framework plugins use `createApiService()` to register domain APIs
-- `cpt-hai3-component-state` — publishes to: API effects dispatch events on the event bus for state updates
+- `cpt-frontx-component-framework` — depends on: framework plugins use `createApiService()` to register domain APIs
+- `cpt-frontx-component-state` — publishes to: API effects dispatch events on the event bus for state updates
 
 #### @cyberfabric/i18n (L1)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-i18n`
+- [x] `p1` - **ID**: `cpt-frontx-component-i18n`
 
 ##### Why this component exists
 
@@ -464,18 +465,18 @@ Provides internationalization infrastructure with support for 36 languages, loca
 
 ##### Responsibility boundaries
 
-- Does NOT provide React hooks for translation — delegated to `cpt-hai3-component-react` (which wraps i18next React bindings)
+- Does NOT provide React hooks for translation — delegated to `cpt-frontx-component-react` (which wraps i18next React bindings)
 - Does NOT contain translation content — only infrastructure; content provided by consuming applications
 - Does NOT depend on any other `@cyberfabric/*` package
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-framework` — depends on: framework initializes i18n and propagates language changes to MFEs
-- `cpt-hai3-component-react` — depends on: provides `useTranslation()` hook wrapping i18n infrastructure
+- `cpt-frontx-component-framework` — depends on: framework initializes i18n and propagates language changes to MFEs
+- `cpt-frontx-component-react` — depends on: provides `useTranslation()` hook wrapping i18n infrastructure
 
 #### @cyberfabric/framework (L2)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-framework`
+- [x] `p1` - **ID**: `cpt-frontx-component-framework`
 
 ##### Why this component exists
 
@@ -493,22 +494,22 @@ Composes L1 SDK packages into a cohesive application framework through a plugin 
 
 ##### Responsibility boundaries
 
-- Does NOT provide React components or hooks — delegated to `cpt-hai3-component-react`
+- Does NOT provide React components or hooks — delegated to `cpt-frontx-component-react`
 - Does NOT define UI components — delegated to application/screenset local UI
-- Does NOT implement blob URL isolation — uses `cpt-hai3-component-screensets` API
+- Does NOT implement blob URL isolation — uses `cpt-frontx-component-screensets` API
 - Does NOT bundle L1 packages — re-exports only; each L1 remains independently installable
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-state` — depends on: uses store, event bus, action/effect system
-- `cpt-hai3-component-screensets` — depends on: uses registry factory and MFE contracts
-- `cpt-hai3-component-api` — depends on: initializes API services and protocol adapters
-- `cpt-hai3-component-i18n` — depends on: initializes i18n and manages language lifecycle
-- `cpt-hai3-component-react` — depended on by: React layer consumes framework's builder output
+- `cpt-frontx-component-state` — depends on: uses store, event bus, action/effect system
+- `cpt-frontx-component-screensets` — depends on: uses registry factory and MFE contracts
+- `cpt-frontx-component-api` — depends on: initializes API services and protocol adapters
+- `cpt-frontx-component-i18n` — depends on: initializes i18n and manages language lifecycle
+- `cpt-frontx-component-react` — depended on by: React layer consumes framework's builder output
 
 #### @cyberfabric/react (L3)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-react`
+- [x] `p1` - **ID**: `cpt-frontx-component-react`
 
 ##### Why this component exists
 
@@ -524,24 +525,24 @@ Bridges the framework layer to React 19, providing the provider tree, hooks, and
 
 ##### Responsibility boundaries
 
-- Does NOT define the store, event bus, or action system — uses `cpt-hai3-component-framework`
+- Does NOT define the store, event bus, or action system — uses `cpt-frontx-component-framework`
 - Does NOT define UI component implementations — uses application/screenset local UI
-- Does NOT manage MFE loading or blob URL creation — uses `cpt-hai3-component-screensets` via framework
+- Does NOT manage MFE loading or blob URL creation — uses `cpt-frontx-component-screensets` via framework
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-framework` — depends on: consumes builder output and plugin registrations
-- `cpt-hai3-component-studio` — used by: studio panel renders inside the provider tree
+- `cpt-frontx-component-framework` — depends on: consumes builder output and plugin registrations
+- `cpt-frontx-component-studio` — used by: studio panel renders inside the provider tree
 
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-react` — used by: application renders UI within HAI3Provider
-- `cpt-hai3-component-studio` — uses: studio panel uses local UI primitives for its controls
+- `cpt-frontx-component-react` — used by: application renders UI within HAI3Provider
+- `cpt-frontx-component-studio` — uses: studio panel uses local UI primitives for its controls
 
 #### @cyberfabric/studio (Standalone)
 
-- [x] `p1` - **ID**: `cpt-hai3-component-studio`
+- [x] `p1` - **ID**: `cpt-frontx-component-studio`
 
 ##### Why this component exists
 
@@ -563,11 +564,11 @@ Provides a development-time overlay for inspecting and tweaking theme, i18n, vie
 
 ##### Related components (by ID)
 
-- `cpt-hai3-component-react` — used by: renders inside HAI3Provider context
+- `cpt-frontx-component-react` — used by: renders inside HAI3Provider context
 
 #### @cyberfabric/cli (Tooling)
 
-- [x] `p2` - **ID**: `cpt-hai3-component-cli`
+- [x] `p2` - **ID**: `cpt-frontx-component-cli`
 
 ##### Why this component exists
 
@@ -594,8 +595,8 @@ Reduces boilerplate and enforces conventions by generating screen-sets, MFE pack
 
 FrontX is a frontend framework; all API contracts are TypeScript interfaces consumed at build time. There are no REST/GraphQL server endpoints defined by HAI3 itself.
 
-- [x] `p1` - **ID**: `cpt-hai3-interface-plugin`
-- **Contract**: cpt-hai3-contract-hai3-plugin
+- [x] `p1` - **ID**: `cpt-frontx-interface-plugin`
+- **Contract**: cpt-frontx-contract-hai3-plugin
 - **Technology**: TypeScript interface
 - **Location**: `packages/framework/src/plugin.ts`
 
@@ -613,8 +614,8 @@ interface HAI3PluginContext {
 }
 ```
 
-- [x] `p1` - **ID**: `cpt-hai3-interface-event-bus`
-- **Contract**: cpt-hai3-contract-event-bus
+- [x] `p1` - **ID**: `cpt-frontx-interface-event-bus`
+- **Contract**: cpt-frontx-contract-event-bus
 - **Technology**: TypeScript interface
 - **Location**: `packages/state/src/eventBus.ts`
 
@@ -625,8 +626,8 @@ interface EventBus {
 }
 ```
 
-- [x] `p1` - **ID**: `cpt-hai3-interface-screenset-registry`
-- **Contract**: cpt-hai3-contract-screenset-registry
+- [x] `p1` - **ID**: `cpt-frontx-interface-screenset-registry`
+- **Contract**: cpt-frontx-contract-screenset-registry
 - **Technology**: TypeScript interface
 - **Location**: `packages/screensets/src/registry.ts`
 
@@ -638,8 +639,8 @@ interface ScreensetsRegistry {
 }
 ```
 
-- [x] `p1` - **ID**: `cpt-hai3-interface-api-service`
-- **Contract**: cpt-hai3-contract-api-service
+- [x] `p1` - **ID**: `cpt-frontx-interface-api-service`
+- **Contract**: cpt-frontx-contract-api-service
 - **Technology**: TypeScript interface
 - **Location**: `packages/api/src/service.ts`
 
@@ -651,8 +652,8 @@ interface ApiService<T> {
 }
 ```
 
-- [x] `p1` - **ID**: `cpt-hai3-interface-shared-property`
-- **Contract**: cpt-hai3-contract-shared-property
+- [x] `p1` - **ID**: `cpt-frontx-interface-shared-property`
+- **Contract**: cpt-frontx-contract-shared-property
 - **Technology**: TypeScript interface
 - **Location**: `packages/framework/src/sharedProperty.ts`
 
@@ -668,21 +669,21 @@ interface SharedPropertyBridge {
 
 | Interface | Package | Description |
 |-----------|---------|-------------|
-| `cpt-hai3-interface-state` | `@cyberfabric/state` | Event-driven state management with EventBus, Redux-backed store, dynamic slice registration, and type-safe module augmentation |
-| `cpt-hai3-interface-screensets` | `@cyberfabric/screensets` | MFE type system, ScreensetsRegistry, MfeHandler, MfeBridge, Shadow DOM utilities, GTS validation plugin, action/property constants |
-| `cpt-hai3-interface-api` | `@cyberfabric/api` | Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards |
-| `cpt-hai3-interface-i18n` | `@cyberfabric/i18n` | 36-language i18n registry, locale-aware formatters, RTL support, language metadata |
-| `cpt-hai3-interface-framework` | `@cyberfabric/framework` | Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
-| `cpt-hai3-interface-react` | `@cyberfabric/react` | HAI3Provider, typed hooks, MFE hooks, ExtensionDomainSlot, RefContainerProvider, re-exports all L2 APIs |
-| `cpt-hai3-interface-studio` | `@cyberfabric/studio` | Dev-only floating overlay with MFE package selector, theme/language/mock controls, persistence, viewport clamping |
-| `cpt-hai3-interface-cli` | `@cyberfabric/cli` | Project scaffolding, code generation, migration runners, AI tool configuration sync |
+| `cpt-frontx-interface-state` | `@cyberfabric/state` | Event-driven state management with EventBus, Redux-backed store, dynamic slice registration, and type-safe module augmentation |
+| `cpt-frontx-interface-screensets` | `@cyberfabric/screensets` | MFE type system, ScreensetsRegistry, MfeHandler, MfeBridge, Shadow DOM utilities, GTS validation plugin, action/property constants |
+| `cpt-frontx-interface-api` | `@cyberfabric/api` | Protocol-agnostic API layer with REST and SSE protocols, plugin chain, mock mode, type guards |
+| `cpt-frontx-interface-i18n` | `@cyberfabric/i18n` | 36-language i18n registry, locale-aware formatters, RTL support, language metadata |
+| `cpt-frontx-interface-framework` | `@cyberfabric/framework` | Plugin architecture with `createHAI3()` builder, presets, layout domain slices, effect coordination, re-exports all L1 APIs |
+| `cpt-frontx-interface-react` | `@cyberfabric/react` | HAI3Provider, typed hooks, MFE hooks, ExtensionDomainSlot, RefContainerProvider, re-exports all L2 APIs |
+| `cpt-frontx-interface-studio` | `@cyberfabric/studio` | Dev-only floating overlay with MFE package selector, theme/language/mock controls, persistence, viewport clamping |
+| `cpt-frontx-interface-cli` | `@cyberfabric/cli` | Project scaffolding, code generation, migration runners, AI tool configuration sync |
 
 **External Integration Contracts**
 
 | Contract | Description |
 |----------|-------------|
-| `cpt-hai3-contract-mfe-manifest` | MFE packages provide a manifest (JSON) declaring remoteEntry, exposedModules, and sharedDependencies with optional chunkPath |
-| `cpt-hai3-contract-federation-runtime` | Federation runtime's `importShared()` resolves from `globalThis.__federation_shared__` (compatible with vite-plugin-federation v1.4.x) |
+| `cpt-frontx-contract-mfe-manifest` | MFE packages provide a manifest (JSON) declaring remoteEntry, exposedModules, and sharedDependencies with optional chunkPath |
+| `cpt-frontx-contract-federation-runtime` | Federation runtime's `importShared()` resolves from `globalThis.__federation_shared__` (compatible with vite-plugin-federation v1.4.x) |
 
 ### 3.4 Internal Dependencies
 
@@ -745,11 +746,11 @@ interface SharedPropertyBridge {
 
 #### Application Bootstrap
 
-**ID**: `cpt-hai3-seq-app-bootstrap`
+**ID**: `cpt-frontx-seq-app-bootstrap`
 
-**Use cases**: `cpt-hai3-usecase-mfe-load`
+**Use cases**: `cpt-frontx-usecase-mfe-load`
 
-**Actors**: `cpt-hai3-actor-host-app`, `cpt-hai3-actor-runtime`
+**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-runtime`
 
 ```mermaid
 sequenceDiagram
@@ -777,11 +778,11 @@ sequenceDiagram
 
 #### Screen-Set Data Flow
 
-**ID**: `cpt-hai3-seq-screenset-data-flow`
+**ID**: `cpt-frontx-seq-screenset-data-flow`
 
-**Use cases**: `cpt-hai3-usecase-mfe-load`
+**Use cases**: `cpt-frontx-usecase-mfe-load`
 
-**Actors**: `cpt-hai3-actor-developer`, `cpt-hai3-actor-runtime`
+**Actors**: `cpt-frontx-actor-developer`, `cpt-frontx-actor-runtime`
 
 ```mermaid
 sequenceDiagram
@@ -806,11 +807,11 @@ sequenceDiagram
 
 #### MFE Extension Loading
 
-**ID**: `cpt-hai3-seq-mfe-loading`
+**ID**: `cpt-frontx-seq-mfe-loading`
 
-**Use cases**: `cpt-hai3-usecase-mfe-load`
+**Use cases**: `cpt-frontx-usecase-mfe-load`
 
-**Actors**: `cpt-hai3-actor-host-app`, `cpt-hai3-actor-microfrontend`
+**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`
 
 ```mermaid
 sequenceDiagram
@@ -839,11 +840,11 @@ sequenceDiagram
 
 #### Shared Property Broadcast
 
-**ID**: `cpt-hai3-seq-shared-property-broadcast`
+**ID**: `cpt-frontx-seq-shared-property-broadcast`
 
-**Use cases**: `cpt-hai3-usecase-mfe-load`
+**Use cases**: `cpt-frontx-usecase-mfe-load`
 
-**Actors**: `cpt-hai3-actor-host-app`, `cpt-hai3-actor-microfrontend`, `cpt-hai3-actor-gts-plugin`
+**Actors**: `cpt-frontx-actor-host-app`, `cpt-frontx-actor-microfrontend`, `cpt-frontx-actor-gts-plugin`
 
 ```mermaid
 sequenceDiagram
@@ -873,24 +874,26 @@ Not applicable — FrontX is a frontend framework with no server-side database.
 
 ## 3.8 Publishing Pipeline Architecture
 
-**ADR**: `cpt-hai3-adr-automated-layer-ordered-publishing`, `cpt-hai3-adr-channel-aware-version-locking`
+**ADR**: `cpt-frontx-adr-automated-layer-ordered-publishing`, `cpt-frontx-adr-channel-aware-version-locking`
 
 #### Gitflow Branching Model
 
 The monorepo follows a gitflow branching strategy:
 - `main` — stable releases, published with `latest` dist-tag
 - `develop` — integration branch, published with `alpha` dist-tag
-- `release/*` — release candidates, published with `rc` dist-tag (`next`)
+- `release/X.Y.Z` — short-lived release candidates, published with `next` dist-tag
+- `release/vN` — long-lived maintenance lines for previous major versions, published with `vN` dist-tag
 - `feature/*` — feature branches, no publishing
-- `hotfix/*` — urgent fixes targeting `main`
+- `hotfix/*` — urgent fixes targeting `main` or `release/vN`
 
 #### Branch-to-Dist-Tag Mapping
 
 | Branch | Dist-Tag | Version Format |
 |--------|----------|---------------|
 | `develop` | `alpha` | `0.x.y-alpha.N` |
-| `release/*` | `next` | `0.x.y-rc.N` |
+| `release/X.Y.Z` | `next` | `0.x.y-rc.N` |
 | `main` | `latest` | `0.x.y` |
+| `release/vN` | `vN` | `N.y.z` (maintenance patches) |
 
 #### Version Injection Mechanism
 

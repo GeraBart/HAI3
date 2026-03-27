@@ -8,7 +8,7 @@
  *   frontx validate components [path]         Validate component structure
  *   frontx migrate [version]                  Apply codemod migrations
  */
-// @cpt-dod:cpt-hai3-dod-cli-tooling-package:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-package:p1
 
 import { Command } from 'commander';
 import { registry, executeCommand } from './core/index.js';

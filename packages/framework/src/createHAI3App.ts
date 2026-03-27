@@ -6,8 +6,8 @@
  * Framework Layer: L2
  */
 
-// @cpt-flow:cpt-hai3-flow-framework-composition-full-preset:p1
-// @cpt-dod:cpt-hai3-dod-framework-composition-builder:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-full-preset:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-builder:p1
 
 import { createHAI3 } from './createHAI3';
 import { full, type FullPresetConfig } from './presets';
@@ -37,7 +37,7 @@ export interface HAI3AppConfig extends HAI3Config, FullPresetConfig {}
  * const app = createHAI3App({ devMode: true });
  * ```
  */
-// @cpt-begin:cpt-hai3-flow-framework-composition-full-preset:p1:inst-1
+// @cpt-begin:cpt-frontx-flow-framework-composition-full-preset:p1:inst-1
 export function createHAI3App(config?: HAI3AppConfig): HAI3App {
   return createHAI3(config)
     .useAll(full({
@@ -45,4 +45,4 @@ export function createHAI3App(config?: HAI3AppConfig): HAI3App {
     }))
     .build();
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-full-preset:p1:inst-1
+// @cpt-end:cpt-frontx-flow-framework-composition-full-preset:p1:inst-1

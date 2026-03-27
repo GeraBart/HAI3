@@ -17,8 +17,8 @@
  * - frontxdev-* commands are monorepo-only (not copied to standalone projects)
  * - Command adapters are GENERATED for all IDEs
  */
-// @cpt-algo:cpt-hai3-algo-cli-tooling-build-templates:p1
-// @cpt-dod:cpt-hai3-dod-cli-tooling-templates:p1
+// @cpt-algo:cpt-frontx-algo-cli-tooling-build-templates:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-templates:p1
 import fs from 'fs-extra';
 import lodash from 'lodash';
 import path from 'path';
@@ -482,17 +482,17 @@ async function countFiles(dir: string): Promise<number> {
 async function copyTemplates() {
   console.log('📦 Copying templates from main project...\n');
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-generate-manifest
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-generate-manifest
   // Load manifest - single source of truth
   const manifest = await loadManifest();
   console.log(`📄 Loaded manifest v${manifest.version}\n`);
-  // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-generate-manifest
+  // @cpt-end:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-generate-manifest
 
   // Clean templates directory
   await fs.remove(TEMPLATES_DIR);
   await fs.ensureDir(TEMPLATES_DIR);
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-project-sources
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-project-sources
   // ============================================
   // STAGE 1a: Copy static presets (from manifest.project)
   // ============================================
@@ -680,9 +680,9 @@ async function copyTemplates() {
     console.log(`  ✓ layout/ standalone overrides (${layoutOverrideCount} files → shadcn)`);
   }
 
-  // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-project-sources
+  // @cpt-end:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-project-sources
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-ai-targets-build
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-ai-targets-build
   // ============================================
   // STAGE 1c: Assemble .ai/ from markers (using manifest.ai_overrides)
   // ============================================
@@ -722,9 +722,9 @@ async function copyTemplates() {
       }
     }
   }
-  // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-ai-targets-build
+  // @cpt-end:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-ai-targets-build
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-guidelines-variants
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-guidelines-variants
   // Copy all GUIDELINES layer variants from ai-overrides/
   // These will be selected at project creation time based on layer
   const guidelinesVariants = ['GUIDELINES.sdk.md', 'GUIDELINES.framework.md'];
@@ -752,9 +752,9 @@ async function copyTemplates() {
   }
 
   console.log(`  ✓ .ai/ (${standaloneCount} standalone, ${overrideCount} overrides)`);
-  // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-guidelines-variants
+  // @cpt-end:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-guidelines-variants
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-bundle-commands
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-bundle-commands
   // ============================================
   // STAGE 2: Generate IDE rules and adapters
   // ============================================
@@ -781,16 +781,16 @@ async function copyTemplates() {
   console.log(`  ✓ .cursor/commands/ (${totalCursor} adapters: ${adapterCounts.cursor} from .ai/commands/, ${bundledAdapterCounts.cursor} from packages)`);
   console.log(`  ✓ .windsurf/workflows/ (${totalWindsurf} adapters: ${adapterCounts.windsurf} from .ai/commands/, ${bundledAdapterCounts.windsurf} from packages)`);
   console.log(`  ✓ commands-bundle/ (${packageCounts.bundledVariants} command variants from packages)`);
-  // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-bundle-commands
+  // @cpt-end:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-bundle-commands
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-ide-adapters
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-ide-adapters
   // Generate IDE rules (CLAUDE.md, .cursor/rules/, .windsurf/rules/, .github/copilot-instructions.md)
   await generateIdeRules(TEMPLATES_DIR);
   console.log('  ✓ CLAUDE.md (pointer to .ai/GUIDELINES.md)');
   console.log('  ✓ .cursor/rules/frontx.mdc (pointer)');
   console.log('  ✓ .windsurf/rules/frontx.md (pointer)');
   console.log('  ✓ .github/copilot-instructions.md (GitHub Copilot)');
-  // @cpt-end:cpt-hai3-algo-cli-tooling-build-templates:p1:inst-copy-ide-adapters
+  // @cpt-end:cpt-frontx-algo-cli-tooling-build-templates:p1:inst-copy-ide-adapters
 
   // ============================================
   // Write output manifest.json (runtime manifest for CLI)

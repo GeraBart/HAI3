@@ -1,4 +1,4 @@
-// @cpt-algo:cpt-hai3-algo-cli-tooling-apply-migration:p2
+// @cpt-algo:cpt-frontx-algo-cli-tooling-apply-migration:p2
 /**
  * Transform: uicore-to-react
  *
@@ -14,7 +14,7 @@ import type { Transform, TransformChange, TransformResult } from '../types.js';
 const SOURCE_MODULE = '@cyberfabric/uicore';
 const TARGET_MODULE = '@cyberfabric/react';
 
-// @cpt-begin:cpt-hai3-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
+// @cpt-begin:cpt-frontx-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
 export const uicoreToReactTransform: Transform = {
   id: 'uicore-to-react',
   name: 'Update @cyberfabric/uicore to @cyberfabric/react',
@@ -104,4 +104,4 @@ export const uicoreToReactTransform: Transform = {
     }
   },
 };
-// @cpt-end:cpt-hai3-algo-cli-tooling-apply-migration:p2:inst-apply-transforms
+// @cpt-end:cpt-frontx-algo-cli-tooling-apply-migration:p2:inst-apply-transforms

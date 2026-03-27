@@ -1,5 +1,5 @@
-// @cpt-dod:cpt-hai3-dod-ui-libraries-choice-theme-propagation:p1
-// @cpt-algo:cpt-hai3-algo-ui-libraries-choice-theme-propagation:p1
+// @cpt-dod:cpt-frontx-dod-ui-libraries-choice-theme-propagation:p1
+// @cpt-algo:cpt-frontx-algo-ui-libraries-choice-theme-propagation:p1
 import type { ThemeConfig } from '@cyberfabric/react';
 import { defaultTheme, DEFAULT_THEME_ID } from './default';
 import { darkTheme } from './dark';

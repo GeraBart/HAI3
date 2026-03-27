@@ -10,7 +10,7 @@
  * SDK Layer: L1 (Zero @hai3 dependencies)
  */
 
-// @cpt-dod:cpt-hai3-dod-api-communication-public-api:p1
+// @cpt-dod:cpt-frontx-dod-api-communication-public-api:p1
 
 // Re-export all types
 export type {

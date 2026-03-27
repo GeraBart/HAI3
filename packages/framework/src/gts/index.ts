@@ -12,7 +12,7 @@
  * @packageDocumentation
  */
 
-// @cpt-dod:cpt-hai3-dod-framework-composition-derived-schemas:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-derived-schemas:p1
 
 import type { JSONSchema } from '@cyberfabric/screensets';
 import themeSchemaJson from './schemas/theme.v1.json';

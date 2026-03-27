@@ -7,7 +7,7 @@
  *
  * At runtime, these types are satisfied by @cyberfabric/framework slice implementations.
  */
-// @cpt-dod:cpt-hai3-dod-framework-composition-layout:p1
+// @cpt-dod:cpt-frontx-dod-framework-composition-layout:p1
 
 // ============================================================================
 // App State Types

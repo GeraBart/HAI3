@@ -5,7 +5,7 @@
  * Event-driven architecture: UI emits events, effects handle plugin activation/deactivation.
  */
 
-// @cpt-algo:cpt-hai3-algo-framework-composition-mock-toggle:p2
+// @cpt-algo:cpt-frontx-algo-framework-composition-mock-toggle:p2
 
 import { eventBus, getStore } from '@cyberfabric/state';
 import { apiRegistry, isMockPlugin, type ApiProtocol, type ApiPluginBase } from '@cyberfabric/api';
@@ -99,7 +99,7 @@ function syncMockPlugins(enabled: boolean): void {
  * Initialize mock mode effects
  * Call this once during app bootstrap to start listening for mock toggle events.
  */
-// @cpt-begin:cpt-hai3-algo-framework-composition-mock-toggle:p2:inst-1
+// @cpt-begin:cpt-frontx-algo-framework-composition-mock-toggle:p2:inst-1
 export function initMockEffects(): () => void {
   const store = getStore();
 
@@ -124,7 +124,7 @@ export function initMockEffects(): () => void {
     unsubscribe.unsubscribe();
   };
 }
-// @cpt-end:cpt-hai3-algo-framework-composition-mock-toggle:p2:inst-1
+// @cpt-end:cpt-frontx-algo-framework-composition-mock-toggle:p2:inst-1
 
 // ============================================================================
 // Helper Actions (for consuming apps)
@@ -141,8 +141,8 @@ export function initMockEffects(): () => void {
  * toggleMockMode(false); // Disable mock mode
  * ```
  */
-// @cpt-begin:cpt-hai3-algo-framework-composition-mock-toggle:p2:inst-2
+// @cpt-begin:cpt-frontx-algo-framework-composition-mock-toggle:p2:inst-2
 export function toggleMockMode(enabled: boolean): void {
   eventBus.emit(MockEvents.Toggle, { enabled });
 }
-// @cpt-end:cpt-hai3-algo-framework-composition-mock-toggle:p2:inst-2
+// @cpt-end:cpt-frontx-algo-framework-composition-mock-toggle:p2:inst-2

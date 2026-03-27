@@ -24,7 +24,7 @@ date: 2025-12-08
 
 <!-- /toc -->
 
-**ID**: `cpt-hai3-adr-esm-first-module-format`
+**ID**: `cpt-frontx-adr-esm-first-module-format`
 ## Context and Problem Statement
 
 The CLI package depended on ESM-only packages (inquirer ^9.x) but was built as CommonJS, causing import resolution failures at runtime. The broader ecosystem — Node.js, Vite, and modern bundlers — is converging on ESM as the standard module format. Maintaining CJS output alongside ESM creates dual-format build complexity, requires interop shims, and defeats static tree-shaking because CJS exports are evaluated dynamically.
@@ -89,6 +89,6 @@ Every `packages/*/package.json` contains `"type": "module"` and an `"exports"` f
 - **DESIGN**: [DESIGN.md](../DESIGN.md)
 
 This decision directly addresses:
-* `cpt-hai3-fr-pub-esm` — functional requirement for ESM-format package publication
-* `cpt-hai3-nfr-compat-esm` — non-functional requirement for ESM-only runtime compatibility
-* `cpt-hai3-constraint-esm-first-module-format` — hard constraint prohibiting CJS output from HAI3 packages
+* `cpt-frontx-fr-pub-esm` — functional requirement for ESM-format package publication
+* `cpt-frontx-nfr-compat-esm` — non-functional requirement for ESM-only runtime compatibility
+* `cpt-frontx-constraint-esm-first-module-format` — hard constraint prohibiting CJS output from HAI3 packages

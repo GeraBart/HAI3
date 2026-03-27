@@ -17,13 +17,13 @@ date: 2025-11-18
 - [Pros and Cons of the Options](#pros-and-cons-of-the-options)
   - [Keep dev tools inside the uicore package behind a flag](#keep-dev-tools-inside-the-uicore-package-behind-a-flag)
   - [Implement dev tools as a browser extension](#implement-dev-tools-as-a-browser-extension)
-  - [Standalone `@cyberfabric/studio` workspace package with conditional import guarded by `import.meta.env.DEV`](#standalone-hai3studio-workspace-package-with-conditional-import-guarded-by-importmetaenvdev)
+  - [Standalone `@cyberfabric/studio` workspace package with conditional import guarded by `import.meta.env.DEV`](#standalone-cyberfabricstudio-workspace-package-with-conditional-import-guarded-by-importmetaenvdev)
 - [More Information](#more-information)
 - [Traceability](#traceability)
 
 <!-- /toc -->
 
-**ID**: `cpt-hai3-adr-standalone-studio-dev-conditional`
+**ID**: `cpt-frontx-adr-standalone-studio-dev-conditional`
 ## Context and Problem Statement
 
 Footer-based dev tools lacked space and could not be excluded from production builds. Dev tools mixed with production UI components created unnecessary bundle weight and potential security exposure. A solution is needed that provides rich developer tooling in development while contributing zero bytes to production bundles.
@@ -80,8 +80,8 @@ The `@cyberfabric/studio` package deliberately has no `@cyberfabric/*` framework
 
 This decision directly addresses:
 
-* `cpt-hai3-fr-studio-panel` — floating panel UI and glassmorphic overlay design
-* `cpt-hai3-fr-studio-controls` — dev tool controls exposed through the panel
-* `cpt-hai3-fr-studio-persistence` — localStorage persistence of studio settings
-* `cpt-hai3-fr-studio-independence` — zero framework dependency constraint
-* `cpt-hai3-component-studio` — studio package as standalone workspace member
+* `cpt-frontx-fr-studio-panel` — floating panel UI and glassmorphic overlay design
+* `cpt-frontx-fr-studio-controls` — dev tool controls exposed through the panel
+* `cpt-frontx-fr-studio-persistence` — localStorage persistence of studio settings
+* `cpt-frontx-fr-studio-independence` — zero framework dependency constraint
+* `cpt-frontx-component-studio` — studio package as standalone workspace member

@@ -1,5 +1,5 @@
-// @cpt-flow:cpt-hai3-flow-studio-devtools-gts-package:p1
-// @cpt-dod:cpt-hai3-dod-studio-devtools-control-panel:p1
+// @cpt-flow:cpt-frontx-flow-studio-devtools-gts-package:p1
+// @cpt-dod:cpt-frontx-dod-studio-devtools-control-panel:p1
 import React from 'react';
 import {
   useHAI3,
@@ -39,7 +39,7 @@ export interface MfePackageSelectorProps {
   className?: string;
 }
 
-// @cpt-begin:cpt-hai3-flow-studio-devtools-gts-package:p1:inst-1
+// @cpt-begin:cpt-frontx-flow-studio-devtools-gts-package:p1:inst-1
 export const MfePackageSelector: React.FC<MfePackageSelectorProps> = ({
   className = '',
 }) => {
@@ -114,4 +114,4 @@ export const MfePackageSelector: React.FC<MfePackageSelectorProps> = ({
 };
 
 MfePackageSelector.displayName = 'MfePackageSelector';
-// @cpt-end:cpt-hai3-flow-studio-devtools-gts-package:p1:inst-1
+// @cpt-end:cpt-frontx-flow-studio-devtools-gts-package:p1:inst-1

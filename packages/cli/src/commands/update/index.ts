@@ -1,6 +1,6 @@
-// @cpt-flow:cpt-hai3-flow-cli-tooling-update-project:p1
-// @cpt-algo:cpt-hai3-algo-cli-tooling-detect-release-channel:p1
-// @cpt-dod:cpt-hai3-dod-cli-tooling-package:p1
+// @cpt-flow:cpt-frontx-flow-cli-tooling-update-project:p1
+// @cpt-algo:cpt-frontx-algo-cli-tooling-detect-release-channel:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-package:p1
 import { execSync } from 'child_process';
 import fs from 'fs-extra';
 import path from 'path';
@@ -50,44 +50,44 @@ function detectCurrentChannel(): 'alpha' | 'stable' {
     let searchDir = path.dirname(currentFile);
     let version = '';
 
-    // @cpt-begin:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-package-version
+    // @cpt-begin:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-package-version
     while (searchDir !== path.dirname(searchDir)) {
       const packageJsonPath = path.join(searchDir, 'package.json');
       if (fs.pathExistsSync(packageJsonPath)) {
         const packageJson = fs.readJsonSync(packageJsonPath);
-        // @cpt-begin:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-version-string
+        // @cpt-begin:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-version-string
         if (packageJson.name === '@cyberfabric/cli' && typeof packageJson.version === 'string') {
           version = packageJson.version;
           break;
         }
-        // @cpt-end:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-version-string
+        // @cpt-end:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-version-string
       }
       searchDir = path.dirname(searchDir);
     }
-    // @cpt-end:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-package-version
+    // @cpt-end:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-read-cli-package-version
 
-    // @cpt-begin:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-check-prerelease-tag
+    // @cpt-begin:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-check-prerelease-tag
     // Check for prerelease identifiers (alpha, beta, rc, etc.)
     if (version.includes('-alpha') || version.includes('-beta') || version.includes('-rc')) {
       return 'alpha';
     }
-    // @cpt-end:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-check-prerelease-tag
+    // @cpt-end:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-check-prerelease-tag
 
-    // @cpt-begin:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-return-stable
+    // @cpt-begin:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-return-stable
     return 'stable';
-    // @cpt-end:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-return-stable
+    // @cpt-end:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-return-stable
   } catch {
-    // @cpt-begin:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-catch-detect-error
+    // @cpt-begin:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-catch-detect-error
     // If detection fails, default to stable (safer)
     return 'stable';
-    // @cpt-end:cpt-hai3-algo-cli-tooling-detect-release-channel:p1:inst-catch-detect-error
+    // @cpt-end:cpt-frontx-algo-cli-tooling-detect-release-channel:p1:inst-catch-detect-error
   }
 }
 
 /**
  * Update command implementation
  */
-// @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-invoke-update
+// @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-invoke-update
 export const updateCommand: CommandDefinition<
   UpdateCommandArgs,
   UpdateCommandResult
@@ -124,7 +124,7 @@ export const updateCommand: CommandDefinition<
     },
   ],
 
-  // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-check-conflicting-update-flags
+  // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-check-conflicting-update-flags
   validate(args) {
     // Cannot specify both --alpha and --stable
     if (args.alpha && args.stable) {
@@ -132,7 +132,7 @@ export const updateCommand: CommandDefinition<
     }
     return validationOk();
   },
-  // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-check-conflicting-update-flags
+  // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-check-conflicting-update-flags
 
   async execute(args, ctx): Promise<UpdateCommandResult> {
     const { logger, projectRoot } = ctx;
@@ -148,7 +148,7 @@ export const updateCommand: CommandDefinition<
     const syncedTemplates: string[] = [];
     const aiSyncFiles: string[] = [];
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-run-detect-channel
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-run-detect-channel
     // Determine which channel to use
     let channel: 'alpha' | 'stable';
     if (args.alpha) {
@@ -161,9 +161,9 @@ export const updateCommand: CommandDefinition<
     }
 
     const tag = channel === 'alpha' ? '@alpha' : '@latest';
-    // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-run-detect-channel
+    // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-run-detect-channel
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-update-cli-global
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-update-cli-global
     // Skip CLI and package updates if --templates-only
     if (!args.templatesOnly) {
       logger.info(`Update channel: ${channel}`);
@@ -190,9 +190,9 @@ export const updateCommand: CommandDefinition<
       } catch {
         logger.info('@cyberfabric/cli is already up to date');
       }
-      // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-update-cli-global
+      // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-update-cli-global
 
-      // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-update-project-packages
+      // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-update-project-packages
       // If inside a project, update project packages
       if (projectRoot) {
         logger.newline();
@@ -241,10 +241,10 @@ export const updateCommand: CommandDefinition<
         logger.info('Not inside a FrontX project. Only CLI was updated.');
         logger.info('Run `frontx update` from a project directory to update project packages.');
       }
-      // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-update-project-packages
+      // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-update-project-packages
     }
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-run-sync-templates
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-run-sync-templates
     // Sync project templates if inside a project
     if (projectRoot) {
       logger.newline();
@@ -270,9 +270,9 @@ export const updateCommand: CommandDefinition<
       } else {
         logger.info('Templates are already up to date');
       }
-      // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-run-sync-templates
+      // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-run-sync-templates
 
-      // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-run-ai-sync-after-update
+      // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-run-ai-sync-after-update
       // Run AI sync unless skipped
       if (!args.skipAiSync) {
         logger.newline();
@@ -297,13 +297,13 @@ export const updateCommand: CommandDefinition<
           logger.warn('AI sync skipped (no .ai directory found)');
         }
       }
-      // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-run-ai-sync-after-update
+      // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-run-ai-sync-after-update
     }
 
     logger.newline();
     logger.success('Update complete!');
 
-    // @cpt-begin:cpt-hai3-flow-cli-tooling-update-project:p1:inst-return-update
+    // @cpt-begin:cpt-frontx-flow-cli-tooling-update-project:p1:inst-return-update
     return {
       cliUpdated,
       projectUpdated,
@@ -314,7 +314,7 @@ export const updateCommand: CommandDefinition<
       aiSyncRun,
       aiSyncFiles,
     };
-    // @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-return-update
+    // @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-return-update
   },
 };
-// @cpt-end:cpt-hai3-flow-cli-tooling-update-project:p1:inst-invoke-update
+// @cpt-end:cpt-frontx-flow-cli-tooling-update-project:p1:inst-invoke-update

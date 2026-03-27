@@ -12,7 +12,7 @@
  * - User-created screensets in src/screensets/ are preserved
  * - Only template screensets (demo) are synced
  */
-// @cpt-algo:cpt-hai3-algo-cli-tooling-sync-templates:p2
+// @cpt-algo:cpt-frontx-algo-cli-tooling-sync-templates:p2
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -204,7 +204,7 @@ async function syncDirectory(
       }
     }
 
-    // @cpt-begin:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-skip-variant-app-files
+    // @cpt-begin:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-skip-variant-app-files
     // Remove stale template-variant files that may have been synced previously.
     if (relativePath === 'src/app' || relativePath === 'src\\app') {
       for (const variantFile of variantAppFiles) {
@@ -214,7 +214,7 @@ async function syncDirectory(
         }
       }
     }
-    // @cpt-end:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-skip-variant-app-files
+    // @cpt-end:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-skip-variant-app-files
     return;
   }
 
@@ -248,10 +248,10 @@ export async function syncTemplates(
   const templatesDir = getTemplatesDir();
   const synced: string[] = [];
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-read-project-layer
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-read-project-layer
   // Read all entries in templates directory
   const entries = await fs.readdir(templatesDir, { withFileTypes: true });
-  // @cpt-end:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-read-project-layer
+  // @cpt-end:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-read-project-layer
 
   for (const entry of entries) {
     const name = entry.name;
@@ -265,17 +265,17 @@ export async function syncTemplates(
     const destPath = path.join(projectRoot, name);
 
     try {
-      // @cpt-begin:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-sync-ai-targets
+      // @cpt-begin:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-sync-ai-targets
       // Special handling for .ai directory with layer-aware filtering
       if (entry.isDirectory() && name === '.ai' && layer) {
         await syncAiDirectory(srcPath, destPath, layer, logger);
         synced.push(name);
       } else if (entry.isDirectory()) {
-      // @cpt-end:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-sync-ai-targets
-        // @cpt-begin:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-sync-ide-configs
+      // @cpt-end:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-sync-ai-targets
+        // @cpt-begin:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-sync-ide-configs
         await syncDirectory(srcPath, destPath, name);
         synced.push(name);
-        // @cpt-end:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-sync-ide-configs
+        // @cpt-end:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-sync-ide-configs
       } else {
         await fs.ensureDir(path.dirname(destPath));
         await fs.copy(srcPath, destPath, { overwrite: true });
@@ -287,15 +287,15 @@ export async function syncTemplates(
   }
 
   const packageManager = (await detectPackageManager(projectRoot)).manager;
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-transform-synced-files
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-transform-synced-files
   for (const syncedPath of synced) {
     await transformPathForPackageManager(path.join(projectRoot, syncedPath), packageManager);
   }
-  // @cpt-end:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-transform-synced-files
+  // @cpt-end:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-transform-synced-files
 
-  // @cpt-begin:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-return-synced-dirs
+  // @cpt-begin:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-return-synced-dirs
   return synced;
-  // @cpt-end:cpt-hai3-algo-cli-tooling-sync-templates:p2:inst-return-synced-dirs
+  // @cpt-end:cpt-frontx-algo-cli-tooling-sync-templates:p2:inst-return-synced-dirs
 }
 
 /**

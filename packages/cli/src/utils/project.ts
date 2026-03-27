@@ -1,4 +1,4 @@
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-project-utils
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-project-utils
 import fs from 'fs-extra';
 import path from 'path';
 import type { Hai3Config, ConfigLoadResult } from '../core/types.js';
@@ -55,8 +55,8 @@ export async function findProjectRoot(
   return null;
 }
 
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-2
-// @cpt-begin:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-7
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-2
+// @cpt-begin:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-7
 async function parseAndValidateConfig(configPath: string): Promise<Hai3Config> {
   const content = await fs.readFile(configPath, 'utf-8');
   let config: Hai3Config;
@@ -80,21 +80,21 @@ async function parseAndValidateConfig(configPath: string): Promise<Hai3Config> {
   }
   return config;
 }
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-7
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-2
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-7
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-2
 
 /**
  * Load HAI3 config from project root.
  * Returns a discriminated union — callers handle every outcome explicitly.
  */
-// @cpt-algo:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1
-// @cpt-dod:cpt-hai3-dod-ui-libraries-choice-uikit-resolution-impl:p1
+// @cpt-algo:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1
+// @cpt-dod:cpt-frontx-dod-ui-libraries-choice-uikit-resolution-impl:p1
 export async function loadConfig(
   projectRoot: string
 ): Promise<ConfigLoadResult> {
-  // @cpt-begin:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-1
+  // @cpt-begin:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-1
   const configPath = path.join(projectRoot, CONFIG_FILE);
-  // @cpt-end:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-1
+  // @cpt-end:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-resolution-1
   if (!(await fs.pathExists(configPath))) {
     return {
       ok: false,
@@ -208,4 +208,4 @@ export function getLocalPackageRef(
   const normalized = relativePath.split(path.sep).join('/');
   return `file:${normalized}`;
 }
-// @cpt-end:cpt-hai3-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-project-utils
+// @cpt-end:cpt-frontx-algo-ui-libraries-choice-uikit-resolution:p1:inst-uikit-project-utils

@@ -7,13 +7,13 @@
  * Framework Layer: L2 (Depends on SDK packages)
  */
 
-// @cpt-flow:cpt-hai3-flow-framework-composition-app-bootstrap:p1
-// @cpt-flow:cpt-hai3-flow-framework-composition-plugin-dependency:p1
-// @cpt-algo:cpt-hai3-algo-framework-composition-dep-resolution:p1
-// @cpt-algo:cpt-hai3-algo-framework-composition-provides-aggregation:p1
-// @cpt-state:cpt-hai3-state-framework-composition-builder:p1
-// @cpt-flow:cpt-hai3-flow-framework-composition-teardown:p2
-// @cpt-dod:cpt-hai3-dod-framework-composition-builder:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-app-bootstrap:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-plugin-dependency:p1
+// @cpt-algo:cpt-frontx-algo-framework-composition-dep-resolution:p1
+// @cpt-algo:cpt-frontx-algo-framework-composition-provides-aggregation:p1
+// @cpt-state:cpt-frontx-state-framework-composition-builder:p1
+// @cpt-flow:cpt-frontx-flow-framework-composition-teardown:p2
+// @cpt-dod:cpt-frontx-dod-framework-composition-builder:p1
 
 import { getStore, registerSlice } from '@cyberfabric/state';
 import type { EffectInitializer } from '@cyberfabric/state';
@@ -34,7 +34,7 @@ import { apiRegistry } from '@cyberfabric/api';
 // Plugin Resolution
 // ============================================================================
 
-// @cpt-begin:cpt-hai3-flow-framework-composition-plugin-dependency:p1:inst-1
+// @cpt-begin:cpt-frontx-flow-framework-composition-plugin-dependency:p1:inst-1
 /**
  * Check if value is a plugin factory function
  */
@@ -50,7 +50,7 @@ function isPluginFactory(
 function resolvePlugin(plugin: HAI3Plugin | PluginFactory): HAI3Plugin {
   return isPluginFactory(plugin) ? plugin() : plugin;
 }
-// @cpt-end:cpt-hai3-flow-framework-composition-plugin-dependency:p1:inst-1
+// @cpt-end:cpt-frontx-flow-framework-composition-plugin-dependency:p1:inst-1
 
 // ============================================================================
 // App Builder Implementation
@@ -76,8 +76,8 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
    * Add a plugin to the application.
    * Also accepts an array of plugins (for preset support).
    */
-  // @cpt-begin:cpt-hai3-flow-framework-composition-app-bootstrap:p1:inst-1
-  // @cpt-begin:cpt-hai3-state-framework-composition-builder:p1:inst-1
+  // @cpt-begin:cpt-frontx-flow-framework-composition-app-bootstrap:p1:inst-1
+  // @cpt-begin:cpt-frontx-state-framework-composition-builder:p1:inst-1
   use(plugin: HAI3Plugin | PluginFactory | HAI3Plugin[]): HAI3AppBuilder {
     // Handle arrays (presets return arrays)
     if (Array.isArray(plugin)) {
@@ -100,8 +100,8 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
     this.plugins.push(resolved);
     return this;
   }
-  // @cpt-end:cpt-hai3-flow-framework-composition-app-bootstrap:p1:inst-1
-  // @cpt-end:cpt-hai3-state-framework-composition-builder:p1:inst-1
+  // @cpt-end:cpt-frontx-flow-framework-composition-app-bootstrap:p1:inst-1
+  // @cpt-end:cpt-frontx-state-framework-composition-builder:p1:inst-1
 
   /**
    * Add multiple plugins at once.
@@ -114,8 +114,8 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
   /**
    * Build the application.
    */
-  // @cpt-begin:cpt-hai3-flow-framework-composition-app-bootstrap:p1:inst-2
-  // @cpt-begin:cpt-hai3-state-framework-composition-builder:p1:inst-2
+  // @cpt-begin:cpt-frontx-flow-framework-composition-app-bootstrap:p1:inst-2
+  // @cpt-begin:cpt-frontx-state-framework-composition-builder:p1:inst-2
   build(): HAI3App {
     // 1. Resolve dependencies and order plugins
     const orderedPlugins = this.resolveDependencies();
@@ -161,14 +161,14 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
 
     return app;
   }
-  // @cpt-end:cpt-hai3-flow-framework-composition-app-bootstrap:p1:inst-2
-  // @cpt-end:cpt-hai3-state-framework-composition-builder:p1:inst-2
+  // @cpt-end:cpt-frontx-flow-framework-composition-app-bootstrap:p1:inst-2
+  // @cpt-end:cpt-frontx-state-framework-composition-builder:p1:inst-2
 
   /**
    * Resolve plugin dependencies using topological sort.
    */
-  // @cpt-begin:cpt-hai3-algo-framework-composition-dep-resolution:p1:inst-1
-  // @cpt-begin:cpt-hai3-flow-framework-composition-plugin-dependency:p1:inst-2
+  // @cpt-begin:cpt-frontx-algo-framework-composition-dep-resolution:p1:inst-1
+  // @cpt-begin:cpt-frontx-flow-framework-composition-plugin-dependency:p1:inst-2
   private resolveDependencies(): HAI3Plugin[] {
     const resolved: HAI3Plugin[] = [];
     const visited = new Set<string>();
@@ -217,13 +217,13 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
     this.plugins.forEach(visit);
     return resolved;
   }
-  // @cpt-end:cpt-hai3-algo-framework-composition-dep-resolution:p1:inst-1
-  // @cpt-end:cpt-hai3-flow-framework-composition-plugin-dependency:p1:inst-2
+  // @cpt-end:cpt-frontx-algo-framework-composition-dep-resolution:p1:inst-1
+  // @cpt-end:cpt-frontx-flow-framework-composition-plugin-dependency:p1:inst-2
 
   /**
    * Aggregate all provides from plugins.
    */
-  // @cpt-begin:cpt-hai3-algo-framework-composition-provides-aggregation:p1:inst-1
+  // @cpt-begin:cpt-frontx-algo-framework-composition-provides-aggregation:p1:inst-1
   private aggregateProvides(plugins: HAI3Plugin[]) {
     const registries: Record<string, unknown> = {};
     const slices: RegisterableSlice[] = [];
@@ -258,7 +258,7 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
 
     return { registries, slices, effects, actions };
   }
-  // @cpt-end:cpt-hai3-algo-framework-composition-provides-aggregation:p1:inst-1
+  // @cpt-end:cpt-frontx-algo-framework-composition-provides-aggregation:p1:inst-1
 
   /**
    * Create store with all aggregated slices.
@@ -288,7 +288,7 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
   /**
    * Destroy the app and cleanup resources.
    */
-  // @cpt-begin:cpt-hai3-flow-framework-composition-teardown:p2:inst-1
+  // @cpt-begin:cpt-frontx-flow-framework-composition-teardown:p2:inst-1
   private destroyApp(plugins: HAI3Plugin[], app: HAI3App): void {
     // Call onDestroy in reverse order
     [...plugins].reverse().forEach((plugin) => {
@@ -297,7 +297,7 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
       }
     });
   }
-  // @cpt-end:cpt-hai3-flow-framework-composition-teardown:p2:inst-1
+  // @cpt-end:cpt-frontx-flow-framework-composition-teardown:p2:inst-1
 }
 
 // ============================================================================
@@ -318,8 +318,8 @@ class HAI3AppBuilderImpl implements HAI3AppBuilder {
  *   .build();
  * ```
  */
-// @cpt-begin:cpt-hai3-dod-framework-composition-builder:p1:inst-1
+// @cpt-begin:cpt-frontx-dod-framework-composition-builder:p1:inst-1
 export function createHAI3(config?: HAI3Config): HAI3AppBuilder {
   return new HAI3AppBuilderImpl(config);
 }
-// @cpt-end:cpt-hai3-dod-framework-composition-builder:p1:inst-1
+// @cpt-end:cpt-frontx-dod-framework-composition-builder:p1:inst-1

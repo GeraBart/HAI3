@@ -1,8 +1,8 @@
 /**
  * Core type definitions for FrontX CLI
  */
-// @cpt-dod:cpt-hai3-dod-cli-tooling-command-infra:p1
-// @cpt-dod:cpt-hai3-dod-cli-tooling-layer-variants:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-command-infra:p1
+// @cpt-dod:cpt-frontx-dod-cli-tooling-layer-variants:p1
 
 /**
  * Layer types for SDK architecture

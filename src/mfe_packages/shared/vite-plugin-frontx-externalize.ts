@@ -1,5 +1,5 @@
-// @cpt-dod:cpt-hai3-dod-mfe-isolation-externalize-plugin:p1
-// @cpt-flow:cpt-hai3-flow-mfe-isolation-build:p2
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-externalize-plugin:p1
+// @cpt-flow:cpt-frontx-flow-mfe-isolation-build:p2
 import type { Plugin, ResolvedConfig } from 'vite';
 
 export interface Hai3MfeExternalizeOptions {
@@ -106,7 +106,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
       const outputBundle = bundle as OutputBundleLike;
 
       // ---- Step 1: Identify all __federation_shared_* chunks ----
-      // @cpt-algo:cpt-hai3-algo-mfe-isolation-rename-shared-chunks:p1
+      // @cpt-algo:cpt-frontx-algo-mfe-isolation-rename-shared-chunks:p1
 
       const renameMap = new Map<string, string>(); // oldKey → newKey
       // federationChunks: packageName → { chunk, codeLength }
@@ -128,7 +128,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
       }
 
       // ---- Step 2: Build bundled-chunk → package mapping ----
-      // @cpt-algo:cpt-hai3-algo-mfe-isolation-map-bundled-chunks:p1
+      // @cpt-algo:cpt-frontx-algo-mfe-isolation-map-bundled-chunks:p1
       //
       // For each bundled chunk imported by a federation shared wrapper, assign it to
       // the package whose shared chunk is a "thin wrapper" — i.e., a chunk whose job
@@ -245,7 +245,7 @@ export function hai3MfeExternalize(options: Hai3MfeExternalizeOptions): Plugin {
       }
 
       // ---- Step 4: Rewrite direct bundled imports in non-federation chunks ----
-      // @cpt-algo:cpt-hai3-algo-mfe-isolation-rewrite-imports:p1
+      // @cpt-algo:cpt-frontx-algo-mfe-isolation-rewrite-imports:p1
       //
       // Non-expose entry chunks still import from bundled copies of shared packages
       // (e.g., "import { r as requireReact } from './index-MCx4YXC7.js'").

@@ -10,8 +10,8 @@
  * - apiRegistry (isolated service instances)
  * - storeInstance (isolated Redux store)
  */
-// @cpt-dod:cpt-hai3-dod-mfe-isolation-internal-dataflow:p1
-// @cpt-flow:cpt-hai3-flow-mfe-isolation-mfe-bootstrap:p1
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-internal-dataflow:p1
+// @cpt-flow:cpt-frontx-flow-mfe-isolation-mfe-bootstrap:p1
 
 import { createHAI3, registerSlice, apiRegistry, effects, mock } from '@cyberfabric/react';
 import { profileSlice } from './slices/profileSlice';

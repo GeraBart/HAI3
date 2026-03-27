@@ -22,7 +22,7 @@ date: 2026-03-10
 
 <!-- /toc -->
 
-**ID**: `cpt-hai3-adr-two-tier-cli-e2e-verification`
+**ID**: `cpt-frontx-adr-two-tier-cli-e2e-verification`
 
 ## Context and Problem Statement
 
@@ -87,5 +87,5 @@ Both tiers share the same scripted e2e harness (`packages/cli/scripts/e2e-lib.mj
 
 This decision directly addresses:
 
-* `cpt-hai3-fr-cli-e2e-verification` — required PR gate and nightly coverage for CLI scaffold path
-* `cpt-hai3-component-cli` — CLI package scope
+* `cpt-frontx-fr-cli-e2e-verification` — required PR gate and nightly coverage for CLI scaffold path
+* `cpt-frontx-component-cli` — CLI package scope
