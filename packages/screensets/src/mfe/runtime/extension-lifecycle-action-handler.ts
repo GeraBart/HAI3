@@ -114,14 +114,14 @@ export class ExtensionLifecycleActionHandler implements ActionHandler {
     switch (actionTypeId) {
       case HAI3_ACTION_LOAD_EXT: {
         this.requirePayload(actionTypeId, payload);
-        const extensionId = this.requireExtensionId(payload);
+        const extensionId = this.requireSubject(payload);
         await this.callbacks.loadExtension(extensionId);
         break;
       }
 
       case HAI3_ACTION_MOUNT_EXT: {
         this.requirePayload(actionTypeId, payload);
-        const extensionId = this.requireExtensionId(payload);
+        const extensionId = this.requireSubject(payload);
         if (this.domainSemantics === 'swap') {
           await this.handleScreenSwap(extensionId);
         } else {
@@ -134,7 +134,7 @@ export class ExtensionLifecycleActionHandler implements ActionHandler {
 
       case HAI3_ACTION_UNMOUNT_EXT: {
         this.requirePayload(actionTypeId, payload);
-        const extensionId = this.requireExtensionId(payload);
+        const extensionId = this.requireSubject(payload);
         await this.callbacks.unmountExtension(extensionId);
         this.containerProvider.releaseContainer(extensionId);
         break;
@@ -163,15 +163,15 @@ export class ExtensionLifecycleActionHandler implements ActionHandler {
     }
   }
 
-  private requireExtensionId(payload: Record<string, unknown>): string {
-    const { extensionId } = payload;
-    if (typeof extensionId !== 'string' || extensionId.length === 0) {
+  private requireSubject(payload: Record<string, unknown>): string {
+    const { subject } = payload;
+    if (typeof subject !== 'string' || subject.length === 0) {
       throw new MfeError(
-        'Action payload must contain a non-empty "extensionId" string',
+        'Action payload must contain a non-empty "subject" string',
         'LIFECYCLE_ACTION_INVALID_PAYLOAD'
       );
     }
-    return extensionId;
+    return subject;
   }
 
   // @cpt-begin:cpt-frontx-algo-screenset-registry-domain-semantics:p1:inst-1

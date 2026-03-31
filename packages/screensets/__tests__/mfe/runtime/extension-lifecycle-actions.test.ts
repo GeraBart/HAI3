@@ -153,7 +153,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_LOAD_EXT, {
-          extensionId: testExtension1.id,
+          subject: testExtension1.id,
         });
 
         expect(callbacks.loadExtension).toHaveBeenCalledWith(testExtension1.id);
@@ -191,7 +191,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: testExtension1.id,
+          subject: testExtension1.id,
         });
 
         expect(callbacks.mountExtension).toHaveBeenCalledWith(testExtension1.id, mockContainerProvider.mockContainer);
@@ -223,7 +223,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: testExtension1.id,
+          subject: testExtension1.id,
         });
 
         // Toggle domains do not use handleScreenSwap, so serializeOnDomain is not called
@@ -247,7 +247,7 @@ describe('Extension Lifecycle Actions', () => {
         const newExtId = 'gts.hai3.mfes.ext.extension.v1~test.lifecycle.actions.ext3.v1';
 
         await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: newExtId,
+          subject: newExtId,
         });
 
         // Verify unmount was called first, then mount
@@ -275,7 +275,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: testExtension2.id,
+          subject: testExtension2.id,
         });
 
         expect(callbacks.unmountExtension).not.toHaveBeenCalled();
@@ -293,7 +293,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: testExtension2.id,
+          subject: testExtension2.id,
         });
 
         // Verify unmount was NOT called
@@ -312,7 +312,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: testExtension2.id,
+          subject: testExtension2.id,
         });
 
         // serializeOnDomain must be called with the domain ID
@@ -359,8 +359,8 @@ describe('Extension Lifecycle Actions', () => {
         const ext2Id = 'gts.hai3.mfes.ext.extension.v1~test.concurrent.ext2.v1';
 
         // Fire two swaps concurrently
-        const swap1 = handler.handleAction(HAI3_ACTION_MOUNT_EXT, { extensionId: ext1Id });
-        const swap2 = handler.handleAction(HAI3_ACTION_MOUNT_EXT, { extensionId: ext2Id });
+        const swap1 = handler.handleAction(HAI3_ACTION_MOUNT_EXT, { subject: ext1Id });
+        const swap2 = handler.handleAction(HAI3_ACTION_MOUNT_EXT, { subject: ext2Id });
 
         await Promise.all([swap1, swap2]);
 
@@ -386,7 +386,7 @@ describe('Extension Lifecycle Actions', () => {
         );
 
         await handler.handleAction(HAI3_ACTION_UNMOUNT_EXT, {
-          extensionId: testExtension1.id,
+          subject: testExtension1.id,
         });
 
         expect(callbacks.unmountExtension).toHaveBeenCalledWith(testExtension1.id);
@@ -460,7 +460,7 @@ describe('Extension Lifecycle Actions', () => {
         action: {
           type: HAI3_ACTION_MOUNT_EXT,
           target: toggleDomain.id,
-          payload: { extensionId: testExtension1.id },
+          payload: { subject: testExtension1.id },
         },
       });
 
@@ -503,7 +503,7 @@ describe('Extension Lifecycle Actions', () => {
         action: {
           type: HAI3_ACTION_MOUNT_EXT,
           target: toggleDomain.id,
-          payload: { extensionId: testExtension1.id },
+          payload: { subject: testExtension1.id },
         },
       });
 
@@ -515,7 +515,7 @@ describe('Extension Lifecycle Actions', () => {
         action: {
           type: HAI3_ACTION_UNMOUNT_EXT,
           target: toggleDomain.id,
-          payload: { extensionId: testExtension1.id },
+          payload: { subject: testExtension1.id },
         },
       });
 
@@ -601,7 +601,7 @@ describe('Extension Lifecycle Actions', () => {
 
       // Mount extension
       await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-        extensionId: testExtension1.id,
+        subject: testExtension1.id,
       });
 
       // Verify getContainer was called with correct extensionId
@@ -610,7 +610,7 @@ describe('Extension Lifecycle Actions', () => {
 
       // Unmount extension
       await handler.handleAction(HAI3_ACTION_UNMOUNT_EXT, {
-        extensionId: testExtension1.id,
+        subject: testExtension1.id,
       });
 
       // Verify releaseContainer was called with correct extensionId
@@ -633,7 +633,7 @@ describe('Extension Lifecycle Actions', () => {
 
       // Mount first extension
       await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-        extensionId: testExtension2.id,
+        subject: testExtension2.id,
       });
 
       expect(getContainerSpy).toHaveBeenCalledWith(testExtension2.id);
@@ -649,7 +649,7 @@ describe('Extension Lifecycle Actions', () => {
 
       // Mount second extension (should unmount first due to swap semantics)
       await handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-        extensionId: testExtension3Id,
+        subject: testExtension3Id,
       });
 
       // Verify call order: releaseContainer(ext2), getContainer(ext3)
@@ -681,7 +681,7 @@ describe('Extension Lifecycle Actions', () => {
       // Attempt to mount (should propagate error)
       await expect(
         handler.handleAction(HAI3_ACTION_MOUNT_EXT, {
-          extensionId: testExtension1.id,
+          subject: testExtension1.id,
         })
       ).rejects.toThrow('Container creation failed');
     });

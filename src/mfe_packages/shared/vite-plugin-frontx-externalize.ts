@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-externalize-plugin:p1
 // @cpt-flow:cpt-frontx-flow-mfe-isolation-build:p2
 import type { Plugin, ResolvedConfig } from 'vite';
-import { trim } from 'lodash';
+import trim from 'lodash/trim';
 
 export interface Hai3MfeExternalizeOptions {
   shared: string[];

@@ -53,12 +53,11 @@ function createMockPlugin(): TypeSystemPlugin {
     },
     getSchema: (typeId: string) => schemas.get(typeId),
     register: (entity: unknown) => {
-      const entityWithId = entity as { id?: string; type?: string };
-      // Actions use 'type' field as identifier, others use 'id'
-      const identifier = entityWithId.type || entityWithId.id;
-      if (identifier) {
-        registeredEntities.set(identifier, entity);
-      }
+      const entityWithId = entity as { id?: string };
+      // GTS assigns id='' for anonymous instances (e.g. actions which have 'type' but no 'id').
+      // Store by entity.id so that validateInstance('') finds anonymous registrations.
+      const identifier = entityWithId.id ?? '';
+      registeredEntities.set(identifier, entity);
     },
     validateInstance: (instanceId: string): ValidationResult => {
       if (registeredEntities.has(instanceId)) {

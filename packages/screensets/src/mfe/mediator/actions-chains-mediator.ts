@@ -154,14 +154,13 @@ export class DefaultActionsChainsMediator extends ActionsChainsMediator {
       throw new Error('Chain timeout exceeded');
     }
 
-    // Register and validate the action instance
-    // Actions use their `type` field as the GTS entity identifier (no synthetic IDs)
-    // See design/mfe-actions.md line 88: MUST NOT generate synthetic IDs
-    // Note: createJsonEntity (in gts-ts) uses the `id` field for entity registration.
-    // Runtime actions only have `type`, so we set `id = type` to ensure the runtime
-    // action overwrites the pre-registered base action template.
-    this.typeSystem.register({ ...action, id: action.type });
-    const validation = this.typeSystem.validateInstance(action.type);
+    // Register and validate the action instance using the GTS anonymous instance pattern.
+    // Actions have a `type` field but no `id` field. GTS assigns id='' to entities
+    // without an explicit id (createJsonEntity default). For such instances GTS
+    // resolves the schema from the `type` field via schemaIdFields, so validation
+    // against the action's own schema happens without any synthetic ID injection.
+    this.typeSystem.register(action);
+    const validation = this.typeSystem.validateInstance('');
 
     if (!validation.valid) {
       const errorMsg = validation.errors.map(e => e.message).join(', ');

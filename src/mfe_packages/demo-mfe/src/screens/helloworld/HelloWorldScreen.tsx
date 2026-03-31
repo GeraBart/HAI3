@@ -85,7 +85,7 @@ export const HelloWorldScreen: React.FC<HelloWorldScreenProps> = ({ bridge }) =>
       action: {
         type: HAI3_ACTION_MOUNT_EXT,
         target: HAI3_SCREEN_DOMAIN,
-        payload: { extensionId: THEME_EXTENSION_ID },
+        payload: { subject: THEME_EXTENSION_ID },
       },
     });
   }, [bridge]);
