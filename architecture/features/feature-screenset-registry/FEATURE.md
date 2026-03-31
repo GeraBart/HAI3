@@ -384,7 +384,7 @@ All MFE TypeScript interfaces are defined with the correct shapes as derived fro
 - `cpt-frontx-fr-mfe-entry-types`
 - `cpt-frontx-fr-mfe-ext-domain`
 - `cpt-frontx-fr-mfe-shared-property`
-- `cpt-frontx-fr-mfe-action-types-v2`
+- `cpt-frontx-fr-mfe-action-types`
 
 **Covers (DESIGN)**:
 - `cpt-frontx-component-screensets`

@@ -499,7 +499,7 @@ The system MUST define `MfeEntry` (base with id, requiredProperties, actions, do
 
 #### Action and Actions Chain Types
 
-- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-action-types-v2`
+- [x] `p1` - **ID**: `cpt-frontx-fr-mfe-action-types`
 
 `Action` MUST have type (string), target (string), optional payload and timeout. `ActionsChain` MUST contain action, optional next and fallback (recursive). Neither MUST have an id field. The `type` field value MUST be a GTS schema type ID (string ending with `~`). When an action payload references an extension, the field MUST be named `subject`; no `extensionId` field MUST appear in action payloads.
 
