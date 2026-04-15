@@ -229,7 +229,7 @@ class ManifestGenerator {
       throw new Error(
         `[${packageDir}] mfe.json is not enriched (missing manifest.metaData). ` +
           `Run 'vite build' for this MFE first (cd src/mfe_packages/${packageDir} && npm run build). ` +
-          `Ensure the FrontxMfGtsPlugin is configured in vite.config.ts.`
+          `Ensure the frontxMfGts plugin is configured in vite.config.ts.`
       );
     }
     return mfeJson;

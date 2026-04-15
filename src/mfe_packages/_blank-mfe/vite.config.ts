@@ -3,12 +3,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { federation } from '@module-federation/vite';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
-import { FrontxMfGtsPlugin } from '@cyberfabric/screensets/build/mf-gts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { frontxMfGts } from '@cyberfabric/screensets/build/mf-gts';
 
 const sharedDeps = [
   'react',
@@ -41,7 +36,7 @@ export default defineConfig({
       // MfeHandlerMF can discover expose chunk paths without regex-parsing the bundle.
       manifest: true,
     }),
-    new FrontxMfGtsPlugin(__dirname).createPlugin(),
+    frontxMfGts(),
   ],
   build: {
     target: 'esnext',

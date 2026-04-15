@@ -489,22 +489,44 @@ class StandaloneEsmBuilder {
 // ── Plugin class ─────────────────────────────────────────────────────────────
 
 // @cpt-begin:frontx-mf-gts-plugin:p1:inst-1
-export class FrontxMfGtsPlugin {
-  constructor(private readonly packageRoot: string) {}
 
-  createPlugin(): Plugin {
-    const packageRoot = this.packageRoot;
+/**
+ * Creates the frontx-mf-gts Vite plugin.
+ *
+ * Runs in `closeBundle` after `@module-federation/vite`. Builds standalone
+ * ESM modules for shared deps and enriches `mfe.json` in-place with manifest
+ * metadata, shared dep info, and per-entry expose assets.
+ *
+ * The package root is resolved from Vite's `config.root` — no `__dirname`
+ * argument needed.
+ *
+ * @example
+ * ```typescript
+ * // vite.config.ts
+ * import { frontxMfGts } from '@cyberfabric/screensets/build/mf-gts';
+ *
+ * export default defineConfig({
+ *   plugins: [react(), federation({ ... }), frontxMfGts()],
+ * });
+ * ```
+ */
+export function frontxMfGts(): Plugin {
+  let packageRoot = '';
 
-    return {
-      name: 'frontx-mf-gts',
-      // Run after all other plugins, including @module-federation/vite, so
-      // that dist/mf-manifest.json is already on disk.
-      enforce: 'post',
+  return {
+    name: 'frontx-mf-gts',
+    // Run after all other plugins, including @module-federation/vite, so
+    // that dist/mf-manifest.json is already on disk.
+    enforce: 'post',
 
-      // @cpt-algo:cpt-frontx-algo-mfe-isolation-enrich-mfe-json:p1
-      async closeBundle() {
-        const distDir = path.join(packageRoot, 'dist');
-        const mfeJsonPath = path.join(packageRoot, 'mfe.json');
+    configResolved(config) {
+      packageRoot = config.root;
+    },
+
+    // @cpt-algo:cpt-frontx-algo-mfe-isolation-enrich-mfe-json:p1
+    async closeBundle() {
+      const distDir = path.join(packageRoot, 'dist');
+      const mfeJsonPath = path.join(packageRoot, 'mfe.json');
 
         // ── Read inputs ─────────────────────────────────────────────────────
 
@@ -553,6 +575,5 @@ export class FrontxMfGtsPlugin {
         console.log(`[frontx-mf-gts] enriched ${mfeJsonPath}`);
       },
     };
-  }
 }
 // @cpt-end:frontx-mf-gts-plugin:p1:inst-1

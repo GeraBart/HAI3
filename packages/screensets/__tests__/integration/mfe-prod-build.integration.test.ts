@@ -1,7 +1,7 @@
 /**
  * Production MFE integration: build _blank-mfe and verify that:
  *  - mf-manifest.json is emitted by @module-federation/vite
- *  - mfe.json is enriched in-place by the FrontxMfGtsPlugin with manifest
+ *  - mfe.json is enriched in-place by the frontxMfGts plugin with manifest
  *    metaData, shared[] (chunkPath, version, unwrapKey), and per-entry exposeAssets
  *  - MfeHandlerMF can derive chunk paths from it without regex parsing
  *
@@ -24,7 +24,7 @@ const BLANK_MFE_ROOT = join(REPO_ROOT, 'src', 'mfe_packages', '_blank-mfe');
 const DIST_DIR = join(BLANK_MFE_ROOT, 'dist');
 /** Raw @module-federation/vite output — used for expose chunk verification */
 const RAW_MANIFEST_PATH = join(DIST_DIR, 'mf-manifest.json');
-/** mfe.json is enriched in-place by FrontxMfGtsPlugin — the canonical runtime contract */
+/** mfe.json is enriched in-place by frontxMfGts plugin — the canonical runtime contract */
 const MFE_JSON_PATH = join(BLANK_MFE_ROOT, 'mfe.json');
 const POSIX_NPM_PATHS = ['/usr/bin/npm', '/usr/local/bin/npm'] as const;
 
