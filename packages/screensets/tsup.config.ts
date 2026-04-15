@@ -13,5 +13,9 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
-  external: ['@globaltypesystem/gts-ts', '@module-federation/runtime'],
+  external: [
+    '@globaltypesystem/gts-ts',
+    '@module-federation/runtime',
+    'esbuild',
+  ],
 });

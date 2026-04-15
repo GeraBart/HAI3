@@ -5,35 +5,37 @@
 /**
  * MFE Manifest Generation Script
  *
- * Reads the GTS manifest (mfe.gts-manifest.json) emitted by the frontx-mf-gts
- * Vite plugin for each MFE package and generates a TypeScript module consumed
- * by the host application's bootstrap.
+ * Reads the enriched mfe.json produced by the frontx-mf-gts Vite plugin for
+ * each MFE package and generates a TypeScript module consumed by the host
+ * application's bootstrap.
  *
- * The GTS manifest already contains all required data:
- * - mfInitKey: extracted from remoteEntry.js at build time
- * - shared[].chunkPath / unwrapKey: extracted from localSharedImportMap
+ * The enriched mfe.json already contains all required data:
+ * - manifest.metaData: publicPath, remoteEntry, buildInfo from mf-manifest.json
+ * - manifest.shared[]: standalone ESM deps with resolved versions and chunkPaths
+ * - manifest.mfInitKey: empty string (MF 2.0 runtime removed)
  * - entries[].exposeAssets: from mf-manifest.json exposes[]
  *
  * Pipeline per MFE package:
- *   1. Read dist/mfe.gts-manifest.json — full GTS manifest
+ *   1. Read mfe.json — enriched by the build plugin
  *   2. Inject resolved publicPath (overrides build-time placeholder)
- *   3. Map entries to MfeEntryMF shape with manifest reference and exposeAssets
+ *   3. Resolve shared dep chunkPaths (override with --shared-base-url if given)
+ *   4. Map entries to MfeEntryMF shape with manifest reference and exposeAssets
  *
  * Usage:
  *   npx tsx scripts/generate-mfe-manifests.ts [--base-url <url>] [--shared-base-url <url>]
  *
- * When --base-url is omitted, publicPath is derived per-package from the
- * old manifest.remoteEntry field in mfe.json (e.g. "http://localhost:3001/").
+ * When --base-url is omitted, publicPath comes from manifest.metaData.publicPath
+ * in the enriched mfe.json (set by the build plugin from mf-manifest.json).
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 // ---------------------------------------------------------------------------
-// Raw JSON shape types (what we read from the GTS manifest on disk)
+// Raw JSON shape types (what we read from the enriched mfe.json on disk)
 // ---------------------------------------------------------------------------
 
-interface RawGtsManifestMetaData {
+interface RawMetaData {
   name: string;
   type: string;
   buildInfo: { buildVersion: string; buildName: string };
@@ -42,21 +44,19 @@ interface RawGtsManifestMetaData {
   publicPath: string;
 }
 
-interface RawGtsShared {
-  id: string;
+interface RawShared {
   name: string;
   version: string;
-  requiredVersion: string;
-  chunkPath: string | null;
+  chunkPath: string;
   unwrapKey: string | null;
 }
 
-interface RawGtsEntryExposeAssets {
+interface RawExposeAssets {
   js: { async: string[]; sync: string[] };
   css: { async: string[]; sync: string[] };
 }
 
-interface RawGtsEntry {
+interface RawEntry {
   id: string;
   requiredProperties: string[];
   optionalProperties?: string[];
@@ -64,10 +64,10 @@ interface RawGtsEntry {
   domainActions: string[];
   manifest: string;
   exposedModule: string;
-  exposeAssets: RawGtsEntryExposeAssets | null;
+  exposeAssets: RawExposeAssets;
 }
 
-interface RawGtsExtension {
+interface RawExtension {
   id: string;
   domain: string;
   entry: string;
@@ -75,29 +75,26 @@ interface RawGtsExtension {
   [key: string]: unknown;
 }
 
-interface RawGtsSchema {
+interface RawSchema {
   $id?: string;
   [key: string]: unknown;
 }
 
-interface RawGtsManifest {
+interface RawManifest {
   id: string;
-  name: string;
-  metaData: RawGtsManifestMetaData;
-  shared: RawGtsShared[];
+  remoteEntry: string;
+  metaData: RawMetaData;
+  shared: RawShared[];
   mfInitKey: string;
-  entries: RawGtsEntry[];
-  extensions: RawGtsExtension[];
-  schemas?: RawGtsSchema[];
 }
 
-// Legacy mfe.json shape — used only to extract the base URL when --base-url
-// is not provided and the GTS manifest has a placeholder publicPath.
-interface RawMfeJson {
-  manifest?: {
-    id?: string;
-    remoteEntry?: string;
-  };
+/** Enriched mfe.json shape produced by the frontx-mf-gts Vite plugin. */
+interface RawEnrichedMfeJson {
+  sharedDependencies?: string[];
+  manifest: RawManifest;
+  entries: RawEntry[];
+  extensions: RawExtension[];
+  schemas?: RawSchema[];
 }
 
 // ---------------------------------------------------------------------------
@@ -106,11 +103,9 @@ interface RawMfeJson {
 // ---------------------------------------------------------------------------
 
 interface OutMfManifestShared {
-  id: string;
   name: string;
   version: string;
-  requiredVersion: string;
-  chunkPath: string | null;
+  chunkPath: string;
   unwrapKey: string | null;
 }
 
@@ -126,7 +121,6 @@ interface OutMfManifest {
     publicPath: string;
   };
   shared: OutMfManifestShared[];
-  mfInitKey: string;
 }
 
 interface OutMfManifestAssets {
@@ -148,8 +142,8 @@ interface OutMfeEntryMF {
 interface OutMfeManifestConfig {
   manifest: OutMfManifest;
   entries: OutMfeEntryMF[];
-  extensions: RawGtsExtension[];
-  schemas?: RawGtsSchema[];
+  extensions: RawExtension[];
+  schemas?: RawSchema[];
 }
 
 // ---------------------------------------------------------------------------
@@ -195,59 +189,62 @@ class ManifestGenerator {
       if (ManifestGenerator.EXCLUDED.has(dir) || dir.startsWith('.')) {
         return false;
       }
-      // Require either the GTS manifest or mfe.json to be present.
       const pkgPath = join(this.mfePackagesDir, dir);
-      return (
-        existsSync(join(pkgPath, 'dist', 'mfe.gts-manifest.json')) ||
-        existsSync(join(pkgPath, 'mfe.json'))
-      );
+      return existsSync(join(pkgPath, 'mfe.json'));
     });
   }
 
   private processPackage(packageDir: string): OutMfeManifestConfig {
     const pkgPath = join(this.mfePackagesDir, packageDir);
 
-    const gtsManifest = this.readGtsManifest(pkgPath, packageDir);
-    const publicPath = this.resolvePublicPath(pkgPath, gtsManifest, packageDir);
+    const mfeJson = this.readEnrichedMfeJson(pkgPath, packageDir);
+    const publicPath = this.resolvePublicPath(mfeJson, packageDir);
 
-    const outManifest = this.buildManifest(gtsManifest, publicPath);
-    const outEntries = this.buildEntries(gtsManifest, outManifest.id, packageDir);
+    const outManifest = this.buildManifest(mfeJson.manifest, publicPath);
+    const outEntries = this.buildEntries(mfeJson.entries, outManifest.id, packageDir);
 
     return {
       manifest: outManifest,
       entries: outEntries,
-      extensions: gtsManifest.extensions,
-      ...(gtsManifest.schemas !== undefined && { schemas: gtsManifest.schemas }),
+      extensions: mfeJson.extensions,
+      ...(mfeJson.schemas !== undefined && { schemas: mfeJson.schemas }),
     };
   }
 
-  private readGtsManifest(pkgPath: string, packageDir: string): RawGtsManifest {
-    const gtsPath = join(pkgPath, 'dist', 'mfe.gts-manifest.json');
-    if (!existsSync(gtsPath)) {
+  private readEnrichedMfeJson(pkgPath: string, packageDir: string): RawEnrichedMfeJson {
+    const mfeJsonPath = join(pkgPath, 'mfe.json');
+    if (!existsSync(mfeJsonPath)) {
       throw new Error(
-        `[${packageDir}] dist/mfe.gts-manifest.json not found. ` +
+        `[${packageDir}] mfe.json not found. ` +
+          `Ensure the MFE package has an mfe.json file.`
+      );
+    }
+    let mfeJson: RawEnrichedMfeJson;
+    try {
+      mfeJson = JSON.parse(readFileSync(mfeJsonPath, 'utf-8')) as RawEnrichedMfeJson;
+    } catch (err) {
+      throw new Error(`[${packageDir}] Cannot parse mfe.json: ${String(err)}`);
+    }
+    if (!mfeJson.manifest?.metaData) {
+      throw new Error(
+        `[${packageDir}] mfe.json is not enriched (missing manifest.metaData). ` +
           `Run 'vite build' for this MFE first (cd src/mfe_packages/${packageDir} && npm run build). ` +
           `Ensure the FrontxMfGtsPlugin is configured in vite.config.ts.`
       );
     }
-    try {
-      return JSON.parse(readFileSync(gtsPath, 'utf-8')) as RawGtsManifest;
-    } catch (err) {
-      throw new Error(`[${packageDir}] Cannot parse dist/mfe.gts-manifest.json: ${String(err)}`);
-    }
+    return mfeJson;
   }
 
   /**
    * Resolve publicPath for this MFE.
    * Priority:
    *   1. --base-url CLI flag (global override for all packages)
-   *   2. publicPath already set in the GTS manifest (non-placeholder value)
+   *   2. publicPath from enriched mfe.json manifest.metaData (set by plugin)
    *   3. Origin from mfe.json manifest.remoteEntry URL (per-package default)
    *   4. "/" as final fallback
    */
   private resolvePublicPath(
-    pkgPath: string,
-    gtsManifest: RawGtsManifest,
+    mfeJson: RawEnrichedMfeJson,
     packageDir: string
   ): string {
     if (this.globalBaseUrl !== null) {
@@ -256,8 +253,8 @@ class ManifestGenerator {
         : `${this.globalBaseUrl}/`;
     }
 
-    // If the GTS manifest already has a real publicPath (not just "/"), use it.
-    const manifestPublicPath = gtsManifest.metaData.publicPath;
+    // Use publicPath from enriched manifest (set by the plugin from mf-manifest.json).
+    const manifestPublicPath = mfeJson.manifest.metaData.publicPath;
     if (manifestPublicPath && manifestPublicPath !== '/') {
       return manifestPublicPath.endsWith('/')
         ? manifestPublicPath
@@ -265,76 +262,65 @@ class ManifestGenerator {
     }
 
     // Fall back to mfe.json manifest.remoteEntry origin.
-    const mfeJsonPath = join(pkgPath, 'mfe.json');
-    if (existsSync(mfeJsonPath)) {
+    const remoteEntry = mfeJson.manifest.remoteEntry;
+    if (remoteEntry) {
       try {
-        const mfeJson = JSON.parse(readFileSync(mfeJsonPath, 'utf-8')) as RawMfeJson;
-        const remoteEntry = mfeJson.manifest?.remoteEntry;
-        if (remoteEntry) {
-          try {
-            const url = new URL(remoteEntry);
-            return `${url.origin}/`;
-          } catch {
-            console.warn(
-              `[${packageDir}] Cannot parse remoteEntry URL "${remoteEntry}", defaulting publicPath to "/"`
-            );
-          }
-        }
+        const url = new URL(remoteEntry);
+        return `${url.origin}/`;
       } catch {
-        // mfe.json not parseable — fall through to "/"
+        console.warn(
+          `[${packageDir}] Cannot parse remoteEntry URL "${remoteEntry}", defaulting publicPath to "/"`
+        );
       }
     }
 
     return '/';
   }
 
-  private buildManifest(gtsManifest: RawGtsManifest, publicPath: string): OutMfManifest {
+  private buildManifest(rawManifest: RawManifest, publicPath: string): OutMfManifest {
     return {
-      id: gtsManifest.id,
-      name: gtsManifest.name,
+      id: rawManifest.id,
+      name: rawManifest.name ?? rawManifest.metaData.name,
       metaData: {
-        name: gtsManifest.metaData.name,
-        type: gtsManifest.metaData.type,
+        name: rawManifest.metaData.name,
+        type: rawManifest.metaData.type,
         buildInfo: {
-          buildVersion: gtsManifest.metaData.buildInfo.buildVersion,
-          buildName: gtsManifest.metaData.buildInfo.buildName,
+          buildVersion: rawManifest.metaData.buildInfo.buildVersion,
+          buildName: rawManifest.metaData.buildInfo.buildName,
         },
         remoteEntry: {
-          name: gtsManifest.metaData.remoteEntry.name,
-          path: gtsManifest.metaData.remoteEntry.path,
-          type: gtsManifest.metaData.remoteEntry.type,
+          name: rawManifest.metaData.remoteEntry.name,
+          path: rawManifest.metaData.remoteEntry.path,
+          type: rawManifest.metaData.remoteEntry.type,
         },
-        globalName: gtsManifest.metaData.globalName,
+        globalName: rawManifest.metaData.globalName,
         // Inject resolved publicPath — overrides the "/" placeholder from the build
         publicPath,
       },
-      shared: gtsManifest.shared.map((s) => ({
-        id: s.id,
+      shared: rawManifest.shared.map((s) => ({
         name: s.name,
         version: s.version,
-        requiredVersion: s.requiredVersion,
         chunkPath: s.chunkPath,
         unwrapKey: s.unwrapKey,
       })),
-      mfInitKey: gtsManifest.mfInitKey,
     };
   }
 
   private buildEntries(
-    gtsManifest: RawGtsManifest,
+    entries: RawEntry[],
     manifestId: string,
     packageDir: string
   ): OutMfeEntryMF[] {
-    return gtsManifest.entries.map((entry) => {
+    return entries.map((entry) => {
       if (!entry.exposeAssets) {
         throw new Error(
           `[${packageDir}] Entry "${entry.id}" has no exposeAssets. ` +
-            `This usually means the exposedModule "${entry.exposedModule}" was not found in mf-manifest.json. ` +
+            `This usually means mfe.json was not enriched by the build plugin. ` +
             `Rebuild the MFE (cd src/mfe_packages/${packageDir} && npm run build).`
         );
       }
 
-      const enriched: OutMfeEntryMF = {
+      const out: OutMfeEntryMF = {
         id: entry.id,
         requiredProperties: entry.requiredProperties,
         actions: entry.actions,
@@ -354,63 +340,44 @@ class ManifestGenerator {
       };
 
       if (entry.optionalProperties !== undefined) {
-        enriched.optionalProperties = entry.optionalProperties;
+        out.optionalProperties = entry.optionalProperties;
       }
 
-      return enriched;
+      return out;
     });
   }
 
   /**
-   * Resolve portable shared dep chunkPaths to absolute URLs using a shared base.
+   * Override shared dep chunkPaths when --shared-base-url is provided.
    *
-   * All MFEs that share the same dependency must resolve to the SAME absolute URL
-   * so the handler's sourceTextCache deduplicates fetches. Portable chunks
-   * (prefixed "portable/") are identical across MFE builds, so they can be
-   * served from a single canonical location.
+   * Enriched mfe.json shared[] entries already have host-relative chunkPaths
+   * (e.g. "/shared/react.js"). When --shared-base-url is given, these are
+   * replaced with absolute URLs under the shared base (e.g.
+   * "https://cdn.example.com/shared/react.js").
    *
-   * Strategy: use --shared-base-url if provided; otherwise use the first MFE's
-   * publicPath as the canonical source for portable chunks.
+   * All MFEs that share the same dependency must resolve to the SAME URL
+   * so the handler's sourceTextCache deduplicates fetches.
    */
   private resolveSharedChunkPaths(configs: OutMfeManifestConfig[]): void {
-    if (configs.length === 0) return;
+    if (configs.length === 0 || this.sharedBaseUrl === null) return;
 
-    const sharedBase = this.sharedBaseUrl
-      ? (this.sharedBaseUrl.endsWith('/') ? this.sharedBaseUrl : `${this.sharedBaseUrl}/`)
-      : configs[0].manifest.metaData.publicPath;
+    const sharedBase = this.sharedBaseUrl.endsWith('/')
+      ? this.sharedBaseUrl
+      : `${this.sharedBaseUrl}/`;
 
-    let portableCount = 0;
-    let externalCount = 0;
+    let count = 0;
     for (const config of configs) {
       for (const shared of config.manifest.shared) {
-        if (shared.chunkPath !== null && shared.chunkPath.startsWith('portable/')) {
-          shared.chunkPath = sharedBase + shared.chunkPath;
-          portableCount++;
-        } else if (shared.chunkPath === null) {
-          // Hybrid externalized dep: host-relative path ensures all MFEs
-          // resolve to the same URL → sourceTextCache deduplicates fetches.
-          const filename = ManifestGenerator.normalizeDepName(shared.name) + '.js';
-          shared.chunkPath = '/shared/' + filename;
-          externalCount++;
-        }
+        // Strip leading "/shared/" prefix and prepend the shared base URL.
+        const filename = shared.chunkPath.replace(/^\/shared\//, '');
+        shared.chunkPath = sharedBase + filename;
+        count++;
       }
     }
 
-    if (portableCount > 0) {
-      console.log(`  Resolved ${portableCount} portable shared dep(s) to: ${sharedBase}`);
+    if (count > 0) {
+      console.log(`  Resolved ${count} shared dep(s) to: ${sharedBase}`);
     }
-    if (externalCount > 0) {
-      console.log(`  Resolved ${externalCount} externalized shared dep(s) to: /shared/`);
-    }
-  }
-
-  /**
-   * Normalizes a package name for use as a filename.
-   * @scope/pkg → scope-pkg, react-dom → react-dom
-   * Mirrors SharedDepsBuilder.normalizeDepName convention.
-   */
-  private static normalizeDepName(name: string): string {
-    return name.replace(/^@/, '').replace(/\//g, '-');
   }
 
   private renderOutputFile(configs: OutMfeManifestConfig[]): string {

@@ -1,5 +1,7 @@
 // @cpt-FEATURE:frontx-mf-gts-plugin:p1
+import * as esbuild from 'esbuild';
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import type { Plugin } from 'vite';
 
@@ -98,135 +100,389 @@ interface MfeJson {
   schemas: MfeJsonSchema[];
 }
 
-// ── Types for the emitted GTS manifest ──────────────────────────────────────
+// ── Types for enriched mfe.json fields ──────────────────────────────────────
 
-interface GtsManifestMetaData {
+interface EnrichedMetaData {
+  publicPath: string;
   name: string;
   type: string;
   buildInfo: { buildVersion: string; buildName: string };
   remoteEntry: { name: string; path: string; type: string };
   globalName: string;
-  publicPath: string;
 }
 
-interface GtsSharedEntry {
-  id: string;
+interface EnrichedSharedEntry {
   name: string;
   version: string;
-  singleton: boolean;
-  requiredVersion: string;
-  chunkPath: string | null;
+  chunkPath: string;
   unwrapKey: string | null;
 }
 
-interface GtsEntryExposeAssets {
-  js: { async: string[]; sync: string[] };
-  css: { async: string[]; sync: string[] };
-}
-
-interface GtsEntry {
-  id: string;
-  requiredProperties: string[];
-  actions: string[];
-  domainActions: string[];
-  manifest: string;
-  exposedModule: string;
-  exposeAssets: GtsEntryExposeAssets | null;
-}
-
-interface GtsManifest {
-  id: string;
+type EnrichedManifest = MfeJsonManifest & {
   name: string;
-  metaData: GtsManifestMetaData;
-  /** Shared deps declared in mfe.json — the handler uses this list to know
-   *  which bare specifiers to rewrite to blob URLs at runtime. */
-  shared: GtsSharedEntry[];
-  /** No longer used — kept for backward compatibility with generate script.
-   *  With shared:{}, MF 2.0 does not produce __mf_init__ keys. */
-  mfInitKey: string;
-  entries: GtsEntry[];
-  extensions: MfeJsonExtension[];
-  schemas: MfeJsonSchema[];
-}
+  metaData: EnrichedMetaData;
+  shared: EnrichedSharedEntry[];
+};
 
-// ── Manifest assembler ──────────────────────────────────────────────────────
+type EnrichedMfeJsonEntry = MfeJsonEntry & {
+  exposeAssets: MfManifestExposeAssets;
+};
 
-class GtsManifestAssembler {
-  assemble(
-    mfeJson: MfeJson,
-    mfManifest: MfManifest,
-    federationName: string
-  ): GtsManifest {
-    const shared = this.buildShared(
-      mfeJson.sharedDependencies ?? [],
-      federationName
-    );
+type EnrichedMfeJson = Omit<MfeJson, 'manifest' | 'entries'> & {
+  manifest: EnrichedManifest;
+  entries: EnrichedMfeJsonEntry[];
+};
+
+// ── mfe.json enricher ───────────────────────────────────────────────────────
+// @cpt-algo:cpt-frontx-algo-mfe-isolation-enrich-mfe-json:p1
+
+class MfeJsonEnricher {
+  private readonly packageRoot: string;
+
+  constructor(packageRoot: string) {
+    this.packageRoot = packageRoot;
+  }
+
+  enrich(mfeJson: MfeJson, mfManifest: MfManifest): EnrichedMfeJson {
+    const metaData = this.buildMetaData(mfManifest);
+    const shared = this.buildSharedEntries(mfeJson.sharedDependencies ?? []);
     const entries = this.buildEntries(mfeJson.entries, mfManifest.exposes);
 
     return {
-      id: mfeJson.manifest.id,
-      name: mfManifest.name,
-      metaData: {
+      ...mfeJson,
+      manifest: {
+        ...mfeJson.manifest,
         name: mfManifest.metaData.name,
-        type: mfManifest.metaData.type,
-        buildInfo: mfManifest.metaData.buildInfo,
-        remoteEntry: mfManifest.metaData.remoteEntry,
-        globalName: mfManifest.metaData.globalName,
-        publicPath: mfManifest.metaData.publicPath,
+        metaData,
+        shared,
       },
-      shared,
-      // No longer used — shared deps are loaded via bare specifier rewriting,
-      // not via MF 2.0's __mf_init__ mechanism.
-      mfInitKey: '',
       entries,
-      extensions: mfeJson.extensions,
-      schemas: mfeJson.schemas,
     };
   }
 
-  /**
-   * Build shared entries from the declared dependency names in mfe.json.
-   * With shared:{}, there are no MF 2.0 shared chunks — the handler builds
-   * and provides shared deps independently via standalone ESM blob URLs.
-   * chunkPath and unwrapKey are null; the handler resolves deps by name.
-   */
-  private buildShared(
-    declaredDeps: string[],
-    federationName: string
-  ): GtsSharedEntry[] {
+  private buildMetaData(mfManifest: MfManifest): EnrichedMetaData {
+    return {
+      publicPath: mfManifest.metaData.publicPath,
+      name: mfManifest.metaData.name,
+      type: mfManifest.metaData.type,
+      buildInfo: mfManifest.metaData.buildInfo,
+      remoteEntry: mfManifest.metaData.remoteEntry,
+      globalName: mfManifest.metaData.globalName,
+    };
+  }
+
+  private buildSharedEntries(
+    declaredDeps: string[]
+  ): EnrichedSharedEntry[] {
     return declaredDeps.map((name) => ({
-      id: `${federationName}:${name}`,
       name,
-      version: '*',
-      singleton: true,
-      requiredVersion: '*',
-      chunkPath: null,
+      version: this.resolvePackageVersion(name),
+      chunkPath: `/shared/${StandaloneEsmBuilder.normalizeDepName(name)}.js`,
       unwrapKey: null,
     }));
+  }
+
+  /**
+   * Resolves the installed version of a package by walking up from
+   * packageRoot through node_modules directories.
+   */
+  private resolvePackageVersion(packageName: string): string {
+    let current = this.packageRoot;
+    for (;;) {
+      const candidate = path.join(
+        current,
+        'node_modules',
+        packageName,
+        'package.json'
+      );
+      if (fs.existsSync(candidate)) {
+        const pkg = JSON.parse(
+          fs.readFileSync(candidate, 'utf-8')
+        ) as { version?: string };
+        return pkg.version ?? '*';
+      }
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+    throw new Error(
+      `Cannot resolve version for "${packageName}" from ${this.packageRoot}`
+    );
   }
 
   private buildEntries(
     mfeEntries: MfeJsonEntry[],
     mfExposes: MfManifestExpose[]
-  ): GtsEntry[] {
-    // Index exposes by their path (e.g. "./lifecycle-helloworld") for O(1) lookup.
+  ): EnrichedMfeJsonEntry[] {
     const exposesIndex = new Map<string, MfManifestExpose>();
     for (const expose of mfExposes) {
       exposesIndex.set(expose.path, expose);
     }
 
     return mfeEntries.map((entry) => {
-      const expose = exposesIndex.get(entry.exposedModule) ?? null;
+      const expose = exposesIndex.get(entry.exposedModule);
+      if (!expose) {
+        throw new Error(
+          `[frontx-mf-gts] No expose in mf-manifest.json matches ` +
+            `entry exposedModule "${entry.exposedModule}"`
+        );
+      }
       return {
-        id: entry.id,
-        requiredProperties: entry.requiredProperties,
-        actions: entry.actions,
-        domainActions: entry.domainActions,
-        manifest: entry.manifest,
-        exposedModule: entry.exposedModule,
-        exposeAssets: expose !== null ? expose.assets : null,
+        ...entry,
+        exposeAssets: expose.assets,
       };
     });
+  }
+}
+
+// ── Standalone ESM builder ──────────────────────────────────────────────────
+// @cpt-algo:cpt-frontx-algo-mfe-isolation-build-standalone-esm:p1
+
+interface SharedDepPackageJson {
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+interface ResolvedSharedDep {
+  name: string;
+  externals: string[];
+}
+
+class StandaloneEsmBuilder {
+  private readonly sharedDeps: string[];
+  private readonly outputDir: string;
+  private readonly packageRoot: string;
+  private readonly nodeRequire: NodeRequire;
+
+  constructor(sharedDeps: string[], outputDir: string, packageRoot: string) {
+    this.sharedDeps = sharedDeps;
+    this.outputDir = outputDir;
+    this.packageRoot = packageRoot;
+    this.nodeRequire = createRequire(path.join(packageRoot, 'package.json'));
+  }
+
+  async build(): Promise<void> {
+    fs.mkdirSync(this.outputDir, { recursive: true });
+
+    const resolved = this.resolveTransitiveDeps();
+
+    for (const dep of resolved) {
+      await this.buildEntry(dep);
+    }
+  }
+
+  /**
+   * For each shared dep, inspect its package.json dependencies and
+   * peerDependencies. Any dep that is ALSO in the shared dep list
+   * becomes an external for that dep's build.
+   */
+  private resolveTransitiveDeps(): ResolvedSharedDep[] {
+    const sharedSet = new Set(this.sharedDeps);
+    return this.sharedDeps.map((name) => {
+      const pkgJsonPath = this.findPackageJsonPath(name);
+      const pkg = JSON.parse(
+        fs.readFileSync(pkgJsonPath, 'utf-8')
+      ) as SharedDepPackageJson;
+      const allDeps = {
+        ...(pkg.dependencies ?? {}),
+        ...(pkg.peerDependencies ?? {}),
+      };
+      const externals = Object.keys(allDeps).filter((d) => sharedSet.has(d));
+      return { name, externals };
+    });
+  }
+
+  /**
+   * Locates package.json by walking up from packageRoot through
+   * node_modules directories. This bypasses restrictive `exports`
+   * fields that prevent `require.resolve("pkg/package.json")`.
+   */
+  private findPackageJsonPath(packageName: string): string {
+    let current = this.packageRoot;
+    for (;;) {
+      const candidate = path.join(
+        current,
+        'node_modules',
+        packageName,
+        'package.json'
+      );
+      if (fs.existsSync(candidate)) return candidate;
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+    throw new Error(
+      `Cannot find package.json for "${packageName}" from ${this.packageRoot}`
+    );
+  }
+
+  private async buildEntry(dep: ResolvedSharedDep): Promise<void> {
+    const outfile = path.join(
+      this.outputDir,
+      StandaloneEsmBuilder.normalizeDepName(dep.name) + '.js'
+    );
+
+    const plugins: esbuild.Plugin[] = [];
+    if (dep.externals.length > 0) {
+      plugins.push(
+        StandaloneEsmBuilder.createExternalsPlugin(dep.externals)
+      );
+    }
+
+    await esbuild.build({
+      entryPoints: [dep.name],
+      bundle: true,
+      format: 'esm',
+      outfile,
+      plugins,
+      platform: 'browser',
+      target: 'esnext',
+      logLevel: 'warning',
+      // Use production builds for CJS packages (react, react-dom).
+      // MFE expose chunks are production builds; mismatched dev/prod
+      // react internals cause `dispatcher.getOwner is not a function`.
+      define: { 'process.env.NODE_ENV': '"production"' },
+    });
+
+    // CJS packages bundled to ESM use __require() for external deps, which
+    // doesn't work in browser ES module context. Post-process to replace
+    // __require("dep") with proper ESM imports.
+    if (dep.externals.length > 0) {
+      StandaloneEsmBuilder.patchCjsExternals(outfile, dep.externals);
+    }
+
+    // CJS packages bundled to ESM only get `export default ...`. Add named
+    // re-exports so `import { createContext } from "react"` works in blob URLs.
+    this.patchCjsNamedExports(outfile, dep.name);
+
+    const label =
+      dep.externals.length > 0
+        ? `(external: ${dep.externals.join(', ')})`
+        : '(standalone)';
+    console.log(
+      `  [frontx-mf-gts] ${dep.name} -> ${path.basename(outfile)} ${label}`
+    );
+  }
+
+  /**
+   * esbuild plugin that externalizes exact package name imports only.
+   *
+   * Sub-path imports (e.g. 'react/jsx-runtime') are NOT externalized — they
+   * are bundled inline. Their internal imports of the parent package remain
+   * external via the exact match.
+   */
+  private static createExternalsPlugin(
+    externals: string[]
+  ): esbuild.Plugin {
+    const externalSet = new Set(externals);
+
+    return {
+      name: 'externalize-shared-deps',
+      setup(build) {
+        build.onResolve({ filter: /.*/ }, (args) => {
+          if (args.path.startsWith('.') || args.path.startsWith('/')) {
+            return null;
+          }
+          if (externalSet.has(args.path)) {
+            return { path: args.path, external: true };
+          }
+          return null;
+        });
+      },
+    };
+  }
+
+  /**
+   * Post-processes esbuild output to fix CJS→ESM external references.
+   *
+   * When esbuild bundles a CJS package to ESM format with external deps,
+   * it generates `__require("react")` calls. This replaces them with ESM
+   * imports.
+   */
+  private static patchCjsExternals(
+    outfile: string,
+    externals: string[]
+  ): void {
+    let source = fs.readFileSync(outfile, 'utf-8');
+
+    const importLines: string[] = [];
+    let patched = false;
+
+    for (const ext of externals) {
+      const escaped = ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const requirePattern = new RegExp(
+        `__require\\(["']${escaped}["']\\)`,
+        'g'
+      );
+
+      if (!requirePattern.test(source)) continue;
+
+      // Reset lastIndex after test()
+      requirePattern.lastIndex = 0;
+
+      const varName = '__ext_' + ext.replace(/[^a-zA-Z0-9_]/g, '_');
+      importLines.push(`import ${varName} from "${ext}";`);
+      source = source.replace(requirePattern, varName);
+      patched = true;
+    }
+
+    if (patched) {
+      source = importLines.join('\n') + '\n' + source;
+      fs.writeFileSync(outfile, source, 'utf-8');
+    }
+  }
+
+  /**
+   * Post-processes esbuild output to add named re-exports for CJS packages.
+   *
+   * esbuild wraps CJS packages with `export default require_xxx()` which
+   * only provides a default export. This detects default-only exports, loads
+   * the package to discover named properties, and appends named re-exports.
+   */
+  private patchCjsNamedExports(
+    outfile: string,
+    packageName: string
+  ): void {
+    let source = fs.readFileSync(outfile, 'utf-8');
+
+    // Only patch if the module is a CJS-wrapped default-only export
+    const defaultMatch = source.match(/^export default (.+);$/m);
+    if (!defaultMatch) return;
+
+    // Skip if named exports already exist
+    if (/^export \{/m.test(source)) return;
+
+    // Load the package at build time to discover its named exports
+    let mod: Record<string, unknown>;
+    try {
+      mod = this.nodeRequire(packageName) as Record<string, unknown>;
+    } catch {
+      return; // Package can't be loaded — skip
+    }
+
+    const keys = Object.keys(mod).filter(
+      (k) => k !== 'default' && k !== '__esModule' && /^[a-zA-Z_$]/.test(k)
+    );
+    if (keys.length === 0) return;
+
+    // Replace `export default <expr>;` with variable + named re-exports
+    const expr = defaultMatch[1];
+    const replacement = [
+      `var __mod_default = ${expr};`,
+      `export default __mod_default;`,
+      `export var { ${keys.join(', ')} } = __mod_default;`,
+    ].join('\n');
+
+    source = source.replace(defaultMatch[0], replacement);
+    fs.writeFileSync(outfile, source, 'utf-8');
+  }
+
+  /**
+   * Normalizes a package name for use as a filename.
+   * @scope/pkg -> scope-pkg, react-dom -> react-dom
+   */
+  static normalizeDepName(name: string): string {
+    return name.replace(/^@/, '').replace(/\//g, '-');
   }
 }
 
@@ -234,14 +490,9 @@ class GtsManifestAssembler {
 
 // @cpt-begin:frontx-mf-gts-plugin:p1:inst-1
 export class FrontxMfGtsPlugin {
-  private readonly assembler = new GtsManifestAssembler();
-
-  // The package root is injected at construction time so the plugin can locate
-  // mfe.json independently of Vite's cwd (which may differ in monorepo setups).
   constructor(private readonly packageRoot: string) {}
 
   createPlugin(): Plugin {
-    const assembler = this.assembler;
     const packageRoot = this.packageRoot;
 
     return {
@@ -251,16 +502,17 @@ export class FrontxMfGtsPlugin {
       enforce: 'post',
 
       // @cpt-algo:cpt-frontx-algo-mfe-isolation-enrich-mfe-json:p1
-      closeBundle() {
+      async closeBundle() {
         const distDir = path.join(packageRoot, 'dist');
+        const mfeJsonPath = path.join(packageRoot, 'mfe.json');
 
         // ── Read inputs ─────────────────────────────────────────────────────
 
-        const mfeJson: MfeJson = JSON.parse(
-          fs.readFileSync(path.join(packageRoot, 'mfe.json'), 'utf-8')
+        const mfeJson = JSON.parse(
+          fs.readFileSync(mfeJsonPath, 'utf-8')
         ) as MfeJson;
 
-        const mfManifest: MfManifest = JSON.parse(
+        const mfManifest = JSON.parse(
           fs.readFileSync(path.join(distDir, 'mf-manifest.json'), 'utf-8')
         ) as MfManifest;
 
@@ -270,26 +522,35 @@ export class FrontxMfGtsPlugin {
         //   - shared dep proxy/library chunks
         // The plugin only needs mf-manifest.json for expose asset paths.
 
-        // ── Assemble ─────────────────────────────────────────────────────────
+        // ── Build standalone ESMs for shared deps ───────────────────────────
 
-        const gtsManifest = assembler.assemble(
-          mfeJson,
-          mfManifest,
-          mfManifest.name
-        );
+        const sharedDeps = mfeJson.sharedDependencies ?? [];
+        if (sharedDeps.length > 0) {
+          const sharedOutputDir = path.join(distDir, 'shared');
+          const esmBuilder = new StandaloneEsmBuilder(
+            sharedDeps,
+            sharedOutputDir,
+            packageRoot
+          );
+          console.log(
+            '[frontx-mf-gts] Building shared deps as standalone ESM...'
+          );
+          await esmBuilder.build();
+          console.log('[frontx-mf-gts] Shared deps build complete.');
+        }
 
-        // ── Emit GTS manifest ───────────────────────────────────────────────
+        // ── Enrich mfe.json in-place ────────────────────────────────────────
 
-        const outPath = path.join(distDir, 'mfe.gts-manifest.json');
+        const enricher = new MfeJsonEnricher(packageRoot);
+        const enrichedMfeJson = enricher.enrich(mfeJson, mfManifest);
+
         fs.writeFileSync(
-          outPath,
-          JSON.stringify(gtsManifest, null, 2),
+          mfeJsonPath,
+          JSON.stringify(enrichedMfeJson, null, 2) + '\n',
           'utf-8'
         );
 
-        // Use console.log because Vite's `this.info()` is unavailable in
-        // closeBundle when called outside a normal rollup context.
-        console.log(`[frontx-mf-gts] emitted ${outPath}`);
+        console.log(`[frontx-mf-gts] enriched ${mfeJsonPath}`);
       },
     };
   }

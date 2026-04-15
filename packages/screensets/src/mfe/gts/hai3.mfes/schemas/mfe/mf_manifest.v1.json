@@ -8,7 +8,8 @@
     },
     "name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Human-readable MFE name, matches metaData.name."
     },
     "metaData": {
       "type": "object",
@@ -33,7 +34,6 @@
           "required": ["name", "path", "type"]
         },
         "globalName": { "type": "string" },
-        "pluginVersion": { "type": "string" },
         "publicPath": { "type": "string" }
       },
       "required": ["name", "type", "buildInfo", "remoteEntry", "publicPath"]
@@ -43,33 +43,32 @@
       "items": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
-          "name": { "type": "string", "minLength": 1 },
-          "version": { "type": "string" },
-          "requiredVersion": { "type": "string" },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "npm package name (e.g. 'react', '@cyberfabric/screensets')."
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Concrete version resolved from node_modules (e.g. '19.2.4'). Same name+version across MFEs means same source text — the handler's sourceTextCache deduplicates."
+          },
           "chunkPath": {
-            "description": "Chunk filename relative to publicPath. Null when no bundled chunk (peer-provided external).",
-            "oneOf": [
-              { "type": "string", "minLength": 1 },
-              { "type": "null" }
-            ]
+            "type": "string",
+            "minLength": 1,
+            "description": "URL or host-relative path to the standalone ESM file for this dependency (e.g. '/shared/react.js')."
           },
           "unwrapKey": {
-            "description": "Named export key to unwrap the module from the chunk. Null when no unwrapping is needed.",
+            "description": "Named export key to unwrap the module from the chunk. Null when the chunk exports the module directly.",
             "oneOf": [
               { "type": "string", "minLength": 1 },
               { "type": "null" }
             ]
           }
         },
-        "required": ["id", "name", "version", "requiredVersion", "chunkPath", "unwrapKey"]
+        "required": ["name", "version", "chunkPath", "unwrapKey"]
       }
-    },
-    "mfInitKey": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The globalThis key for the __mf_init__ promise. Extracted from remoteEntry.js at build time."
     }
   },
-  "required": ["id", "name", "metaData", "shared", "mfInitKey"]
+  "required": ["id", "name", "metaData", "shared"]
 }

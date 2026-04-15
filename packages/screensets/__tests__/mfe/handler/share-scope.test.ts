@@ -42,14 +42,12 @@ function buildManifest(
 ): MfManifest {
   return {
     id: `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
-    name: remoteName,
     metaData: {
       name: remoteName,
       type: 'app',
       buildInfo: { buildVersion: '1.0.0', buildName: remoteName },
       remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
       globalName: remoteName,
-      pluginVersion: '2.0.0',
       publicPath: `${TEST_BASE_URL}/${remoteName}/`,
     },
     shared,
@@ -65,12 +63,11 @@ function sharedDep(
   pkgName: string,
   version = '1.0.0'
 ): MfManifestShared {
+  const normalized = pkgName.replace(/^@/, '').replace(/\//g, '-');
   return {
-    id: `${remoteName}:${pkgName}`,
     name: pkgName,
     version,
-    requiredVersion: `^${version}`,
-    chunkPath: null,
+    chunkPath: `${TEST_BASE_URL}/${remoteName}/shared/${normalized}.js`,
     unwrapKey: null,
   };
 }

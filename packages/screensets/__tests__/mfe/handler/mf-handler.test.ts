@@ -39,14 +39,12 @@ function buildManifest(
 ): MfManifest {
   return {
     id: options.id ?? `gts.hai3.mfes.mfe.mf_manifest.v1~test.${remoteName}.manifest.v1`,
-    name: remoteName,
     metaData: {
       name: remoteName,
       type: 'app',
       buildInfo: { buildVersion: '1.0.0', buildName: remoteName },
       remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
       globalName: remoteName,
-      pluginVersion: '2.0.0',
       publicPath: `${TEST_BASE_URL}/${remoteName}/`,
     },
     shared: options.shared ?? [],
@@ -286,15 +284,13 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
 
     it('17.2.4 - Clear error when inline manifest missing "id" field', async () => {
       const invalidManifest = {
-        name: 'analyticsRemote',
         metaData: {
           name: 'analyticsRemote',
           type: 'app',
           buildInfo: { buildVersion: '1.0.0', buildName: 'analyticsRemote' },
           remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
           globalName: 'analyticsRemote',
-          pluginVersion: '2.0.0',
-          publicPath: `${TEST_BASE_URL}/analyticsRemote/`,
+              publicPath: `${TEST_BASE_URL}/analyticsRemote/`,
         },
         shared: [],
         // id intentionally missing
@@ -317,14 +313,12 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       // into the handler's runtime validation path — this tests the guard, not production use.
       const invalidManifest = {
         id: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.analytics.manifest.v1',
-        name: 'analyticsRemote',
         metaData: {
           name: 'analyticsRemote',
           type: 'app',
           buildInfo: { buildVersion: '1.0.0', buildName: 'analyticsRemote' },
           remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
           globalName: 'analyticsRemote',
-          pluginVersion: '2.0.0',
           // publicPath intentionally absent
         },
         shared: [],
@@ -360,14 +354,12 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       // remoteEntry intentionally absent — tests the runtime validation guard path.
       const invalidManifest = {
         id: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.noremoteentry.manifest.v1',
-        name: 'analyticsRemote',
         metaData: {
           name: 'analyticsRemote',
           type: 'app',
           buildInfo: { buildVersion: '1.0.0', buildName: 'analyticsRemote' },
           // remoteEntry intentionally absent
           globalName: 'analyticsRemote',
-          pluginVersion: '2.0.0',
           publicPath: `${TEST_BASE_URL}/analyticsRemote/`,
         },
         shared: [],
@@ -389,14 +381,12 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       // The field is kept for backwards compatibility; missing entirely throws.
       const invalidManifest = {
         id: 'gts.hai3.mfes.mfe.mf_manifest.v1~acme.nomfinitkey.manifest.v1',
-        name: 'analyticsRemote',
         metaData: {
           name: 'analyticsRemote',
           type: 'app',
           buildInfo: { buildVersion: '1.0.0', buildName: 'analyticsRemote' },
           remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
           globalName: 'analyticsRemote',
-          pluginVersion: '2.0.0',
           publicPath: `${TEST_BASE_URL}/analyticsRemote/`,
         },
         shared: [],
@@ -463,11 +453,9 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       const manifest = buildManifest(remoteName, {
         shared: [
           {
-            id: `${remoteName}:react`,
             name: 'react',
             version: '19.2.4',
-            requiredVersion: '^19.0.0',
-            chunkPath: null,
+            chunkPath: sharedDepUrl,
             unwrapKey: null,
           },
         ],
@@ -509,21 +497,20 @@ describe('MfeHandlerMF - Caching and Manifest Resolution', () => {
       const remoteName = 'analyticsSharedMfRemote';
       const baseUrl = `${TEST_BASE_URL}/${remoteName}/`;
 
+      const sharedDepUrl = `${baseUrl}shared/react.js`;
       const manifest = buildManifest(remoteName, {
         shared: [
           {
-            id: `${remoteName}:react`,
             name: 'react',
             version: '18.2.0',
-            requiredVersion: '^18.0.0',
-            chunkPath: null,
+            chunkPath: sharedDepUrl,
             unwrapKey: null,
           },
         ],
       });
 
       // Register standalone shared dep ESM file
-      mocks.registerSource(`${baseUrl}shared/react.js`, 'export default {};');
+      mocks.registerSource(sharedDepUrl, 'export default {};');
 
       const exposeAssets = buildExposeAssets(remoteName, './ChartWidget', {
         registerSource: mocks.registerSource,

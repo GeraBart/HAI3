@@ -1,8 +1,8 @@
 /**
  * Production MFE integration: build _blank-mfe and verify that:
  *  - mf-manifest.json is emitted by @module-federation/vite
- *  - mfe.gts-manifest.json is emitted by the FrontxMfGtsPlugin
- *  - The GTS manifest shape matches MfManifest (with mfInitKey, chunkPath, unwrapKey)
+ *  - mfe.json is enriched in-place by the FrontxMfGtsPlugin with manifest
+ *    metaData, shared[] (chunkPath, version, unwrapKey), and per-entry exposeAssets
  *  - MfeHandlerMF can derive chunk paths from it without regex parsing
  *
  * Full load()+mount() is not run here: Node's default ESM loader cannot evaluate
@@ -15,7 +15,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MfeHandlerMF } from '../../src/mfe/handler/mf-handler';
-import type { MfManifest } from '../../src/mfe/types';
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..');
@@ -24,10 +24,8 @@ const BLANK_MFE_ROOT = join(REPO_ROOT, 'src', 'mfe_packages', '_blank-mfe');
 const DIST_DIR = join(BLANK_MFE_ROOT, 'dist');
 /** Raw @module-federation/vite output — used for expose chunk verification */
 const RAW_MANIFEST_PATH = join(DIST_DIR, 'mf-manifest.json');
-/** GTS manifest emitted by FrontxMfGtsPlugin — the canonical runtime manifest */
-const GTS_MANIFEST_PATH = join(DIST_DIR, 'mfe.gts-manifest.json');
-/** Keep for backward-compat in tests that read raw manifest */
-const MANIFEST_PATH = RAW_MANIFEST_PATH;
+/** mfe.json is enriched in-place by FrontxMfGtsPlugin — the canonical runtime contract */
+const MFE_JSON_PATH = join(BLANK_MFE_ROOT, 'mfe.json');
 const POSIX_NPM_PATHS = ['/usr/bin/npm', '/usr/local/bin/npm'] as const;
 
 type CommandSpec = {
@@ -138,8 +136,11 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     if (!existsSync(RAW_MANIFEST_PATH)) {
       throw new Error(`Expected mf-manifest.json at ${RAW_MANIFEST_PATH} after build.\n${buildInfo}`);
     }
-    if (!existsSync(GTS_MANIFEST_PATH)) {
-      throw new Error(`Expected mfe.gts-manifest.json at ${GTS_MANIFEST_PATH} after build.\n${buildInfo}`);
+    // Verify mfe.json was enriched with manifest.metaData
+    const enrichedMfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as Record<string, unknown>;
+    const manifest = enrichedMfeJson['manifest'] as Record<string, unknown> | undefined;
+    if (!manifest?.['metaData']) {
+      throw new Error(`Expected mfe.json to be enriched with manifest.metaData after build.\n${buildInfo}`);
     }
   });
 
@@ -265,56 +266,80 @@ describe('MfeHandlerMF + production _blank-mfe build', () => {
     ]);
   });
 
-  it('emits GTS manifest (mfe.gts-manifest.json) with correct shape', () => {
-    const gtsManifest = JSON.parse(readFileSync(GTS_MANIFEST_PATH, 'utf8')) as MfManifest;
+  it('enriches mfe.json with manifest metaData, shared[], and mfInitKey', () => {
+    type EnrichedManifest = {
+      id: string;
+      remoteEntry: string;
+      metaData: {
+        publicPath: string;
+        name: string;
+        type: string;
+        buildInfo: { buildVersion: string; buildName: string };
+        remoteEntry: { name: string; path: string; type: string };
+        globalName: string;
+      };
+      shared: { name: string; version: string; chunkPath: string; unwrapKey: string | null }[];
+      mfInitKey: string;
+    };
+    type EnrichedMfeJson = { manifest: EnrichedManifest };
+    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
 
-    // Top-level shape required by MfManifest
-    expect(typeof gtsManifest.id).toBe('string');
-    expect(typeof gtsManifest.name).toBe('string');
-    expect(gtsManifest.metaData).toBeDefined();
-    expect(typeof gtsManifest.metaData.publicPath).toBe('string');
-    expect(gtsManifest.metaData.remoteEntry).toBeDefined();
-    expect(typeof gtsManifest.metaData.remoteEntry.name).toBe('string');
-    expect(Array.isArray(gtsManifest.shared)).toBe(true);
-    // mfInitKey is now empty — MF 2.0's __mf_init__ mechanism is no longer used.
-    // Shared deps are loaded via bare specifier rewriting instead.
-    expect(typeof gtsManifest.mfInitKey).toBe('string');
-    expect(gtsManifest.mfInitKey).toBe('');
+    expect(typeof mfeJson.manifest.id).toBe('string');
+    expect(mfeJson.manifest.metaData).toBeDefined();
+    expect(typeof mfeJson.manifest.metaData.publicPath).toBe('string');
+    expect(mfeJson.manifest.metaData.remoteEntry).toBeDefined();
+    expect(typeof mfeJson.manifest.metaData.remoteEntry.name).toBe('string');
+    expect(Array.isArray(mfeJson.manifest.shared)).toBe(true);
+    // mfInitKey is empty — MF 2.0's __mf_init__ mechanism is no longer used.
+    expect(typeof mfeJson.manifest.mfInitKey).toBe('string');
+    expect(mfeJson.manifest.mfInitKey).toBe('');
   });
 
-  it('GTS manifest shared[] has chunkPath and unwrapKey (not assets)', () => {
-    const gtsManifest = JSON.parse(readFileSync(GTS_MANIFEST_PATH, 'utf8')) as MfManifest;
+  it('enriched mfe.json shared[] has chunkPath pointing to standalone ESMs', () => {
+    type SharedEntry = { name: string; version: string; chunkPath: string; unwrapKey: string | null };
+    type EnrichedMfeJson = { manifest: { shared: SharedEntry[] } };
+    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
 
-    expect(gtsManifest.shared.length).toBeGreaterThan(0);
-    for (const dep of gtsManifest.shared) {
-      // chunkPath is string | null (null = no bundled chunk)
-      expect(dep.chunkPath === null || typeof dep.chunkPath === 'string').toBe(true);
-      // unwrapKey is string | null
-      expect(dep.unwrapKey === null || typeof dep.unwrapKey === 'string').toBe(true);
-    }
-  });
-
-  it('GTS manifest shared[] chunkPath is null (standalone ESM, not MF 2.0 proxy chunks)', () => {
-    const gtsManifest = JSON.parse(readFileSync(GTS_MANIFEST_PATH, 'utf8')) as MfManifest;
-
-    expect(gtsManifest.shared.length).toBeGreaterThan(0);
-    for (const dep of gtsManifest.shared) {
-      // With shared:{}, MF 2.0 produces no shared dep chunks.
-      // chunkPath is null — the handler resolves deps by name convention.
-      expect(dep.chunkPath).toBeNull();
+    expect(mfeJson.manifest.shared.length).toBeGreaterThan(0);
+    for (const dep of mfeJson.manifest.shared) {
+      // chunkPath points to the standalone ESM (e.g., /shared/react.js)
+      expect(typeof dep.chunkPath).toBe('string');
+      expect(dep.chunkPath).toMatch(/^\/shared\/.+\.js$/);
+      // unwrapKey is null for default export
       expect(dep.unwrapKey).toBeNull();
     }
   });
 
-  it('GTS manifest shared[] entries are declared from mfe.json sharedDependencies', () => {
-    const gtsManifest = JSON.parse(readFileSync(GTS_MANIFEST_PATH, 'utf8')) as MfManifest;
+  it('enriched mfe.json shared[] has resolved versions from node_modules', () => {
+    type SharedEntry = { name: string; version: string; chunkPath: string; unwrapKey: string | null };
+    type EnrichedMfeJson = { manifest: { shared: SharedEntry[] } };
+    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
 
-    expect(gtsManifest.shared.length).toBeGreaterThan(0);
-    for (const dep of gtsManifest.shared) {
-      // Deps are declared by name — version is wildcard '*' since they are
-      // not resolved from mf-manifest.json shared[] anymore.
+    expect(mfeJson.manifest.shared.length).toBeGreaterThan(0);
+    for (const dep of mfeJson.manifest.shared) {
       expect(typeof dep.name).toBe('string');
       expect(dep.name.length).toBeGreaterThan(0);
+      // Version is resolved from node_modules package.json (not wildcard '*')
+      expect(typeof dep.version).toBe('string');
+      expect(dep.version).toMatch(/^\d+\.\d+/);
+    }
+  });
+
+  it('enriched mfe.json entries have exposeAssets from mf-manifest.json', () => {
+    type ExposeAssets = { js: { async: string[]; sync: string[] }; css: { async: string[]; sync: string[] } };
+    type EnrichedEntry = { id: string; exposedModule: string; exposeAssets: ExposeAssets };
+    type EnrichedMfeJson = { entries: EnrichedEntry[] };
+    const mfeJson = JSON.parse(readFileSync(MFE_JSON_PATH, 'utf8')) as EnrichedMfeJson;
+
+    expect(mfeJson.entries.length).toBeGreaterThan(0);
+    for (const entry of mfeJson.entries) {
+      expect(entry.exposeAssets).toBeDefined();
+      expect(Array.isArray(entry.exposeAssets.js.sync)).toBe(true);
+      expect(entry.exposeAssets.js.sync.length).toBeGreaterThan(0);
+      // Verify expose chunk file exists on disk
+      for (const chunk of entry.exposeAssets.js.sync) {
+        expect(statSync(join(DIST_DIR, chunk)).isFile()).toBe(true);
+      }
     }
   });
 });

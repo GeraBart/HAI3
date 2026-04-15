@@ -340,9 +340,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Resolve manifest from reference.
    *
    * Validates the GTS manifest shape: requires id, name, metaData
-   * (with publicPath and remoteEntry), shared[], and mfInitKey.
-   * mfInitKey may be an empty string — the field must be present but its
-   * value is no longer used by the handler (MF 2.0 runtime removed).
+   * (with publicPath and remoteEntry), and shared[].
    */
   private async resolveManifest(manifestRef: string | MfManifest): Promise<MfManifest> {
     if (typeof manifestRef === 'object' && manifestRef !== null) {
@@ -350,6 +348,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         throw new MfeLoadError(
           'Inline manifest must have a valid "id" field',
           'inline-manifest'
+        );
+      }
+      if (typeof manifestRef.name !== 'string' || manifestRef.name.length === 0) {
+        throw new MfeLoadError(
+          `Inline manifest '${manifestRef.id}' must have a non-empty "name" field`,
+          manifestRef.id
         );
       }
       if (
@@ -375,12 +379,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       if (!Array.isArray(manifestRef.shared)) {
         throw new MfeLoadError(
           `Inline manifest '${manifestRef.id}' must have a "shared" array`,
-          manifestRef.id
-        );
-      }
-      if (typeof manifestRef.mfInitKey !== 'string') {
-        throw new MfeLoadError(
-          `Inline manifest '${manifestRef.id}' must have a "mfInitKey" field (may be empty string)`,
           manifestRef.id
         );
       }
@@ -420,16 +418,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     manifest: MfManifest
   ): Promise<Map<string, string>> {
     const blobUrls = new Map<string, string>();
-    const sharedBaseUrl = manifest.metaData.publicPath + 'shared/';
     const sharedNames = new Set(manifest.shared.map((d) => d.name));
 
     // Pass 1: Fetch all source texts (sourceTextCache deduplicates across MFEs).
     const sources = new Map<string, string>();
     for (const dep of manifest.shared) {
-      const depUrl = dep.chunkPath !== null
-        ? dep.chunkPath
-        : sharedBaseUrl + MfeHandlerMF.normalizeDepName(dep.name) + '.js';
-      sources.set(dep.name, await this.fetchSourceText(depUrl));
+      sources.set(dep.name, await this.fetchSourceText(dep.chunkPath));
     }
 
     // Pass 2: Create blob URLs in dependency order.
@@ -473,14 +467,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   private static sourceImports(source: string, packageName: string): boolean {
     const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`(?:from|import)\\s*["']${escaped}["']`).test(source);
-  }
-
-  /**
-   * Normalize a package name for use as a filename.
-   * Mirrors build-shared-deps.ts convention: @scope/pkg → scope-pkg
-   */
-  private static normalizeDepName(name: string): string {
-    return name.replace(/^@/, '').replace(/\//g, '-');
   }
 
   /**

@@ -58,7 +58,15 @@ export async function bootstrapMFE(
     }
     // @cpt-end:cpt-frontx-dod-screenset-registry-mfe-schema-registration:p1:inst-1
 
+    // Register and validate manifest instance against GTS schema
     screensetsRegistry.typeSystem.register(config.manifest);
+    const manifestValidation = screensetsRegistry.typeSystem.validateInstance(config.manifest.id);
+    if (!manifestValidation.valid) {
+      console.error(
+        `[MFE Bootstrap] Manifest '${config.manifest.id}' failed GTS validation:`,
+        JSON.stringify(manifestValidation.errors, null, 2)
+      );
+    }
 
     for (const entry of config.entries) {
       screensetsRegistry.typeSystem.register({ ...entry, manifest: config.manifest });
