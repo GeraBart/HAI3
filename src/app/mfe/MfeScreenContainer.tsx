@@ -28,9 +28,7 @@ export function MfeScreenContainer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const app = useHAI3();
   const bootstrappedRef = useRef(false);
-
-  // Screen extensions collected after bootstrap, used to pick the initial screen
-  const [screenExtensions, setScreenExtensions] = useState<ScreenExtension[]>([]);
+  const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
     // Bootstrap MFE system once on mount: register domains and extensions.
@@ -39,12 +37,16 @@ export function MfeScreenContainer() {
     // by which time the slot will have rendered and attached the ref.
     if (bootstrappedRef.current) return;
     bootstrappedRef.current = true;
-    bootstrapMFE(app, containerRef).then((exts) => {
-      setScreenExtensions(exts);
+    bootstrapMFE(app, containerRef).then(() => {
+      setBootstrapped(true);
     }).catch((error) => {
       console.error('[MFE Bootstrap] Failed to bootstrap MFE:', error);
     });
   }, [app]);
+
+  const screenExtensions = bootstrapped && app.screensetsRegistry
+    ? (app.screensetsRegistry.getExtensionsForDomain(screenDomain.id) as ScreenExtension[])
+    : [];
 
   // Reactively track the currently mounted screen extension ID.
   // Any store dispatch (including mount state updates from Menu) triggers a snapshot check.

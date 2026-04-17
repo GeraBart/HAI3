@@ -200,6 +200,7 @@ export default [
       'local/screen-inline-components': 'off',
       'local/no-direct-tanstack-hooks': 'off',
       'local/no-manual-query-keys': 'off',
+      'local/no-gts-id-manipulation': 'error',
 
       // Type safety: Discourage loose types
       'no-restricted-syntax': [
@@ -259,6 +260,22 @@ export default [
       'local/no-coordinator-effects': 'error',
       'local/no-missing-domain-id': 'error',
       'local/domain-event-format': 'error',
+    },
+  },
+
+  // GTS format parsing is the authorized responsibility of the GTS module
+  {
+    files: ['**/mfe/gts/**/*.{ts,tsx}'],
+    rules: {
+      'local/no-gts-id-manipulation': 'off',
+    },
+  },
+
+  // Tests construct fixture IDs — format manipulation is acceptable in test code
+  {
+    files: ['**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    rules: {
+      'local/no-gts-id-manipulation': 'off',
     },
   },
 

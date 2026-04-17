@@ -12,6 +12,7 @@ import uikitNoBusinessLogic = require('./rules/uikit-no-business-logic');
 import screenInlineComponents = require('./rules/screen-inline-components');
 import noDirectTanstackHooks = require('./rules/no-direct-tanstack-hooks');
 import noManualQueryKeys = require('./rules/no-manual-query-keys');
+import noGtsIdManipulation = require('./rules/no-gts-id-manipulation');
 
 export = {
   rules: {
@@ -24,5 +25,6 @@ export = {
     'screen-inline-components': screenInlineComponents,
     'no-direct-tanstack-hooks': noDirectTanstackHooks,
     'no-manual-query-keys': noManualQueryKeys,
+    'no-gts-id-manipulation': noGtsIdManipulation,
   },
 };

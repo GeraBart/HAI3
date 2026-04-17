@@ -10,7 +10,7 @@
  */
 
 import type { RefObject } from 'react';
-import type { HAI3App, Extension, ScreenExtension, MfManifest, MfeEntryMF, JSONSchema } from '@cyberfabric/react';
+import type { HAI3App, Extension, MfManifest, MfeEntryMF, JSONSchema } from '@cyberfabric/react';
 import { bootstrapMfeDomains } from '@cyberfabric/react';
 import MFE_MANIFESTS from './generated-mfe-manifests.json';
 
@@ -21,16 +21,9 @@ import MFE_MANIFESTS from './generated-mfe-manifests.json';
 interface MfeManifestConfig {
   manifest: MfManifest;
   entries: MfeEntryMF[];
-  extensions: (Extension | ScreenExtension)[];
+  extensions: Extension[];
   schemas?: JSONSchema[];
 }
-
-// @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-is-screen-extension
-function isScreenExtension(extension: Extension): extension is ScreenExtension {
-  const candidate = extension as { presentation?: { route?: string } };
-  return typeof candidate.presentation?.route === 'string';
-}
-// @cpt-end:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-is-screen-extension
 
 /**
  * Bootstrap MFE system for the host application.
@@ -43,22 +36,20 @@ function isScreenExtension(extension: Extension): extension is ScreenExtension {
  *
  * @param app - FrontX application instance
  * @param screenContainerRef - React ref for the screen domain container element
- * @returns Array of registered screen extensions, for URL routing in MfeScreenContainer
  */
 // @cpt-begin:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-bootstrap-mfe
 export async function bootstrapMFE(
   app: HAI3App,
   screenContainerRef: RefObject<HTMLDivElement | null>,
-): Promise<ScreenExtension[]> {
+): Promise<void> {
   const screensetsRegistry = await bootstrapMfeDomains(app, screenContainerRef);
 
   if (MFE_MANIFESTS.length === 0) {
     console.warn('[MFE Bootstrap] No MFE manifests found. Run `npm run generate:mfe-manifests` to generate them.');
-    return [];
+    return;
   }
 
   const manifests = MFE_MANIFESTS as MfeManifestConfig[];
-  const screenExtensions: ScreenExtension[] = [];
 
   for (const config of manifests) {
     // @cpt-begin:cpt-frontx-dod-screenset-registry-mfe-schema-registration:p1:inst-1
@@ -75,8 +66,10 @@ export async function bootstrapMFE(
 
       for (const schema of config.schemas) {
         if (!schema.$id) continue;
-        const actionId = schema.$id.replace(/^gts:\/\//, '');
-        if (declaredActionIds.has(actionId)) {
+        const matches = Array.from(declaredActionIds).some((actionId) =>
+          schema.$id!.includes(actionId)
+        );
+        if (matches) {
           screensetsRegistry.typeSystem.registerSchema(schema);
         }
       }
@@ -100,10 +93,6 @@ export async function bootstrapMFE(
     for (const extension of config.extensions) {
       await screensetsRegistry.registerExtension(extension);
     }
-
-    screenExtensions.push(...config.extensions.filter(isScreenExtension));
   }
-
-  return screenExtensions;
 }
 // @cpt-end:cpt-frontx-flow-request-lifecycle-query-client-lifecycle:p2:inst-bootstrap-mfe
