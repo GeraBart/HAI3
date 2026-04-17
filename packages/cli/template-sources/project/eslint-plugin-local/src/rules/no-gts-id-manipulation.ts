@@ -53,7 +53,7 @@ function literalContainsGtsMarker(node: Literal | null | undefined): boolean {
     return textContainsGtsMarker(node.value);
   }
   // RegExp literal (detected via node.regex in estree)
-  const regexNode = node as Literal & { regex?: { pattern: string } };
+  const regexNode: Literal & { regex?: { pattern: string } } = node;
   if (regexNode.regex) {
     return textContainsGtsMarker(regexNode.regex.pattern);
   }
