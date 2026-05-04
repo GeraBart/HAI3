@@ -144,7 +144,6 @@ export {
   ScreensetsRegistry,
   ScreensetsRegistryFactory,
   screensetsRegistryFactory,
-  ContainerProvider,
 } from '@cyberfabric/screensets';
 
 // MFE Concrete Implementations (re-exported from @cyberfabric/screensets subpath exports)
