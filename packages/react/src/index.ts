@@ -64,12 +64,10 @@ export {
   useSharedProperty,
   useHostAction,
   useDomainExtensions,
+  useMountedExtensions,
   useRegisteredPackages,
   useActivePackage,
-  RefContainerProvider,
   ExtensionDomainSlot,
-  bootstrapMfeDomains,
-  DetachedContainerProvider,
 } from './mfe';
 
 export type {
@@ -482,7 +480,6 @@ export {
   ScreensetsRegistry,
   ScreensetsRegistryFactory,
   screensetsRegistryFactory,
-  ContainerProvider,
   ActionHandler,
 } from '@cyberfabric/framework';
 

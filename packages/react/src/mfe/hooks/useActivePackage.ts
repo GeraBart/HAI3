@@ -28,6 +28,9 @@ import { extractGtsPackage, HAI3_SCREEN_DOMAIN } from '@cyberfabric/framework';
  *
  * Returns `undefined` if no screen extension is currently mounted.
  *
+ * Precondition: presumes HAI3_SCREEN_DOMAIN is registered with ExclusiveMountStrategy;
+ * for non-Exclusive domains use useMountedExtensions(domainId) instead.
+ *
  * @returns GTS package string of the active screen extension, or undefined
  *
  * @example
@@ -80,16 +83,17 @@ export function useActivePackage(): string | undefined {
 
   const getSnapshot = useCallback(() => {
     // @cpt-begin:cpt-frontx-flow-react-bindings-use-active-package:p1:inst-get-mounted-extension
-    const mountedExtensionId = registry.getMountedExtension(HAI3_SCREEN_DOMAIN);
+    const mounted = registry.getMountedExtensions(HAI3_SCREEN_DOMAIN);
     // @cpt-end:cpt-frontx-flow-react-bindings-use-active-package:p1:inst-get-mounted-extension
 
     // @cpt-begin:cpt-frontx-flow-react-bindings-use-active-package:p1:inst-return-undefined-active
-    // Guard: if no extension is mounted, return undefined immediately
-    if (!mountedExtensionId) {
-      const result = undefined;
+    // Guard: if no extension is mounted in the screen domain, return undefined.
+    // Index 0 is correct only because the screen domain is documented as
+    // ExclusiveMountStrategy-backed — that contract is the hook's precondition.
+    if (mounted.length === 0) {
       // @cpt-begin:cpt-frontx-algo-react-bindings-stable-snapshots:p1:inst-return-cached
-      if (result !== cacheRef.current.activePackage) {
-        cacheRef.current = { activePackage: result };
+      if (cacheRef.current.activePackage !== undefined) {
+        cacheRef.current = { activePackage: undefined };
       }
       return cacheRef.current.activePackage;
       // @cpt-end:cpt-frontx-algo-react-bindings-stable-snapshots:p1:inst-return-cached
@@ -98,8 +102,8 @@ export function useActivePackage(): string | undefined {
 
     // @cpt-begin:cpt-frontx-flow-react-bindings-use-active-package:p1:inst-extract-package
     // @cpt-begin:cpt-frontx-algo-react-bindings-stable-snapshots:p1:inst-compute-cache-key
-    // Extract GTS package from the mounted extension ID
-    const activePackage = extractGtsPackage(mountedExtensionId);
+    // Extract GTS package from the first (and only, for Exclusive domains) mounted extension ID.
+    const activePackage = extractGtsPackage(mounted[0]);
     // @cpt-end:cpt-frontx-algo-react-bindings-stable-snapshots:p1:inst-compute-cache-key
 
     // @cpt-begin:cpt-frontx-algo-react-bindings-stable-snapshots:p1:inst-update-cache
