@@ -8,9 +8,10 @@
  * - ScreensetsRegistryFactory (abstract class) - Factory contract
  * - screensetsRegistryFactory (singleton) - Factory instance for building registry
  * - ScreensetsRegistryConfig (interface) - Registry configuration
+ * - Abstract mount strategy classes and shipped concrete strategies
+ * - DomainContext interface and related types
  *
- * NOTE: DefaultScreensetsRegistry and DefaultScreensetsRegistryFactory (concrete classes)
- * are NOT exported. They are internal implementation details.
+ * NOTE: Default* concrete classes are NOT exported. They are internal implementation details.
  *
  * @packageDocumentation
  */
@@ -19,33 +20,34 @@ import { DefaultScreensetsRegistryFactory } from './DefaultScreensetsRegistryFac
 import type { ScreensetsRegistryFactory } from './ScreensetsRegistryFactory';
 
 export { ScreensetsRegistry } from './ScreensetsRegistry';
-export type { RegisterDomainOptions } from './ScreensetsRegistry';
 export { ScreensetsRegistryFactory } from './ScreensetsRegistryFactory';
-export { ContainerProvider } from './container-provider';
 export type { ScreensetsRegistryConfig } from './config';
+
+// Mount strategy abstractions and shipped implementations
+export { MountStrategy } from './mount-strategy';
+export type { ContainerHooks, ActionPayload } from './mount-strategy';
+export { ConcurrentMountStrategy, OptionalMountStrategy, ExclusiveMountStrategy } from './mount-strategies';
+
+// Domain implementation abstractions
+export { ExtensionDomainImplementation } from './ExtensionDomainImplementation';
+export { ExtensionDomainImplementationFactory } from './ExtensionDomainImplementationFactory';
+export { ExtensionMounter } from './ExtensionMounter';
+export { DomainLifecycleTrigger } from './DomainLifecycleTrigger';
+
+// DomainContext interface (domain authors see only the interface)
+export type { DomainContext } from './DomainContext';
 
 /**
  * Singleton ScreensetsRegistryFactory instance.
  *
  * This is the primary way to obtain a ScreensetsRegistry instance.
- * The factory accepts configuration (including TypeSystemPlugin) and returns
- * the registry singleton. After the first build(), subsequent calls return
- * the cached instance.
- *
- * This factory pattern enables TypeSystemPlugin pluggability by deferring
- * the binding of the type system plugin to application wiring time.
  *
  * @example
  * ```typescript
  * import { screensetsRegistryFactory, gtsPlugin } from '@cyberfabric/screensets';
  *
- * // Build the registry with GTS plugin at application wiring time
  * const registry = screensetsRegistryFactory.build({ typeSystem: gtsPlugin });
- *
- * // Register a domain with container provider
- * registry.registerDomain(myDomain, containerProvider);
- *
- * // Register an extension
+ * registry.registerDomain(myDomain, new MyDomainFactory());
  * await registry.registerExtension(myExtension);
  * ```
  */

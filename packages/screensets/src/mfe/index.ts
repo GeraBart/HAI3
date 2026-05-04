@@ -54,14 +54,28 @@ export type {
   MfManifestAssets,
 } from './types';
 
-// Runtime (includes factory)
+// Runtime (includes factory and new abstractions)
 export {
   ScreensetsRegistry,
   ScreensetsRegistryFactory,
   screensetsRegistryFactory,
-  ContainerProvider,
+  // Mount strategy abstractions and shipped strategies
+  MountStrategy,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+  // Domain implementation abstractions
+  ExtensionDomainImplementation,
+  ExtensionDomainImplementationFactory,
+  ExtensionMounter,
+  DomainLifecycleTrigger,
 } from './runtime';
-export type { ScreensetsRegistryConfig, RegisterDomainOptions } from './runtime';
+export type {
+  ScreensetsRegistryConfig,
+  ContainerHooks,
+  ActionPayload,
+  DomainContext,
+} from './runtime';
 
 // Handler Types and Abstract Classes (concrete implementations are internal)
 export {

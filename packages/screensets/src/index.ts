@@ -93,9 +93,23 @@ export {
   ScreensetsRegistry,
   ScreensetsRegistryFactory,
   screensetsRegistryFactory,
-  ContainerProvider,
+  // Mount strategy abstractions and shipped strategies
+  MountStrategy,
+  ConcurrentMountStrategy,
+  OptionalMountStrategy,
+  ExclusiveMountStrategy,
+  // Domain implementation abstractions
+  ExtensionDomainImplementation,
+  ExtensionDomainImplementationFactory,
+  ExtensionMounter,
+  DomainLifecycleTrigger,
 } from './mfe';
-export type { ScreensetsRegistryConfig, RegisterDomainOptions } from './mfe';
+export type {
+  ScreensetsRegistryConfig,
+  ContainerHooks,
+  ActionPayload,
+  DomainContext,
+} from './mfe';
 
 // Shadow DOM Utilities
 export { createShadowRoot, injectCssVariables } from './mfe';
