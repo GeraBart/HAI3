@@ -16,7 +16,7 @@ import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/type
 import type { MfeEntryLifecycle } from '../../../src/mfe/handler/types';
 import type { RuntimeCoordinator } from '../../../src/mfe/coordination/types';
 import type { ScreensetsRegistry } from '../../../src/mfe/runtime/ScreensetsRegistry';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 import {
   HAI3_ACTION_LOAD_EXT,
   HAI3_ACTION_MOUNT_EXT,
@@ -27,7 +27,7 @@ describe('Shadow DOM Mount Pipeline', () => {
   let mountManager: DefaultMountManager;
   let extensionManager: DefaultExtensionManager;
   let coordinator: RuntimeCoordinator;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let mockLifecycle: MfeEntryLifecycle;
   let mockHostRuntime: ScreensetsRegistry;
 
@@ -92,7 +92,7 @@ describe('Shadow DOM Mount Pipeline', () => {
     };
 
     // Create mock container provider
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Create mock lifecycle
     mockLifecycle = {
@@ -127,7 +127,7 @@ describe('Shadow DOM Mount Pipeline', () => {
     });
 
     // Register domain
-    extensionManager.registerDomain(testDomain, mockContainerProvider);
+    extensionManager.registerDomain(testDomain);
   });
 
   describe('42.6.1 - mountExtension creates Shadow DOM on container', () => {

@@ -13,7 +13,12 @@ import { NoActionsChainHandlerError, BridgeDisposedError } from '../../../src/mf
 import { DefaultActionsChainsMediator } from '../../../src/mfe/mediator/actions-chains-mediator';
 import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScreensetsRegistry';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
+import {
+  HAI3_ACTION_LOAD_EXT,
+  HAI3_ACTION_MOUNT_EXT,
+  HAI3_ACTION_UNMOUNT_EXT,
+} from '../../../src/mfe/constants';
 
 describe('Bridge Implementation', () => {
   describe('ChildMfeBridge', () => {
@@ -633,12 +638,12 @@ describe('Bridge Implementation', () => {
       let registry: DefaultScreensetsRegistry;
       let mediator: DefaultActionsChainsMediator;
       let domain: ExtensionDomain;
-      let containerProvider: MockContainerProvider;
+      let containerProvider: MockDomainFactory;
 
       beforeEach(() => {
         plugin = createMinimalTypeSystem();
         registry = new DefaultScreensetsRegistry({ typeSystem: plugin });
-        containerProvider = new MockContainerProvider();
+        containerProvider = new MockDomainFactory();
         mediator = new DefaultActionsChainsMediator({
           typeSystem: plugin,
           getDomainState: (domainId) => registry.getDomainState(domainId),
@@ -648,7 +653,7 @@ describe('Bridge Implementation', () => {
         domain = {
           id: DOMAIN_ID,
           sharedProperties: [],
-          actions: [],
+          actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
           // Extension-targeted actions are resolved via extensionHandlers map; the domain
           // must be registered so the mediator can look up defaultActionTimeout.
           extensionsActions: [ACTION_TYPE],
@@ -656,7 +661,7 @@ describe('Bridge Implementation', () => {
           lifecycleStages: [],
           extensionsLifecycleStages: [],
         };
-        registry.registerDomain(domain, containerProvider);
+        registry.registerDomain(domain, containerProvider.prepareForDomain(domain));
       });
 
       it('should route an action chain targeting the extension ID to the registered handler', async () => {
@@ -768,13 +773,18 @@ describe('Bridge Implementation', () => {
         const domain = {
           id: SCREEN_DOMAIN_ID,
           sharedProperties: [],
-          actions: ['gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~'],
+          actions: [
+            HAI3_ACTION_LOAD_EXT,
+            HAI3_ACTION_MOUNT_EXT,
+            HAI3_ACTION_UNMOUNT_EXT,
+          ],
           extensionsActions: [],
           defaultActionTimeout: 5000,
           lifecycleStages: [],
           extensionsLifecycleStages: [],
         };
-        gtsRegistry.registerDomain(domain, new MockContainerProvider());
+        const domainFactory = new MockDomainFactory();
+        gtsRegistry.registerDomain(domain, domainFactory.prepareForDomain(domain));
 
         gtsPlugin.register({
           id: PROFILE_EXT_ID,

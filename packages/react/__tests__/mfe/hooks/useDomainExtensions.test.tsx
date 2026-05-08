@@ -16,25 +16,16 @@ import { screensets } from '@cyberfabric/framework';
 import { effects } from '@cyberfabric/framework';
 import { microfrontends } from '@cyberfabric/framework';
 import type { Extension, ExtensionDomain } from '@cyberfabric/framework';
+import { ExtensionDomainImplementationFactory } from '@cyberfabric/framework';
 import { gtsPlugin } from '@cyberfabric/framework';
-import { ContainerProvider } from '@cyberfabric/framework';
 import type { HAI3App } from '@cyberfabric/framework';
+import type { DomainContext, ExtensionDomainImplementation } from '@cyberfabric/framework';
 
-// Mock Container Provider for React tests
-class TestContainerProvider extends ContainerProvider {
-  private mockContainer: Element;
-
-  constructor() {
-    super();
-    this.mockContainer = document.createElement('div');
-  }
-
-  getContainer(_extensionId: string): Element {
-    return this.mockContainer;
-  }
-
-  releaseContainer(_extensionId: string): void {
-    // no-op
+// Placeholder factory — never actually called because the test mocks registerDomain.
+// Extends ExtensionDomainImplementationFactory to satisfy the type system.
+class TestContainerProvider extends ExtensionDomainImplementationFactory {
+  build(_ctx: DomainContext): ExtensionDomainImplementation {
+    throw new Error('TestContainerProvider.build: should not be called — registerDomain is mocked');
   }
 }
 
@@ -111,11 +102,9 @@ describe('useDomainExtensions hook - Phase 21.7', () => {
     // Store registered extensions for getExtensionsForDomain mock
     const registeredExtensions = new Map<string, Extension>();
 
-    // Mock registerExtension to bypass validation, dispatch action, and track
-    const origRegisterDomain = app.screensetsRegistry.registerDomain.bind(app.screensetsRegistry);
-    app.screensetsRegistry.registerDomain = (domain: ExtensionDomain) => {
-      origRegisterDomain(domain);
-    };
+    // Mock registerDomain to be a no-op — domain state is not needed for extension list observation;
+    // getExtensionsForDomain is independently mocked below.
+    app.screensetsRegistry.registerDomain = vi.fn();
 
     app.screensetsRegistry.registerExtension = vi.fn(async (ext: Extension) => {
       registeredExtensions.set(ext.id, ext);

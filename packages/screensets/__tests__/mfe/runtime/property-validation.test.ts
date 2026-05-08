@@ -22,7 +22,7 @@ import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScree
 import { GtsPlugin } from '../../../src/mfe/plugins/gts/index';
 import type { JSONSchema } from '../../../src/mfe/plugins/types';
 import type { ExtensionDomain } from '../../../src/mfe/types';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 /**
  * Minimal derived shared-property schema for testing.
@@ -43,7 +43,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
   let registry: DefaultScreensetsRegistry;
   let gtsPlugin: GtsPlugin;
   let testDomain: ExtensionDomain;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation.slot.v1';
 
@@ -54,12 +54,16 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
     gtsPlugin.registerSchema(testPropertySchema);
 
     registry = new DefaultScreensetsRegistry({ typeSystem: gtsPlugin });
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     testDomain = {
       id: DOMAIN_ID,
       sharedProperties: [TEST_PROPERTY_TYPE_ID],
-      actions: [],
+      actions: [
+        'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+        'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+        'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+      ],
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
@@ -70,7 +74,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       ],
     };
 
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
   describe('ephemeral instance re-registration', () => {
@@ -127,7 +131,11 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
       const domain2: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~hai3.test.validation2.slot.v1',
         sharedProperties: [TEST_PROPERTY_TYPE_ID],
-        actions: [],
+        actions: [
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -137,7 +145,7 @@ describe('updateSharedProperty - GTS runtime validation mechanics', () => {
           'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
         ],
       };
-      registry.registerDomain(domain2, mockContainerProvider);
+      registry.registerDomain(domain2, mockContainerProvider.prepareForDomain(domain2));
 
       // register() auto-validates, so counting ephemeral runtime-instance
       // register() calls counts validations.

@@ -23,7 +23,7 @@ import {
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 /**
  * Test-only ActionHandler that delegates to a vitest mock function.
@@ -139,7 +139,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
   let plugin: TypeSystemPlugin;
   let mediator: DefaultActionsChainsMediator;
   let registry: DefaultScreensetsRegistry;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   /**
    * Stub store for MfeEntry lookup used by runtime action declaration validation.
    * Tests that need entry-declaration checks populate this map with their target
@@ -151,7 +151,8 @@ describe('ActionsChainsMediator - Phase 9', () => {
   beforeEach(() => {
     plugin = createMockPlugin();
     registry = new DefaultScreensetsRegistry({ typeSystem: plugin });
-    mockContainerProvider = new MockContainerProvider();
+    // Permissive mode: handles any declared action types beyond the standard lifecycle set.
+    mockContainerProvider = new MockDomainFactory().asPermissive();
     extensionEntries = new Map();
     mediator = new DefaultActionsChainsMediator({
       typeSystem: plugin,
@@ -169,6 +170,9 @@ describe('ActionsChainsMediator - Phase 9', () => {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
         actions: [
+          HAI3_ACTION_LOAD_EXT,
+          HAI3_ACTION_MOUNT_EXT,
+          HAI3_ACTION_UNMOUNT_EXT,
           'gts.hai3.mfes.comm.action.v1~test.action1.v1~',
           'gts.hai3.mfes.comm.action.v1~test.action2.v1~',
         ],
@@ -177,7 +181,7 @@ describe('ActionsChainsMediator - Phase 9', () => {
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -219,13 +223,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -262,13 +266,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: domainId,
         sharedProperties: [],
-        actions: [actionTypeId],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, actionTypeId],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const payload = { data: 'test value' };
       const chain: ActionsChain = {
@@ -298,13 +302,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -346,13 +350,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -382,13 +386,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -419,13 +423,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -509,13 +513,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const chain: ActionsChain = {
         action: {
@@ -559,13 +563,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const chain: ActionsChain = {
         action: {
@@ -607,13 +611,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const chain: ActionsChain = {
         action: {
@@ -637,13 +641,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -670,13 +674,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -717,13 +721,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -755,13 +759,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50, // Short timeout to trigger failure
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -790,13 +794,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50, // Short default
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -827,13 +831,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~', 'gts.hai3.mfes.comm.action.v1~test.fallback.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -882,13 +886,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: DOMAIN_ID,
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       const invocations: string[] = [];
       const handler = new class extends ActionHandler {
@@ -917,13 +921,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.mfes.comm.action.v1~test.action.v1~'],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT, 'gts.hai3.mfes.comm.action.v1~test.action.v1~'],
         extensionsActions: [],
         defaultActionTimeout: 50,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
 
       mediator.registerHandler(
         'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
@@ -970,13 +974,13 @@ describe('ActionsChainsMediator - Phase 9', () => {
       const domain: ExtensionDomain = {
         id: DOMAIN_ID,
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, mockContainerProvider.prepareForDomain(domain));
     }
 
     it('throws when action type is not declared in target entry actions', async () => {

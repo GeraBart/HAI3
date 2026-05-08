@@ -15,11 +15,11 @@ import {
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 describe('Dynamic Registration', () => {
   let registry: DefaultScreensetsRegistry;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   const testDomain: ExtensionDomain = {
     id: 'gts.hai3.mfes.ext.domain.v1~test.dynamic.reg.domain.v1',
@@ -65,7 +65,7 @@ describe('Dynamic Registration', () => {
     registry = new DefaultScreensetsRegistry({
       typeSystem: gtsPlugin,
     });
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register the entry instance with GTS plugin before using it
     gtsPlugin.register(testEntry);
@@ -80,7 +80,7 @@ describe('Dynamic Registration', () => {
   describe('registerExtension', () => {
     it('should register extension after runtime initialization', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension dynamically
       await registry.registerExtension(testExtension);
@@ -102,7 +102,7 @@ describe('Dynamic Registration', () => {
   describe('unregisterExtension', () => {
     it('should unregister extension', async () => {
       // Register domain and extension
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -124,7 +124,7 @@ describe('Dynamic Registration', () => {
   describe('registerDomain', () => {
     it('should register domain at any time', () => {
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Verify registration
       const result = registry.getDomain(testDomain.id);
@@ -136,7 +136,7 @@ describe('Dynamic Registration', () => {
   describe('unregisterDomain', () => {
     it('should cascade unregister extensions in domain', async () => {
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -155,7 +155,7 @@ describe('Dynamic Registration', () => {
       // Extension registration validation IS implemented in MountManager.loadExtension
       // (lines 105-111). This test is skipped because it tests error handling during
       // action chain execution, which is covered by other tests in the suite.
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Try to load non-existent extension via actions chain
       // executeActionsChain now throws instead of returning error result
@@ -188,7 +188,7 @@ describe('Dynamic Registration', () => {
       });
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -196,6 +196,10 @@ describe('Dynamic Registration', () => {
       // Mount twice (first mount loads, second mount uses cached bundle)
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
+
+      // Mounter requires a root element to append containers under.
+      const root = document.createElement('div');
+      registry.getMounter(testDomain.id).attach(root);
 
       await registry.executeActionsChain({
         action: {
@@ -243,7 +247,7 @@ describe('Dynamic Registration', () => {
       });
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -251,6 +255,9 @@ describe('Dynamic Registration', () => {
       // Mount (which triggers load)
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
+
+      const root = document.createElement('div');
+      registry.getMounter(testDomain.id).attach(root);
 
       await registry.executeActionsChain({
         action: {
@@ -261,7 +268,7 @@ describe('Dynamic Registration', () => {
       });
 
       // Verify extension is mounted (load completed successfully)
-      expect(registry.getMountedExtension(testDomain.id)).toBe(testExtension.id);
+      expect(registry.getMountedExtensions(testDomain.id)[0]).toBe(testExtension.id);
       expect(mockHandler.load).toHaveBeenCalledTimes(1);
     });
   });
@@ -299,7 +306,7 @@ describe('Dynamic Registration', () => {
       });
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -307,6 +314,9 @@ describe('Dynamic Registration', () => {
       // Mount without prior explicit load (mount auto-loads)
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
+
+      const root = document.createElement('div');
+      registry.getMounter(testDomain.id).attach(root);
 
       await registry.executeActionsChain({
         action: {
@@ -331,14 +341,14 @@ describe('Dynamic Registration', () => {
       );
 
       // Verify extension is mounted
-      expect(registry.getMountedExtension(testDomain.id)).toBe(testExtension.id);
+      expect(registry.getMountedExtensions(testDomain.id)[0]).toBe(testExtension.id);
     });
 
     it.skip('should require extension to be registered (19.5.11)', async () => {
       // Extension registration validation IS implemented in MountManager.mountExtension
       // (lines 168-174). This test is skipped because it tests error handling during
       // action chain execution, which is covered by other tests in the suite.
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Try to mount non-existent extension via actions chain
       // executeActionsChain now throws instead of returning error result
@@ -361,7 +371,7 @@ describe('Dynamic Registration', () => {
       });
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -369,6 +379,9 @@ describe('Dynamic Registration', () => {
       // Mount then unmount
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
+
+      const root = document.createElement('div');
+      registry.getMounter(testDomain.id).attach(root);
 
       await registry.executeActionsChain({
         action: {
@@ -438,7 +451,7 @@ describe('Dynamic Registration', () => {
       });
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension properly
       await registry.registerExtension(testExtension);
@@ -446,6 +459,9 @@ describe('Dynamic Registration', () => {
       // Mount
       const container = document.createElement('div');
       mockContainerProvider.getContainer = vi.fn().mockReturnValue(container);
+
+      const root = document.createElement('div');
+      registry.getMounter(testDomain.id).attach(root);
 
       await registry.executeActionsChain({
         action: {
@@ -457,7 +473,7 @@ describe('Dynamic Registration', () => {
 
       // Verify mounted
       expect(mockLifecycle.mount).toHaveBeenCalled();
-      expect(registry.getMountedExtension(testDomain.id)).toBe(testExtension.id);
+      expect(registry.getMountedExtensions(testDomain.id)[0]).toBe(testExtension.id);
 
       // Unregister - should auto-unmount
       await registry.unregisterExtension(testExtension.id);
@@ -469,14 +485,14 @@ describe('Dynamic Registration', () => {
       expect(registry.getExtension(testExtension.id)).toBeUndefined();
 
       // Verify no longer mounted
-      expect(registry.getMountedExtension(testDomain.id)).toBeUndefined();
+      expect(registry.getMountedExtensions(testDomain.id)[0]).toBeUndefined();
     });
   });
 
   describe('hot-swap registration', () => {
     it('should support unregister + register with same ID (19.5.14)', async () => {
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register first extension
       await registry.registerExtension(testExtension);

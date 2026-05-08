@@ -3,6 +3,7 @@ import {
   useAppSelector,
   useHAI3,
   useActivePackage,
+  useMountedExtensions,
   eventBus,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_SCREEN_DOMAIN,
@@ -41,8 +42,13 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
 
   const collapsed = menuState?.collapsed ?? false;
 
+  // Currently-mounted screen extension (subscribes to store changes; no polling).
+  // Index 0 is meaningful because the host registers the screen domain with
+  // ExclusiveMountStrategy (single mount per domain).
+  const mountedScreens = useMountedExtensions(HAI3_SCREEN_DOMAIN);
+  const mountedId = mountedScreens[0]?.id;
+
   const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
-  const [mountedId, setMountedId] = useState<string | undefined>();
 
   useEffect(() => {
     if (!screensetsRegistry) return;
@@ -60,7 +66,6 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
-      setMountedId(screensetsRegistry.getMountedExtension(HAI3_SCREEN_DOMAIN));
     };
 
     refresh();
@@ -82,7 +87,6 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
           payload: { subject: extensionId },
         },
       });
-      setMountedId(extensionId);
     },
     [screensetsRegistry, mountedId]
   );

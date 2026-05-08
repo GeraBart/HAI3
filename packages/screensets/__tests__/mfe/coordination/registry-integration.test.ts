@@ -11,7 +11,12 @@ import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScree
 import { WeakMapRuntimeCoordinator } from '../../../src/mfe/coordination/weak-map-runtime-coordinator';
 import type { TypeSystemPlugin, JSONSchema, ValidationResult } from '../../../src/mfe/plugins/types';
 import type { RuntimeConnection } from '../../../src/mfe/coordination/types';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
+import {
+  HAI3_ACTION_LOAD_EXT,
+  HAI3_ACTION_MOUNT_EXT,
+  HAI3_ACTION_UNMOUNT_EXT,
+} from '../../../src/mfe/constants';
 
 
 // Mock Type System Plugin
@@ -125,16 +130,16 @@ describe('Runtime Coordinator Integration - Task 8.4.8', () => {
       // Registry should be fully functional immediately
       expect(registry.typeSystem).toBeDefined();
       expect(() => {
-        const mockContainerProvider = new MockContainerProvider();
-        registry.registerDomain({
+        const domain = {
           id: 'gts.hai3.mfes.ext.domain.v1~test.domain.v1~',
           sharedProperties: [],
-          actions: [],
+          actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
           extensionsActions: [],
           defaultActionTimeout: 5000,
           lifecycleStages: [],
           extensionsLifecycleStages: [],
-        }, mockContainerProvider);
+        };
+        registry.registerDomain(domain, new MockDomainFactory().prepareForDomain(domain));
       }).not.toThrow();
     });
 

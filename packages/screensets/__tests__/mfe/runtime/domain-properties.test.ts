@@ -15,7 +15,7 @@ import { ScreensetsRegistry } from '../../../src/mfe/runtime';
 import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScreensetsRegistry';
 import type { ExtensionDomain } from '../../../src/mfe/types';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../../src/mfe/plugins/types';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 // Create a lenient mock plugin for testing domain properties
 function createMockPlugin(): TypeSystemPlugin {
@@ -76,7 +76,7 @@ function createMockPlugin(): TypeSystemPlugin {
 describe('ScreensetsRegistry - Domain Properties', () => {
   let registry: ScreensetsRegistry;
   let testDomain: ExtensionDomain;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   const DOMAIN_ID = 'gts.hai3.mfes.ext.domain.v1~hai3.test.widget.slot.v1';
   const THEME_PROPERTY_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.ui.theme.v1';
   const USER_PROPERTY_ID = 'gts.hai3.mfes.comm.shared_property.v1~acme.auth.user.v1';
@@ -85,12 +85,16 @@ describe('ScreensetsRegistry - Domain Properties', () => {
     registry = new DefaultScreensetsRegistry({
       typeSystem: createMockPlugin(),
     });
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     testDomain = {
       id: DOMAIN_ID,
       sharedProperties: [THEME_PROPERTY_ID, USER_PROPERTY_ID],
-      actions: [],
+      actions: [
+        'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+        'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+        'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+      ],
       extensionsActions: [],
       defaultActionTimeout: 5000,
       lifecycleStages: [
@@ -101,7 +105,7 @@ describe('ScreensetsRegistry - Domain Properties', () => {
       ],
     };
 
-    registry.registerDomain(testDomain, mockContainerProvider);
+    registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
   });
 
   describe('updateSharedProperty', () => {
@@ -174,7 +178,11 @@ describe('ScreensetsRegistry - Domain Properties', () => {
       domain2 = {
         id: DOMAIN2_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [],
+        actions: [
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -185,7 +193,7 @@ describe('ScreensetsRegistry - Domain Properties', () => {
         ],
       };
 
-      registry.registerDomain(domain2, mockContainerProvider);
+      registry.registerDomain(domain2, mockContainerProvider.prepareForDomain(domain2));
     });
 
     it('should broadcast property value to all domains declaring it', () => {
@@ -226,7 +234,11 @@ describe('ScreensetsRegistry - Domain Properties', () => {
       const domain3: ExtensionDomain = {
         id: DOMAIN3_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [],
+        actions: [
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -236,7 +248,7 @@ describe('ScreensetsRegistry - Domain Properties', () => {
           'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
         ],
       };
-      registry.registerDomain(domain3, mockContainerProvider);
+      registry.registerDomain(domain3, mockContainerProvider.prepareForDomain(domain3));
 
       // domain3 does NOT receive the prior value — the broadcast already happened
       expect(registry.getDomainProperty(DOMAIN3_ID, THEME_PROPERTY_ID)).toBeUndefined();
@@ -249,7 +261,11 @@ describe('ScreensetsRegistry - Domain Properties', () => {
       const domain3: ExtensionDomain = {
         id: DOMAIN3_ID,
         sharedProperties: [THEME_PROPERTY_ID],
-        actions: [],
+        actions: [
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -259,7 +275,7 @@ describe('ScreensetsRegistry - Domain Properties', () => {
           'gts.hai3.mfes.lifecycle.stage.v1~hai3.mfes.lifecycle.init.v1',
         ],
       };
-      registry.registerDomain(domain3, mockContainerProvider);
+      registry.registerDomain(domain3, mockContainerProvider.prepareForDomain(domain3));
 
       // Broadcast AFTER domain3 is registered — it should receive this one
       registry.updateSharedProperty(THEME_PROPERTY_ID, 'light');

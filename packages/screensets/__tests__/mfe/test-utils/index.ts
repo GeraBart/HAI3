@@ -4,7 +4,7 @@
  * Centralized exports for all test utilities.
  */
 
-export { MockContainerProvider } from './mock-container-provider';
+export { MockDomainFactory } from './mock-domain-factory';
 export {
   setupBlobUrlLoaderMocks,
   createRemoteEntrySource,

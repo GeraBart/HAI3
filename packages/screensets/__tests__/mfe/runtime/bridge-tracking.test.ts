@@ -14,7 +14,7 @@ import { ScreensetsRegistry } from '../../../src/mfe/runtime';
 import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScreensetsRegistry';
 import { gtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain } from '../../../src/mfe/types';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 
 describe('ScreensetsRegistry - Bridge Tracking', () => {
@@ -45,7 +45,11 @@ describe('ScreensetsRegistry - Bridge Tracking', () => {
       const testDomain: ExtensionDomain = {
         id: 'gts.hai3.mfes.ext.domain.v1~test.bridge.tracking.domain.v1',
         sharedProperties: [],
-        actions: [],
+        actions: [
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+          'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [
@@ -58,7 +62,8 @@ describe('ScreensetsRegistry - Bridge Tracking', () => {
         ],
       };
 
-      registry.registerDomain(testDomain, new MockContainerProvider());
+      const factory = new MockDomainFactory();
+      registry.registerDomain(testDomain, factory.prepareForDomain(testDomain));
 
       // Verify domain is registered before disposal
       expect(registry.getDomain(testDomain.id)).toBeDefined();

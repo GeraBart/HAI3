@@ -11,16 +11,20 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { DefaultScreensetsRegistry } from '../../../src/mfe/runtime/DefaultScreensetsRegistry';
 import { gtsPlugin } from '../../../src/mfe/plugins/gts';
 import type { ExtensionDomain, Extension } from '../../../src/mfe/types';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 describe('ScreensetsRegistry Query Methods', () => {
   let registry: DefaultScreensetsRegistry;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   const testDomain: ExtensionDomain = {
     id: 'gts.hai3.mfes.ext.domain.v1~test.testorg.query.domain.v1',
     sharedProperties: [],
-    actions: [],
+    actions: [
+      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.load_ext.v1~',
+      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.mount_ext.v1~',
+      'gts.hai3.mfes.comm.action.v1~hai3.mfes.ext.unmount_ext.v1~',
+    ],
     extensionsActions: [],
     defaultActionTimeout: 5000,
     lifecycleStages: [
@@ -53,7 +57,7 @@ describe('ScreensetsRegistry Query Methods', () => {
     registry = new DefaultScreensetsRegistry({
       typeSystem: gtsPlugin,
     });
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register the entry instance with GTS plugin before using it
     gtsPlugin.register(testEntry);
@@ -62,7 +66,7 @@ describe('ScreensetsRegistry Query Methods', () => {
   describe('getExtension', () => {
     it('should return registered extension', async () => {
       // Register domain and extension
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
       await registry.registerExtension(testExtension);
 
       const result = registry.getExtension(testExtension.id);
@@ -90,7 +94,7 @@ describe('ScreensetsRegistry Query Methods', () => {
       };
 
       // Register domain and extension
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
       await registry.registerExtension(extensionWithPresentation);
 
       const result = registry.getExtension(extensionWithPresentation.id);
@@ -106,7 +110,7 @@ describe('ScreensetsRegistry Query Methods', () => {
 
   describe('getDomain', () => {
     it('should return registered domain', () => {
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       const result = registry.getDomain(testDomain.id);
       expect(result).toBeDefined();
@@ -128,7 +132,7 @@ describe('ScreensetsRegistry Query Methods', () => {
       };
 
       // Register domain
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extensions
       await registry.registerExtension(testExtension);
@@ -141,7 +145,7 @@ describe('ScreensetsRegistry Query Methods', () => {
     });
 
     it('should return empty array for domain with no extensions', () => {
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       const result = registry.getExtensionsForDomain(testDomain.id);
       expect(result).toEqual([]);

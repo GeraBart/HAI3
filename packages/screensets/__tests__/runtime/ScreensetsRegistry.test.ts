@@ -9,7 +9,12 @@ import { DefaultScreensetsRegistry } from '../../src/mfe/runtime/DefaultScreense
 import type { ScreensetsRegistryConfig } from '../../src/mfe/runtime/config';
 import type { TypeSystemPlugin, ValidationResult, JSONSchema } from '../../src/mfe/plugins/types';
 import type { ExtensionDomain, Action, ActionsChain } from '../../src/mfe/types';
-import { MockContainerProvider } from '../mfe/test-utils';
+import {
+  HAI3_ACTION_LOAD_EXT,
+  HAI3_ACTION_MOUNT_EXT,
+  HAI3_ACTION_UNMOUNT_EXT,
+} from '../../src/mfe/constants';
+import { MockDomainFactory } from '../mfe/test-utils';
 
 // Mock Type System Plugin
 function createMockPlugin(): TypeSystemPlugin {
@@ -179,32 +184,36 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const validDomain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
 
-      const mockContainerProvider = new MockContainerProvider();
-      expect(() => registry.registerDomain(validDomain, mockContainerProvider)).not.toThrow();
+      const mockContainerProvider = new MockDomainFactory();
+      expect(() => registry.registerDomain(validDomain, mockContainerProvider.prepareForDomain(validDomain))).not.toThrow();
     });
 
     it('should validate action type ID via plugin before chain execution', async () => {
       const registry = new DefaultScreensetsRegistry(createTestConfig());
-      const mockContainerProvider = new MockContainerProvider();
 
       // Register domain with the action in its supported actions
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [
+          HAI3_ACTION_LOAD_EXT,
+          HAI3_ACTION_MOUNT_EXT,
+          HAI3_ACTION_UNMOUNT_EXT,
+          'gts.hai3.screensets.ext.action.v1~test.action.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, new MockDomainFactory().asPermissive().prepareForDomain(domain));
 
       const validAction: Action = {
         type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
@@ -248,14 +257,18 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [
+          HAI3_ACTION_LOAD_EXT,
+          HAI3_ACTION_MOUNT_EXT,
+          HAI3_ACTION_UNMOUNT_EXT,
+          'gts.hai3.screensets.ext.action.v1~test.action.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      const mockContainerProvider = new MockContainerProvider();
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, new MockDomainFactory().asPermissive().prepareForDomain(domain));
 
       const actionWithPayload: Action = {
         type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
@@ -317,14 +330,18 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: ['gts.hai3.screensets.ext.action.v1~test.action.v1~'],
+        actions: [
+          HAI3_ACTION_LOAD_EXT,
+          HAI3_ACTION_MOUNT_EXT,
+          HAI3_ACTION_UNMOUNT_EXT,
+          'gts.hai3.screensets.ext.action.v1~test.action.v1~',
+        ],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
-      const mockContainerProvider = new MockContainerProvider();
-      registry.registerDomain(domain, mockContainerProvider);
+      registry.registerDomain(domain, new MockDomainFactory().asPermissive().prepareForDomain(domain));
 
       const actionWithoutPayload: Action = {
         type: 'gts.hai3.screensets.ext.action.v1~test.action.v1~',
@@ -348,14 +365,14 @@ describe('ScreensetsRegistry - Phase 4', () => {
       const domain: ExtensionDomain = {
         id: 'gts.hai3.screensets.ext.domain.v1~test.domain.v1~',
         sharedProperties: [],
-        actions: [],
+        actions: [HAI3_ACTION_LOAD_EXT, HAI3_ACTION_MOUNT_EXT, HAI3_ACTION_UNMOUNT_EXT],
         extensionsActions: [],
         defaultActionTimeout: 5000,
         lifecycleStages: [],
         extensionsLifecycleStages: [],
       };
 
-      registry.registerDomain(domain, new MockContainerProvider());
+      registry.registerDomain(domain, new MockDomainFactory().prepareForDomain(domain));
       registry.dispose();
 
       // After disposal, registry should be clean

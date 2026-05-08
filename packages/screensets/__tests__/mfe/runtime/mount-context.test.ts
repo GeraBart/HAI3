@@ -17,7 +17,7 @@ import type { ExtensionDomain, Extension, MfeEntry } from '../../../src/mfe/type
 import type { MfeEntryLifecycle } from '../../../src/mfe/handler/types';
 import type { RuntimeCoordinator } from '../../../src/mfe/coordination/types';
 import type { ScreensetsRegistry } from '../../../src/mfe/runtime/ScreensetsRegistry';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 import {
   HAI3_ACTION_LOAD_EXT,
   HAI3_ACTION_MOUNT_EXT,
@@ -67,7 +67,7 @@ const testExtension: Extension = {
 describe('DefaultMountManager — mount context forwarding', () => {
   let mountManager: DefaultMountManager;
   let extensionManager: DefaultExtensionManager;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
   let mockLifecycle: MfeEntryLifecycle;
   beforeEach(() => {
     gtsPlugin.register(testEntry);
@@ -80,7 +80,7 @@ describe('DefaultMountManager — mount context forwarding', () => {
       validateEntryType: vi.fn(),
     });
 
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
     mockLifecycle = {
       mount: vi.fn().mockResolvedValue(undefined),
       unmount: vi.fn().mockResolvedValue(undefined),
@@ -105,12 +105,14 @@ describe('DefaultMountManager — mount context forwarding', () => {
       triggerLifecycle: vi.fn().mockResolvedValue(undefined),
       executeActionsChain: vi.fn().mockResolvedValue(undefined),
       hostRuntime: {} as ScreensetsRegistry,
-      registerDomainActionHandler: vi.fn(),
-      unregisterDomainActionHandler: vi.fn(),
+      registerCatchAllActionHandler: vi.fn(),
+      unregisterCatchAllActionHandler: vi.fn(),
+      registerExtensionActionHandler: vi.fn(),
+      unregisterExtensionActionHandler: vi.fn(),
       bridgeFactory,
     });
 
-    extensionManager.registerDomain(testDomain, mockContainerProvider);
+    extensionManager.registerDomain(testDomain);
   });
 
   it('passes runtime identity metadata to lifecycle.mount()', async () => {

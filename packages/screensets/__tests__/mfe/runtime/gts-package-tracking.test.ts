@@ -16,11 +16,11 @@ import {
   HAI3_ACTION_MOUNT_EXT,
   HAI3_ACTION_UNMOUNT_EXT,
 } from '../../../src/mfe/constants';
-import { MockContainerProvider } from '../test-utils';
+import { MockDomainFactory } from '../test-utils';
 
 describe('GTS Package Tracking - Phase 39.6', () => {
   let registry: DefaultScreensetsRegistry;
-  let mockContainerProvider: MockContainerProvider;
+  let mockContainerProvider: MockDomainFactory;
 
   const testDomain: ExtensionDomain = {
     id: 'gts.hai3.mfes.ext.domain.v1~test.package.tracking.domain.v1',
@@ -80,7 +80,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
     registry = new DefaultScreensetsRegistry({
       typeSystem: gtsPlugin,
     });
-    mockContainerProvider = new MockContainerProvider();
+    mockContainerProvider = new MockDomainFactory();
 
     // Register the domain and entry instances with GTS plugin before using them
     gtsPlugin.register(testDomain);
@@ -95,7 +95,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
 
     it('39.6.6 should return package when extension with hai3.demo is registered', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension from hai3.demo
       await registry.registerExtension(demoExtension1);
@@ -106,7 +106,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
 
     it('39.6.7 should return both packages when extensions from different packages are registered', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extensions from different packages
       await registry.registerExtension(demoExtension1);
@@ -118,7 +118,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
 
     it('39.6.8 should return only one entry when 2 extensions from SAME package are registered (deduplication)', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register 2 extensions from same package
       await registry.registerExtension(demoExtension1);
@@ -133,7 +133,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
   describe('getExtensionsForPackage', () => {
     it('39.6.9 should return only extensions from specified package', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extensions from 2 different packages
       await registry.registerExtension(demoExtension1);
@@ -152,7 +152,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
 
     it('39.6.10 should return empty array for untracked package', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extension from hai3.demo
       await registry.registerExtension(demoExtension1);
@@ -166,7 +166,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
   describe('unregisterExtension and package cleanup', () => {
     it('39.6.11 should remove extension from package; remove package if last extension', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extensions from 2 packages
       await registry.registerExtension(demoExtension1);
@@ -197,7 +197,7 @@ describe('GTS Package Tracking - Phase 39.6', () => {
   describe('dispose', () => {
     it('39.6.12 should clear packages after dispose', async () => {
       // Register domain first
-      registry.registerDomain(testDomain, mockContainerProvider);
+      registry.registerDomain(testDomain, mockContainerProvider.prepareForDomain(testDomain));
 
       // Register extensions
       await registry.registerExtension(demoExtension1);
