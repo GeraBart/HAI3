@@ -9,12 +9,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   useAppSelector,
   useHAI3,
-  useActivePackage,
   useMountedExtensions,
   eventBus,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_SCREEN_DOMAIN,
-  type Extension,
   type MenuState,
   type ScreenExtension,
 } from '@cyberfabric/react';
@@ -39,7 +37,6 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const app = useHAI3();
   const { screensetsRegistry } = app;
-  const activePackage = useActivePackage();
 
   const collapsed = menuState?.collapsed ?? false;
 
@@ -49,22 +46,13 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   const mountedScreens = useMountedExtensions(HAI3_SCREEN_DOMAIN);
   const mountedId = mountedScreens[0]?.id;
 
-  // Extension-driven menu state — filtered by active GTS package
   const [extensions, setExtensions] = useState<ScreenExtension[]>([]);
 
   useEffect(() => {
     if (!screensetsRegistry) return;
 
     const refresh = () => {
-      let screenExts: ScreenExtension[];
-      if (activePackage) {
-        const packageExts = screensetsRegistry.getExtensionsForPackage(activePackage);
-        screenExts = packageExts.filter(
-          (ext: Extension) => ext.domain === HAI3_SCREEN_DOMAIN && 'presentation' in ext
-        ) as ScreenExtension[];
-      } else {
-        screenExts = screensetsRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
-      }
+      const screenExts = screensetsRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
@@ -73,7 +61,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     refresh();
     const interval = setInterval(refresh, 500);
     return () => clearInterval(interval);
-  }, [screensetsRegistry, activePackage]);
+  }, [screensetsRegistry]);
 
   const handleToggleCollapse = () => {
     eventBus.emit('layout/menu/collapsed', { collapsed: !collapsed });

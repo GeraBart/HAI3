@@ -2,13 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   useAppSelector,
   useHAI3,
-  useActivePackage,
   useMountedExtensions,
   eventBus,
   HAI3_ACTION_MOUNT_EXT,
   HAI3_SCREEN_DOMAIN,
   type MenuState,
-  type Extension,
   type ScreenExtension,
 } from '@cyberfabric/react';
 import * as lucideIcons from 'lucide-react';
@@ -38,7 +36,6 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
   const menuState = useAppSelector((state) => state['layout/menu'] as MenuState | undefined);
   const app = useHAI3();
   const { screensetsRegistry } = app;
-  const activePackage = useActivePackage();
 
   const collapsed = menuState?.collapsed ?? false;
 
@@ -54,15 +51,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     if (!screensetsRegistry) return;
 
     const refresh = () => {
-      let screenExts: ScreenExtension[];
-      if (activePackage) {
-        const packageExts = screensetsRegistry.getExtensionsForPackage(activePackage);
-        screenExts = packageExts.filter(
-          (ext: Extension) => ext.domain === HAI3_SCREEN_DOMAIN && 'presentation' in ext
-        ) as ScreenExtension[];
-      } else {
-        screenExts = screensetsRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
-      }
+      const screenExts = screensetsRegistry.getExtensionsForDomain(HAI3_SCREEN_DOMAIN) as ScreenExtension[];
       const sorted = screenExts
         .sort((a, b) => (a.presentation.order ?? 999) - (b.presentation.order ?? 999));
       setExtensions(sorted);
@@ -71,7 +60,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
     refresh();
     const interval = setInterval(refresh, 500);
     return () => clearInterval(interval);
-  }, [screensetsRegistry, activePackage]);
+  }, [screensetsRegistry]);
 
   const handleToggleCollapse = () => {
     eventBus.emit('layout/menu/collapsed', { collapsed: !collapsed });
@@ -120,7 +109,7 @@ export const Menu: React.FC<MenuProps> = ({ children }) => {
           color: 'hsl(var(--foreground))',
         }}
       >
-        <span style={{ fontSize: 20, lineHeight: 1 }}>{collapsed ? '\u2630' : '\u2715'}</span>
+        <span style={{ fontSize: 20, lineHeight: 1 }}>{collapsed ? '☰' : '✕'}</span>
         {!collapsed && <span style={{ fontWeight: 600, fontSize: 14 }}>Menu</span>}
       </button>
 
