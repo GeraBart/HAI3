@@ -31,8 +31,8 @@ describe('Error Handling', () => {
         domainActions: [],
       };
 
-      await expect(handler.load(entry)).rejects.toThrow(MfeLoadError);
-      await expect(handler.load(entry)).rejects.toThrow(/Manifest 'missing-manifest-id' not found/);
+      await expect(handler.load(entry, 'ext-missing-manifest.v1')).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, 'ext-missing-manifest.v1')).rejects.toThrow(/Manifest 'missing-manifest-id' not found/);
     });
 
     it('should throw MfeLoadError when module does not implement lifecycle interface', async () => {
@@ -48,7 +48,7 @@ describe('Error Handling', () => {
       };
 
       // This will fail because the manifest is not cached
-      await expect(handler.load(entry)).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, 'ext-invalid-lifecycle.v1')).rejects.toThrow(MfeLoadError);
     });
   });
 
@@ -150,7 +150,7 @@ describe('Error Handling', () => {
       };
 
       // Should fail after retries
-      await expect(handler.load(entry)).rejects.toThrow(MfeLoadError);
+      await expect(handler.load(entry, 'ext-retry-integration.v1')).rejects.toThrow(MfeLoadError);
     });
   });
 });

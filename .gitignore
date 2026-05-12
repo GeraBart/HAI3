@@ -67,3 +67,6 @@ packages/cli/src/generated/
 
 # Cypilot execution plans
 .cypilot/.plans/
+
+# Cypilot archived plans (lifecycle = archive)
+.cypilot/.plans/.archive/

@@ -517,8 +517,11 @@ describe('Extension Lifecycle Actions', () => {
     it('should register load_ext, mount_ext, unmount_ext handlers for toggle domain', async () => {
       // Toggle domain supports unmount — all three actions must be handled.
       // We verify handlers are wired by sending missing-payload actions.
-      // When a handler IS registered, it runs and logs an error for the missing payload.
-      // When no handler is registered, the action is a silent no-op (no console.error).
+      // When a handler IS registered, the action reaches it and the handler logs
+      // a chain failure for the missing payload. (When no handler is registered,
+      // the mediator records `No handler found for target '...' and action
+      // type '...'` per cpt-frontx-dod-screenset-registry-missing-handler-fallback;
+      // that case is exercised in the swap-domain test below.)
       registry.registerDomain(toggleDomain, mockContainerProvider.prepareForDomain(toggleDomain));
 
       const errors: string[] = [];
@@ -573,7 +576,11 @@ describe('Extension Lifecycle Actions', () => {
       });
       expect(errors.length).toBeGreaterThan(0);
 
-      // unmount_ext NOT registered on swap domain — silent no-op, no error logged
+      // unmount_ext NOT registered on swap domain — per
+      // cpt-frontx-dod-screenset-registry-missing-handler-fallback the mediator
+      // now records `No handler found for target '...' and action type '...'`
+      // and the registry logs the chain failure (previously this was a silent
+      // no-op; the new contract makes "target unreachable" observable).
       errors.length = 0;
       await registry.executeActionsChain({
         action: {
@@ -582,8 +589,13 @@ describe('Extension Lifecycle Actions', () => {
           payload: { subject: testExtension2.id },
         },
       });
-      // No handler registered → no error, chain succeeds as no-op
-      expect(errors.length).toBe(0);
+      expect(errors.length).toBe(1);
+      expect(errors[0]).toContain('Actions chain failed');
+      // The mediator's missing-handler error message reaches the registry log.
+      const mediatorErrorArg = consoleErrorSpy.mock.calls.at(-1)?.[1] ?? '';
+      expect(String(mediatorErrorArg)).toContain(
+        `No handler found for target '${swapDomain.id}' and action type '${HAI3_ACTION_UNMOUNT_EXT}'`
+      );
 
       consoleErrorSpy.mockRestore();
     });

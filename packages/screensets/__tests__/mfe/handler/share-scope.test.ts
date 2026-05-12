@@ -124,7 +124,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, [sharedDep(remoteName, 'react', '19.2.4')]);
       const entry = buildEntry(remoteName, 'fetch-dep.entry', 'expose-Widget1.js', manifest);
 
-      await handler.load(entry);
+      await handler.load(entry, entry.id);
 
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
       expect(fetchedUrls).toContain(sharedDepUrl);
@@ -142,7 +142,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, [sharedDep(remoteName, '@cyberfabric/screensets', '1.0.0')]);
       const entry = buildEntry(remoteName, 'scoped-dep.entry', 'expose-Widget1.js', manifest);
 
-      await handler.load(entry);
+      await handler.load(entry, entry.id);
 
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
       expect(fetchedUrls).toContain(sharedDepUrl);
@@ -157,7 +157,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, []);
       const entry = buildEntry(remoteName, 'empty-shared.entry', 'expose-Widget1.js', manifest);
 
-      await handler.load(entry);
+      await handler.load(entry, entry.id);
 
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
       const sharedFetches = fetchedUrls.filter((u: string) => u.includes('/shared/'));
@@ -187,7 +187,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, [sharedDep(remoteName, 'react', '19.2.4')]);
       const entry = buildEntry(remoteName, 'bare-spec.entry', 'expose-Widget1.js', manifest);
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       const result = await lifecycle.mount(shadowRoot, {
@@ -224,7 +224,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       ]);
       const entry = buildEntry(remoteName, 'exact-match.entry', 'expose-Widget1.js', manifest);
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       const result = await lifecycle.mount(shadowRoot, {
@@ -265,7 +265,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const entry = buildEntry(remoteName, 'dep-on-dep.entry', 'expose-Widget1.js', manifest);
 
       // Must not throw — both rewrites resolve
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       expect(lifecycle).toBeDefined();
       expect(typeof lifecycle.mount).toBe('function');
     });
@@ -286,7 +286,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, [sharedDep(remoteName, 'react', '19.2.4')]);
       const entry = buildEntry(remoteName, 'single-quote.entry', 'expose-Widget1.js', manifest);
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       const result = await lifecycle.mount(shadowRoot, {
@@ -316,7 +316,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, [sharedDep(remoteName, 'lodash', '4.17.21')]);
       const entry = buildEntry(remoteName, 'cjs-dep.entry', 'expose-Widget1.js', manifest);
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       const result = await lifecycle.mount(shadowRoot, {
@@ -369,7 +369,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       ]);
       const entry = buildEntry(remoteName, 'subpath-load.entry', 'expose-Widget1.js', manifest);
 
-      await expect(handler.load(entry)).resolves.toBeDefined();
+      await expect(handler.load(entry, entry.id)).resolves.toBeDefined();
 
       const fetchedUrls = mocks.mockFetch.mock.calls.map((c: unknown[]) => c[0]);
       expect(fetchedUrls).toContain(parentUrl);
@@ -407,7 +407,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
         manifest
       );
 
-      await handler.load(entry);
+      await handler.load(entry, entry.id);
 
       const dataUrls = getCreatedDataUrls();
 
@@ -447,10 +447,15 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
         sharedDep(remoteName, 'react-dom', '19.2.4'),
         sharedDep(remoteName, 'react-dom/client', '19.2.4'),
       ]);
-      const entry = buildEntry(remoteName, 'subpath-iso.entry', 'expose-Widget1.js', manifest);
 
-      // Two independent handlers → two independent sharedDepTextCache instances,
-      // so each load performs its own fetch + blob-URL chain construction.
+      // Per-load isolation is verified across two distinct entry ids — the
+      // handler-level static load cache short-circuits a second load() of the
+      // same id (by design: cpt-frontx-dod-mfe-isolation-handler-load-cache),
+      // so to exercise the shared-dep fetch + blob-URL chain twice the two
+      // loads must use different entry ids.
+      const entry1 = buildEntry(remoteName, 'subpath-iso.entry.a', 'expose-Widget1.js', manifest);
+      const entry2 = buildEntry(remoteName, 'subpath-iso.entry.b', 'expose-Widget1.js', manifest);
+
       const handler1 = new MfeHandlerMF(
         'gts.hai3.mfes.mfe.entry.v1~hai3.mfes.mfe.entry_mf.v1~',
         { timeout: 5000, retries: 0 }
@@ -460,8 +465,8 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
         { timeout: 5000, retries: 0 }
       );
 
-      await expect(handler1.load(entry)).resolves.toBeDefined();
-      await expect(handler2.load(entry)).resolves.toBeDefined();
+      await expect(handler1.load(entry1, entry1.id)).resolves.toBeDefined();
+      await expect(handler2.load(entry2, entry2.id)).resolves.toBeDefined();
 
       // Each load fetched both the parent and the subpath shared dep URLs
       // independently (weaker assertion per phase spec; exact blob-URL identity
@@ -505,7 +510,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       ]);
       const entry = buildEntry(remoteName, 'dep-order.entry', 'expose-Widget1.js', manifest);
 
-      const lifecycle = await handler.load(entry);
+      const lifecycle = await handler.load(entry, entry.id);
       const host = document.createElement('div');
       const shadowRoot = host.attachShadow({ mode: 'open' });
       const result = await lifecycle.mount(shadowRoot, {
@@ -548,8 +553,8 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
         exposeAssets: { js: { sync: ['expose-Widget2.js'], async: [] }, css: { sync: [], async: [] } },
       };
 
-      const lifecycle1 = await handler.load(entry1);
-      const lifecycle2 = await handler.load(entry2);
+      const lifecycle1 = await handler.load(entry1, entry1.id);
+      const lifecycle2 = await handler.load(entry2, entry2.id);
 
       // Both loads produced valid lifecycle objects
       expect(typeof lifecycle1.mount).toBe('function');
@@ -572,7 +577,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, [sharedDep(remoteName, 'react', '19.2.4')]);
       const entry = buildEntry(remoteName, 'error-dep.entry', 'expose-Widget1.js', manifest);
 
-      await expect(handler.load(entry)).rejects.toBeInstanceOf(MfeLoadError);
+      await expect(handler.load(entry, entry.id)).rejects.toBeInstanceOf(MfeLoadError);
     });
 
     it('evicts sharedDepTextCache on rejection so a later load can recover after transient failure', async () => {
@@ -590,7 +595,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifestA = buildManifest(remoteA, [sharedDep(remoteA, 'react', '19.2.4')]);
       const entryA = buildEntry(remoteA, 'retry-a.entry', 'expose-Widget1.js', manifestA);
 
-      await expect(handler.load(entryA)).rejects.toBeInstanceOf(MfeLoadError);
+      await expect(handler.load(entryA, entryA.id)).rejects.toBeInstanceOf(MfeLoadError);
 
       // Now the URL becomes available (simulates a transient outage recovered).
       mocks.registerSource(sharedDepUrl, createSharedDepSource());
@@ -606,7 +611,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifestB = buildManifest(remoteB, [sharedDep(remoteB, 'react', '19.2.4')]);
       const entryB = buildEntry(remoteB, 'retry-b.entry', 'expose-Widget1.js', manifestB);
 
-      await expect(handler.load(entryB)).resolves.toBeDefined();
+      await expect(handler.load(entryB, entryB.id)).resolves.toBeDefined();
     });
 
     it('throws MfeLoadError when exposeAssets.js.sync is empty (no chunk to load)', async () => {
@@ -621,8 +626,8 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
         },
       };
 
-      await expect(handler.load(entry)).rejects.toBeInstanceOf(MfeLoadError);
-      await expect(handler.load(entry)).rejects.toThrow('exposeAssets.js.sync is empty');
+      await expect(handler.load(entry, entry.id)).rejects.toBeInstanceOf(MfeLoadError);
+      await expect(handler.load(entry, entry.id)).rejects.toThrow('exposeAssets.js.sync is empty');
     });
   });
 
@@ -639,7 +644,7 @@ describe('MfeHandlerMF — bare specifier rewriting for shared deps', () => {
       const manifest = buildManifest(remoteName, []);
       const entry = buildEntry(remoteName, 'nodeps.entry', 'expose-Widget1.js', manifest);
 
-      await expect(handler.load(entry)).resolves.toBeDefined();
+      await expect(handler.load(entry, entry.id)).resolves.toBeDefined();
     });
   });
 });

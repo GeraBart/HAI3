@@ -1,6 +1,6 @@
 # Feature: MFE Blob URL Isolation
 
-<!-- version: 1.9 -->
+<!-- version: 1.13 -->
 
 
 <!-- toc -->
@@ -38,14 +38,19 @@
   - [MFE-Internal Dataflow](#mfe-internal-dataflow)
   - [MfManifest Type and GTS Schema Update](#mfmanifest-type-and-gts-schema-update)
   - [ChildMfeBridge Abstract Class Contract](#childmfebridge-abstract-class-contract)
+  - [MFE Author State Lifecycle Boundary](#mfe-author-state-lifecycle-boundary)
+  - [MfeHandlerMF Process-Wide Load Cache](#mfehandlermf-process-wide-load-cache)
+  - [Lazy-Import ABI Contract](#lazy-import-abi-contract)
+  - [frontx-mf-gts Per-Lifecycle Chunk Isolation](#frontx-mf-gts-per-lifecycle-chunk-isolation)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
   - [Behavioral (verified in browser)](#behavioral-verified-in-browser)
   - [Structural (verified by code/tests)](#structural-verified-by-codetests)
+- [7. State Lifecycle](#7-state-lifecycle)
 - [Additional Context](#additional-context)
 
 <!-- /toc -->
 
-- [x] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
 
 - [x] `p2` - `cpt-frontx-feature-mfe-isolation`
 ---
@@ -90,6 +95,8 @@ Enable multiple independently deployed MFE bundles to coexist in the same browse
 - PRD: [PRD.md](../../PRD.md) — sections 5.6 (MFE Blob URL Isolation), 5.7 (MFE Build Plugin), 5.8 (MFE Internal Dataflow)
 - ADR: `cpt-frontx-adr-blob-url-mfe-isolation`
 - ADR: `cpt-frontx-adr-mf2-manifest-discovery`
+- ADR: `cpt-frontx-adr-mfe-state-lifecycle-boundary`
+- ADR: `cpt-frontx-adr-lazy-import-abi`
 - Depends on feature: `cpt-frontx-feature-screenset-registry`
 
 #### Non-Applicable Domains
@@ -549,6 +556,115 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 
 ---
 
+### MFE Author State Lifecycle Boundary
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-author-state-lifecycle`
+
+The MFE entry's `mount(container, bridge, mountContext?)` is the only place per-instance state is constructed; the matching `unmount(container)` is the only place that state is torn down. Module-scope state established when the bundle first evaluates (the `HAI3App` instance built in `init.ts`, plugin registrations, module-level singletons and caches) persists for the lifetime of the load — the host neither resets it nor offers an API to reset it, because never-revoke (`cpt-frontx-fr-blob-no-revoke`) makes any such reset unsafe.
+
+**Implementation details**:
+- Each `mount()` call creates an independent set of resources: React root via `createRoot(container)`, `bridge.subscribeToProperty()` subscriptions, `bridge.registerActionHandler()` registrations, timers, `MutationObserver` / `IntersectionObserver` instances, DOM nodes attached to `container`.
+- The matching `unmount()` call MUST tear those resources down: unsubscribe property subscriptions, cancel timers, call `root.unmount()` on the React root, disconnect observers, remove DOM nodes from `container`, drop references to the bridge.
+- `unmount()` MUST NOT touch module-level singletons (the `HAI3App` instance, plugin registrations, blob URLs, module-scope caches).
+- An MFE that needs fresh module-scope state per use case keeps that state at instance scope inside `mount()`, not at module scope in `init.ts`. "Cycle the MFE" is therefore an MFE-author operation realised by unregistering and re-registering with a fresh ID — this triggers a new load and a new module evaluation — not a host-side reset hook.
+
+**Covers (PRD)**:
+- `cpt-frontx-fr-mfe-author-state-lifecycle`
+
+**Covers (DESIGN)**:
+- `cpt-frontx-principle-mfe-isolation` (instance-scope cleanup boundary)
+
+---
+
+### MfeHandlerMF Process-Wide Load Cache
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-handler-load-cache`
+
+`MfeHandlerMF` MUST maintain a process-wide load-result cache keyed by the EXTENSION INSTANCE ID — the `id` field of the registered `MfeExtension` whose entry is being loaded. On `load(entry, extension)`, the handler MUST consult the cache: a cache hit returns the previously-resolved `MfeEntryLifecycle` reference together with the same blob URLs minted on the original load, with no re-fetch, no re-rewrite, and no new `URL.createObjectURL()` calls; a cache miss runs the internal load procedure and stores the result under the extension instance ID.
+
+**Implementation details**:
+- Two extensions registered against the same `MfeEntry` definition (for example, two `widgets-fixture-a` instances `widget_alpha` and `widget_beta` that target the same entry) get DISTINCT cache entries keyed by their distinct extension instance IDs, distinct blob URL chains, and distinct module evaluations — per ADR-0004 (`cpt-frontx-adr-blob-url-mfe-isolation`) + ADR-0020 (`cpt-frontx-adr-mfe-state-lifecycle-boundary`) isolation invariant. Isolation between sibling extensions is the handler's responsibility, not the MFE author's.
+- Re-mount of the SAME extension instance (same extension instance ID) reuses the cached load — same blob URLs, same module instance, same `MfeEntryLifecycle` reference. The mount/unmount/mount cycle on one extension produces no new blob URLs and no new module evaluations after the first mount.
+- The MFE author writes ordinary module code (module-level `const`, `let`, plugin registrations, module singletons); the handler ensures each extension instance gets its own module evaluation by minting a distinct blob URL chain per extension instance. Module-scope state is therefore per-extension-instance by construction — sibling extensions do NOT share React module instances, store singletons, or any other module-level state, regardless of how their source is authored.
+- The cache is declared on the `MfeHandlerMF` class as a `static` field, NOT as an instance field. Handler-instance disposal (for example, when a nested-app `ScreensetsRegistry` is torn down and its handler instance is dropped) does NOT clear the cache; subsequent loads against the same extension instance ID — through any handler instance — hit the cache and reuse the same lifecycle reference and the same blob URLs.
+- Cache lifetime is page lifetime. Entries are never evicted, which is consistent with `cpt-frontx-fr-blob-no-revoke`: the cached blob URLs are part of the never-revoke invariant and cannot be released safely while the page is live.
+- Memory bound is catalog-bounded by the count of unique extension instance IDs ever loaded in the session. A long-running session that cycles through a fixed catalog of extensions reaches a steady state; growth is finite and predictable.
+- The cache stores the resolved lifecycle reference itself, not just the chunk source text. Cache hits short-circuit ahead of `buildSharedDepBlobUrls`, the recursive blob URL chain, and the lifecycle evaluation — every nested-app cycle that re-registers the same extension instance reuses the original lifecycle.
+- This DoD strictly extends `cpt-frontx-fr-blob-no-revoke`: it is the handler-side realisation of the never-revoke invariant at the load-result level, complementing the URL-level invariant.
+
+**Covers (PRD)**:
+- `cpt-frontx-fr-blob-no-revoke` (load-result extension of the never-revoke invariant)
+- `cpt-frontx-fr-blob-fresh-eval` (preserved — fresh evaluation still happens exactly once per unique extension instance ID per session; sibling extensions sharing an entry each get their own fresh evaluation)
+
+**Covers (DESIGN)**:
+- `cpt-frontx-principle-mfe-isolation` (handler-level realisation of per-extension-instance isolation; the boundary holds without imposing an instance-scope contract on MFE authors for sibling-isolation)
+
+---
+
+### Lazy-Import ABI Contract
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-lazy-import-abi`
+
+Vendor MFEs are expected to use dynamic `import()` calls (lazy chunks, code-split routes, on-demand components) — FrontX is a meta-framework for SaaS platforms extensible by external vendor MFEs at runtime, and vendor authors cannot be told to avoid lazy loading. The isolation pipeline MUST therefore handle dynamic `import()` calls inside vendor source so lazy chunks are resolved through the same blob URL chain as the entry chunk. This responsibility is split between a build-time transform (in the `frontx-mf-gts` Vite plugin) and a runtime resolver (on `MfeHandlerMF`), connected through a stable runtime ABI named `__hai3_lazy`.
+
+**Plugin (build-time)** — `frontx-mf-gts` Vite plugin uses Vite's `transform` hook (a stable public API that operates on the module AST, not on emitted code) to rewrite every dynamic `import('<relative-path>')` call in vendor MFE TypeScript/JavaScript source to `__hai3_lazy('<relative-path>')`. The transform:
+
+- Rewrites string-literal paths: `import('./X.js')` → `__hai3_lazy('./X.js')`.
+- Rewrites template-literal paths whose template is constant (no embedded expressions): `` import(`./X.js`) `` → `` __hai3_lazy(`./X.js`) ``.
+- Rewrites simple concatenations of string constants (e.g., `import('./' + name + '.js')` where `name` is a string-literal constant) up to a documented limit; the limit is the static reachability of the path expression at transform time.
+- Patterns the transform cannot handle (fully runtime-computed paths from request data, paths constructed from non-string constants, paths involving dynamic property lookup) MUST be flagged with a build-time error so vendors know to refactor; the plugin MUST NOT emit silently-broken output that would fail at runtime with an unhelpful diagnostic.
+- The transform is applied only to vendor MFE source (modules under the MFE's `src/`), not to host source and not to standalone-ESM shared dep bundles produced by the plugin's own esbuild step.
+
+**Handler (runtime)** — `MfeHandlerMF` provides a runtime function `__hai3_lazy.load(relativePath)` (or equivalent module-scoped identifier) injected into the evaluated MFE module's scope alongside the existing blob URL chain plumbing. The function:
+
+1. Resolves `relativePath` against `manifest.metaData.publicPath` to obtain the absolute URL of the lazy chunk.
+2. Fetches the lazy chunk's source text through the existing handler-level `sourceTextCache` (URL-keyed; reused across loads), so the same chunk fetched in two loads pays one network request.
+3. Recursively rewrites bare specifiers in the fetched source against the parent load's `sharedDepBlobUrls` (mirrors the entry-chunk rewriting pass) so that `import "react"` inside a lazy chunk resolves to the parent load's React blob URL, not to an unresolved bare specifier; the rewriter also recursively transforms any nested `__hai3_lazy()` calls inside the lazy chunk so a lazy chunk that itself lazy-imports another chunk participates in the same chain.
+4. Creates a per-load blob URL for the rewritten lazy-chunk source — the blob URL is registered in the parent load's `LoadBlobState.blobUrlMap` so the blob URL is owned by the same load as the entry chunk, never revoked (per `cpt-frontx-fr-blob-no-revoke`), and reused across repeated `__hai3_lazy.load()` calls for the same relative path within the same load.
+5. Returns the blob URL string. The caller's transformed code is `__hai3_lazy('<path>')`, which the runtime wires to evaluate as `import(<blob URL string>)` — i.e., the runtime helper returns the URL and the caller's `import()` semantics are preserved end-to-end. Lazy semantics are therefore unchanged from the vendor author's perspective: the call returns a `Promise<Module>` that resolves when the lazy chunk has been parsed and evaluated.
+
+**Properties**:
+
+- **Lazy semantics preserved** — chunks are fetched on demand at first invocation, not eagerly at parent-chunk load time; the vendor's existing lazy-import architecture (route-level code splitting, lazy component imports) keeps working without source changes.
+- **Per-load isolation preserved** — each load owns its own lazy-chunk blob URLs in the same `LoadBlobState.blobUrlMap` that holds the entry-chunk blob URLs; sibling extensions sharing an entry get distinct lazy-chunk blob URLs (a consequence of distinct parent loads per `extension.id` per `cpt-frontx-dod-mfe-isolation-handler-load-cache`).
+- **`sourceTextCache` reuse** — the URL-keyed source text cache is reused for lazy chunks across loads; the same chunk URL fetched by two different parent loads pays one network request, then each parent load creates its own blob URL from the cached text.
+- **Vendor contract** — FrontX-compatible MFEs must be built with `frontx-mf-gts` (or an equivalent build pipeline that produces the same `__hai3_lazy()` call shape at the source level). The plugin's AST transform enforces the contract automatically; vendors do not need to know the runtime ABI exists in order to publish a working MFE.
+
+**Implementation details**:
+- Plugin file: `packages/screensets/src/build/mf-gts.ts` — adds a Vite `transform` hook registered for vendor MFE source files; integration with the existing `closeBundle` hook is read-only on the existing `mfe.json` enrichment side.
+- Handler file: `packages/screensets/src/mfe/handler/mf-handler.ts` — adds a private `__hai3_lazy.load(path)` resolver bound into the per-load scope; the resolver shares the same `sourceTextCache`, `sharedDepBlobUrls`, `blobUrlMap`, and rewrite plumbing already used for the entry chunk.
+
+**Covers (PRD)**:
+- `cpt-frontx-fr-blob-no-revoke` (lazy-chunk blob URLs participate in the never-revoke invariant)
+- `cpt-frontx-fr-blob-import-rewriting` (bare-specifier rewriting extends to lazy chunks)
+- `cpt-frontx-fr-blob-recursive-chain` (lazy chunks join the recursive blob URL chain on demand)
+- `cpt-frontx-fr-blob-source-cache` (`sourceTextCache` reused for lazy chunks)
+- `cpt-frontx-fr-blob-per-load-map` (lazy-chunk blob URLs are owned by the parent load's `LoadBlobState.blobUrlMap`)
+
+**Covers (DESIGN)**:
+- `cpt-frontx-principle-mfe-isolation` (isolation invariant holds for lazy-loaded chunks as well as the entry chunk)
+- `cpt-frontx-component-screensets` (blob loader subsystem extended with the lazy-import ABI)
+
+**Covers (ADR)**:
+- `cpt-frontx-adr-lazy-import-abi` (this DoD is the runtime realization of the ADR's decision; the plugin + handler split is the architectural mechanism)
+
+### frontx-mf-gts Per-Lifecycle Chunk Isolation
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-lifecycle-chunk-isolation`
+
+The `frontx-mf-gts` plugin MUST configure `build.rollupOptions.output.manualChunks` so that each `exposedModule` entry declared in the MFE's `mfe.json` is emitted as its own non-consolidated chunk. Each lifecycle chunk MUST preserve the source's `export default` shape verbatim, regardless of chunk size or the transitive weight of dependencies pulled in by that lifecycle.
+
+**Implementation details**:
+- For each entry in the MFE's `mfe.json` `entries[].exposedModule` field, the plugin resolves the entry's source module and pins it to its own chunk (one chunk per exposed lifecycle). Rollup's automatic consolidation pass MUST NOT merge two lifecycles into one shared chunk.
+- The contract preserves the source's `export default` shape because rollup's consolidation pass, when it merges multiple modules into one chunk, rewrites entry exports to namespace aliases (the observed pattern is `export { oa as q }` instead of `export default`). The MfeHandler reads `moduleRecord['default']` from the imported chunk and rejects modules whose default export is not a `MfeEntryLifecycle`; the rewrite breaks the contract.
+- The failure mode that prompted this DoD: the 94 KB `lifecycle-uikit` chunk in `demo-mfe` (UIKit Elements lifecycle, large transitive footprint) was consolidated with neighbouring lifecycles into a single chunk whose default export was rewritten to a namespace alias. The handler threw `Module './lifecycle-uikit' must implement MfeEntryLifecycle interface (mount/unmount)` even though the source had a valid `export default`.
+- The plugin MAY additionally emit a build-time assertion: after the build completes, scan each lifecycle chunk's emitted code for a clean `export{...as default}` or `export default` clause and throw at build time if the shape is missing. This is a defensive guard and not required for correctness once `manualChunks` is in place.
+
+**Covers (DESIGN)**:
+- `cpt-frontx-contract-federation-runtime` (handler's `moduleRecord['default']` read is honored by the build output; the build emits per-lifecycle chunks whose default export survives consolidation)
+
+---
+
 ## 6. Acceptance Criteria
 
 ### Behavioral (verified in browser)
@@ -560,6 +676,7 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 - [x] **AC-5: Version separation** — different versions of the same shared package produce separate downloads and separate isolated instances; `react@18` and `react@19` from different MFEs are NOT shared
 - [x] **AC-6: Shared properties** — shared properties (theme, language) reach child runtimes via the bridge; child MFE components display the host-set theme and language values
 - [x] **AC-7: Actions chain routing** — `mount_ext` actions chain works across package switches in any order (MFE A → MFE B → MFE A), including programmatic navigation via `executeActionsChain`; zero `OperationTimeout` errors during cross-package mount/unmount cycles
+- [x] **AC-8: Mount/unmount instance hygiene** — repeatedly mounting and unmounting the same MFE entry on the same container leaves no leaked instance-scope resources: after `unmount()` returns, prior-mount property subscriptions emit no further callbacks, prior-mount action handlers no longer receive routed actions, and the React root attached by the prior mount is gone from the DOM
 
 ### Structural (verified by code/tests)
 
@@ -574,12 +691,46 @@ Action target contract enforcement is two-layered: (1) **GTS schema validation**
 - [x] The `frontx-mf-gts` plugin enriches `mfe.json` in-place: `manifest.shared[].chunkPath` set to MFE-relative paths (`shared/{name}.js`); the handler resolves against `publicPath` and deduplicates via `sharedDepTextCache` keyed by `name@version`; no intermediate `mfe.gts-manifest.json` artifact
 - [x] MFE `vite.config.ts` uses `shared: {}` (empty) and `build.rollupOptions.external` for shared deps; expose chunks contain bare specifiers for shared deps
 - [x] MFE `init.ts` files contain no direct imports from `react-redux`, `redux`, or `@reduxjs/toolkit`
+- [x] Each MFE entry's `mount()` and `unmount()` are paired: every resource created in `mount()` (React root, `bridge.subscribeToProperty` returns, `bridge.registerActionHandler` registrations, timers, observers, DOM nodes) is disposed in the matching `unmount()`; no `unmount()` mutates module-level singletons (`HAI3App`, plugin registrations, module-scope caches)
+- [x] `MfeHandlerMF` declares a `static` load-result cache keyed by the extension instance ID; the cache survives handler-instance disposal (verified: nested-app registry teardown does not invalidate cache entries — a second mount of the same extension instance under a fresh handler instance hits the cache and reuses the same blob URLs); two extensions registered against the same `MfeEntry` definition populate distinct cache entries with distinct blob URLs (verified by mounting two extensions whose entry is identical and asserting `Object.is(lifecycle_a, lifecycle_b) === false` and that their blob URLs are disjoint)
+- [x] `frontx-mf-gts` plugin configures `build.rollupOptions.output.manualChunks` so each `exposedModule` from `mfe.json` is emitted as its own chunk; each lifecycle chunk preserves a clean `export default` shape with no namespace-alias rewrite
+
+---
+
+## 7. State Lifecycle
+
+The loader and the MFE entry sit on opposite sides of a single, sharp responsibility boundary. The host owns module-scope lifetime (load → page unload, no revocation); the MFE author owns instance-scope lifetime (mount → unmount).
+
+**Host loader (`MfeHandlerMF`) owns module-scope lifetime.**
+
+- The host fetches source text, builds blob URLs, evaluates the bundle, and returns the lifecycle. From the moment a load completes, every blob URL produced for that load is live for the page lifetime — including transitive shared dep blob URLs, the expose chunk blob URL, and any chunks reached through the recursive chain.
+- The host does NOT call `URL.revokeObjectURL()`. Ever. This is a correctness invariant of the loader: ES module evaluation is deferred and asynchronous, and the only safe lower bound for "this URL is no longer needed" is page unload, which the browser handles automatically. See FR `cpt-frontx-fr-blob-no-revoke`.
+- Module-scope state established during evaluation (the React module instance, store singletons declared at module scope, plugin registrations performed in `init.ts`, registered effects, entries pushed into module-level caches) therefore persists for the lifetime of the load. The host treats this state as immutable from its perspective — it neither resets it nor offers an API to reset it.
+- The `sharedDepTextCache` keyed by `name@version` is host-managed and shared across all runtimes; the `sourceTextCache` keyed by absolute URL is host-managed and bounded via LRU. Neither is touched on unmount.
+- The host extends the never-revoke invariant to the load-result level: `MfeHandlerMF` maintains a process-wide static cache keyed by the extension instance ID; a second `load()` against the same extension instance — through any handler instance, including handlers created by short-lived nested-app registries — returns the original lifecycle reference and the original blob URLs. Two extensions registered against the same `MfeEntry` definition get DISTINCT cache entries — distinct blob URLs, distinct module evaluations — so sibling isolation is preserved by the handler regardless of how the MFE author writes module-scope state. See DoD `cpt-frontx-dod-mfe-isolation-handler-load-cache`.
+
+**MFE author owns instance-scope lifetime.**
+
+- The lifecycle's `mount(container, bridge, mountContext?)` is called once per mount and is the only place per-instance state may be created: React roots, subscriptions, timers, MutationObservers, IntersectionObservers, action handlers registered through `bridge.registerActionHandler()`, listeners registered with `bridge.subscribeToProperty()`, DOM nodes attached to the mount container.
+- The lifecycle's `unmount(container)` is called once per mount and MUST tear those resources down. The MFE author MUST NOT rely on `unmount()` to reset module-level singletons or to drop blob URLs — it is purely an instance-lifecycle hook. See FR `cpt-frontx-fr-mfe-author-state-lifecycle`.
+- An MFE that wants fresh module state per use case (a wizard that should reset on every open, a modal that should not preserve form data across opens) MUST keep that state at instance scope, not at module scope. The boundary is enforceable by the author at the source level — no host-side flag can simulate it without breaking the never-revoke invariant.
+- Any module-scope cache the MFE chooses to keep is the MFE's contract with itself — the host treats it as opaque and durable.
+
+**What this rules out.**
+
+- The loader does NOT expose a "clear cached lifecycle" or "revoke this extension's blob URLs" hook. Any such hook would have to either violate `cpt-frontx-fr-blob-no-revoke` or pretend to clean up while leaking — neither is acceptable.
+- The host does NOT trigger a fresh `handler.load()` on remount. Remount reuses the existing lifecycle reference returned by the original load, calling its `mount()` again. The MFE author sees mount/unmount cycles, not load/load cycles.
+- "Cycle the MFE" is therefore an MFE-author operation, not a host operation. An MFE that needs to be reset MUST be unregistered and re-registered with a fresh ID; this triggers a new load and a new evaluation.
 
 ---
 
 ## Additional Context
 
-**Never-revoke policy rationale**: The `import()` function resolves when a module is parsed and its top-level synchronous code has run. Modules with top-level `await` or dynamic `import()` internally continue evaluating asynchronously after the outer `import()` promise resolves. If the blob URL is revoked at this point, the async continuation cannot fetch the already-queued sub-module evaluation and fails with `ERR_FILE_NOT_FOUND`. Blob URLs are cleaned up automatically by the browser on page unload; no manual revocation is needed.
+**Never-revoke is a top-level-await correctness invariant**: The `import()` function resolves when a module is parsed and its top-level synchronous code has run. Modules with top-level `await` or dynamic `import()` internally continue evaluating asynchronously after the outer `import()` promise resolves. If the blob URL is revoked at this point, the async continuation cannot fetch the already-queued sub-module evaluation and fails with `ERR_FILE_NOT_FOUND` — nondeterministically, depending on scheduler timing. Never-revoke is therefore a correctness rule for the loader, not a memory-hygiene policy. Blob URLs are cleaned up automatically by the browser on page unload.
+
+**Decision rationale and rejected alternatives**: The host/author state-lifecycle boundary documented in §7 is recorded as ADR-0020 (`cpt-frontx-adr-mfe-state-lifecycle-boundary`), which captures the full pros/cons analysis of the alternatives evaluated and rejected (`persistAcrossMounts: false` flag with revocation on unmount, per-mount fresh `load()` with force-reload, iframe-per-instance, `new Function`-based runtime instantiation, build-time whitelist enforcement on expose chains). Future revisits should start there rather than re-deriving the analysis.
+
+**Open follow-up — heap snapshot validation**: A single DevTools heap-snapshot run on a representative session remains useful as a sanity check on the per-load bound — does the retained set per load match the static prediction? Lower priority than the artifact updates, runs whenever a mount-heavy regression is suspected.
 
 **Per-load isolation mechanism**: Each load creates fresh blob URLs for ALL shared deps from the handler-level `sharedDepTextCache` (keyed by `name@version`). Even though the source text is identical (same `name@version`), each `URL.createObjectURL()` call produces a unique blob URL that the browser evaluates as a fresh module — independent state, independent closures. The `sharedDepBlobUrls` map and `blobUrlMap` are scoped to a single load; the `sharedDepTextCache` is handler-level (keyed by `name@version`) to avoid redundant fetches across runtimes.
 
